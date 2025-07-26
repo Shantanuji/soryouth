@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,13 +15,14 @@ import { Label } from "@/components/ui/label";
 import { DEAL_PIPELINES, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES } from '@/lib/constants';
 import type { Deal, User, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, DealStage, Client } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Loader2, Save, Send, Video, Building, IndianRupee, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, CheckCircle, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Loader2, Save, Send, Video, Building, IndianRupee, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getDealById, addDealActivity, updateDeal, getActivitiesForDeal, updateDealStage, updateDealEffectiveDate } from '@/app/(app)/deals/actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 
@@ -43,6 +44,7 @@ const ActivityIcon = ({ type, className }: { type: string, className?: string })
 export default function DealDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const dealId = typeof params.dealId === 'string' ? params.dealId : null;
   const { toast } = useToast();
   const [deal, setDeal] = useState<Deal | null | undefined>(undefined);
@@ -266,6 +268,8 @@ export default function DealDetailsPage() {
   const stagesForPipeline = DEAL_PIPELINES[deal.pipeline] || [];
 
   return (
+    <>
+    {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{deal.clientName}</h1>
@@ -425,10 +429,16 @@ export default function DealDetailsPage() {
                             <Badge variant="secondary" className="capitalize bg-teal-100 text-teal-800 border-transparent hover:bg-teal-200">
                                {activity.type}
                             </Badge>
-                             {activity.followupOrTask === 'Task' ? (
-                               <Badge className="bg-green-600 text-white border-transparent hover:bg-green-700">
-                                Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
-                              </Badge>
+                            {activity.followupOrTask === 'Task' ? (
+                               activity.taskStatus === 'Closed' ? (
+                                    <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
+                                        <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
+                                    </Badge>
+                                ) : (
+                                    <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
+                                        Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
+                                    </Badge>
+                                )
                             ) : (
                               <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
                             )}
@@ -480,5 +490,6 @@ export default function DealDetailsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

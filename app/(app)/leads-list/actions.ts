@@ -793,8 +793,6 @@ export async function getTasksForCurrentUser(): Promise<TaskNotification[]> {
             id: task.id,
             comment: task.comment || 'No comment',
             time: task.taskTime || 'No time set',
-            //customerName: customer?.name || 'Unknown Customer',
-            //customerPhone: customer?.phone || null,
             customerName,
             customerPhone,
             status: task.taskStatus === 'Closed' ? 'Closed' : 'Open',

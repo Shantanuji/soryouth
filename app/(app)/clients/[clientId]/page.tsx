@@ -776,19 +776,19 @@ export default function ClientDetailsPage() {
                             {activity.leadStageAtTimeOfFollowUp && (
                               <Badge variant="outline" className="capitalize bg-slate-800 text-white border-transparent hover:bg-slate-700">{activity.leadStageAtTimeOfFollowUp}</Badge>
                             )}
-                             {activity.followupOrTask === 'Task' ? (
-                               activity.taskStatus === 'Closed' ? (
+                              {activity.followupOrTask === 'Task' ? (
+                                activity.taskStatus === 'Closed' ? (
                                     <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
-                                        <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
+                                      <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
                                     </Badge>
-                                ) : (
+                                  ) : (
                                     <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
-                                        Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
+                                      Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
                                     </Badge>
-                                )
-                            ) : (
-                              <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
-                            )}
+                                  )
+                                ) : (
+                                  <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
+                                )}
                           </div>
                         </div>
                       </div>

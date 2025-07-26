@@ -53,6 +53,7 @@ function mapPrismaFollowUpToFollowUpType(prismaFollowUp: any): FollowUp {
     taskForUser: prismaFollowUp.taskForUser?.name ?? undefined,
     taskDate: prismaFollowUp.taskDate?.toISOString() ?? undefined,
     taskTime: prismaFollowUp.taskTime ?? undefined,
+    taskStatus: prismaFollowUp.taskStatus ?? 'Open',
   } as FollowUp;
 }
 
