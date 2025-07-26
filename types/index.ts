@@ -265,9 +265,10 @@ export interface FollowUp {
   taskStatus?: 'Open' | 'Closed'; // Added for task tracking
   lead?: { name: string, phone: string | null } | null;
   client?: { name: string, phone: string | null } | null;
+  deal?: { id: string, clientName: string, phone: string | null } | null;
 }
 
-export type AddActivityData = Omit<FollowUp, 'id' | 'createdAt' | 'droppedLeadId' | 'createdBy' | 'createdById' | 'lead' | 'client'> & {
+export type AddActivityData = Omit<FollowUp, 'id' | 'createdAt' | 'droppedLeadId' | 'createdBy' | 'createdById' | 'lead' | 'client' | 'deal'> & {
   priority?: LeadPriorityType | ClientPriorityType;
 };
 
@@ -430,6 +431,7 @@ export interface Deal {
   updatedAt: string;
   amcDurationInMonths?: number | null;
   amcEffectiveDate?: string | null;
+  notes?: string | null;
 }
 
 export type TaskNotification = {

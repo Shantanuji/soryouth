@@ -23,6 +23,7 @@ function mapPrismaDeal(deal: any): Deal {
         clientName: deal.client?.name ?? deal.clientName,
         amcDurationInMonths: deal.amcDurationInMonths,
         amcEffectiveDate: deal.amcEffectiveDate ? deal.amcEffectiveDate.toISOString() : null,
+        notes: deal.notes,
     };
 }
 
@@ -239,10 +240,41 @@ export async function updateDealStage(dealId: string, newStage: DealStage): Prom
         });
 
         revalidatePath('/deals');
+        revalidatePath(`/deals/${dealId}`);
         return { success: true, deal: mapPrismaDeal(updatedDeal), tasksCreatedCount };
     } catch (error) {
         console.error(`Failed to update stage for deal ${dealId}:`, error);
         return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function updateDeal(id: string, data: Partial<Pick<Deal, 'assignedTo' | 'notes'>>): Promise<Deal | null> {
+    try {
+        const prismaData: any = {};
+        if (data.notes !== undefined) prismaData.notes = data.notes;
+        
+        if (data.assignedTo) {
+            const user = await prisma.user.findFirst({ where: { name: data.assignedTo }});
+            if (user) {
+                prismaData.assignedToId = user.id;
+            } else {
+                // Handle case where user is not found, maybe throw an error or return null
+                console.error(`User with name ${data.assignedTo} not found.`);
+                return null;
+            }
+        }
+
+        const updatedDeal = await prisma.deal.update({
+            where: { id },
+            data: prismaData,
+            include: { assignedTo: true, client: true, createdBy: true }
+        });
+
+        revalidatePath(`/deals/${id}`);
+        return mapPrismaDeal(updatedDeal);
+    } catch (error) {
+        console.error(`Failed to update deal ${id}:`, error);
+        return null;
     }
 }
 
