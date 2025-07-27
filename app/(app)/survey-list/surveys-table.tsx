@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { SiteSurvey, SurveySortConfig, ConsumerCategoryType, UserOptionType } from '@/types';
@@ -44,6 +45,8 @@ interface SurveysTableProps {
   sortConfig?: SurveySortConfig | null;
   requestSort?: (key: keyof SiteSurvey) => void;
   columnVisibility?: Record<string, boolean>;
+  selectedIds: string[];
+  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const formatDateInternal = (dateString?: string) => {
@@ -79,8 +82,8 @@ const allColumnsConfig: { key: keyof SiteSurvey; label: string }[] = [
     { key: 'remark', label: 'Remark' },
 ];
 
-export function SurveysTable({ surveys, onEditSurvey, onDeleteSurvey, sortConfig, requestSort, columnVisibility = {} }: SurveysTableProps) {
-
+export function SurveysTable({ surveys, onEditSurvey, onDeleteSurvey, sortConfig, requestSort, columnVisibility = {}, selectedIds, setSelectedIds }: SurveysTableProps) {
+  
   const getSortIndicator = (key: keyof SiteSurvey) => {
     if (!requestSort || !sortConfig || sortConfig.key !== key) {
       return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
@@ -88,6 +91,16 @@ export function SurveysTable({ surveys, onEditSurvey, onDeleteSurvey, sortConfig
     return sortConfig.direction === 'ascending' ? 
       <ArrowUpDown className="ml-1 h-3 w-3 transform rotate-0 text-primary" /> : 
       <ArrowUpDown className="ml-1 h-3 w-3 transform rotate-180 text-primary" />;
+  };
+
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    setSelectedIds(checked === true ? surveys.map((item) => item.id) : []);
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((selectedId) => selectedId !== id)
+    );
   };
   
   const renderCell = (survey: SiteSurvey, key: keyof SiteSurvey) => {
@@ -131,7 +144,10 @@ export function SurveysTable({ surveys, onEditSurvey, onDeleteSurvey, sortConfig
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/40">
                   <TableHead className="w-[50px] text-muted-foreground">
-                    <Checkbox id="selectAllSurveys" aria-label="Select all surveys" disabled />
+                    <Checkbox id="selectAllSurveys" aria-label="Select all surveys" 
+                      checked={surveys.length > 0 && selectedIds.length === surveys.length}
+                      onCheckedChange={handleSelectAll}
+                    />
                   </TableHead>
                   {visibleColumns.map(col => (
                     <TableHead key={col.key} className="text-muted-foreground whitespace-nowrap">
@@ -151,7 +167,10 @@ export function SurveysTable({ surveys, onEditSurvey, onDeleteSurvey, sortConfig
                 {surveys.map((survey) => (
                   <TableRow key={survey.id} className="hover:bg-muted/20 text-xs">
                     <TableCell>
-                      <Checkbox id={`select-survey-${survey.id}`} aria-label={`Select survey ${survey.surveyNumber}`} disabled />
+                      <Checkbox id={`select-survey-${survey.id}`} aria-label={`Select survey ${survey.surveyNumber}`} 
+                        checked={selectedIds.includes(survey.id)}
+                        onCheckedChange={(checked) => handleSelectOne(survey.id, !!checked)}
+                      />
                     </TableCell>
                     {visibleColumns.map(col => (
                        <TableCell key={col.key} className="py-2 px-4 whitespace-nowrap">{renderCell(survey, col.key)}</TableCell>

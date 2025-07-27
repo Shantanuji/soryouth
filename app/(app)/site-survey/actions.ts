@@ -6,6 +6,7 @@ import type { SiteSurvey, CreateSiteSurveyData } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { verifySession } from '@/lib/auth';
 import { format, parseISO } from 'date-fns';
+import { deleteFileFromS3 } from '@/lib/s3';
 
 function mapPrismaSurvey(survey: any): SiteSurvey {
   return {
@@ -146,5 +147,37 @@ export async function getSurveysForDroppedLead(droppedLeadId: string): Promise<S
   } catch (error) {
     console.error(`Failed to fetch surveys for dropped lead ${droppedLeadId}:`, error);
     return [];
+  }
+}
+
+export async function deleteSurveys(surveyIds: string[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    const surveysToDelete = await prisma.siteSurvey.findMany({
+      where: { id: { in: surveyIds } },
+      select: { electricityBillFiles: true },
+    });
+
+    // Flatten all file URLs into a single array
+    const filesToDelete = surveysToDelete.flatMap(survey => survey.electricityBillFiles);
+
+    // Delete files from S3
+    if (filesToDelete.length > 0) {
+      const deletePromises = filesToDelete.map(url => {
+        const key = new URL(url).pathname.substring(1);
+        return deleteFileFromS3(key);
+      });
+      await Promise.all(deletePromises);
+    }
+    
+    // Delete survey records from the database
+    await prisma.siteSurvey.deleteMany({
+      where: { id: { in: surveyIds } },
+    });
+
+    revalidatePath('/survey-list');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete surveys:', error);
+    return { success: false, error: 'An unexpected error occurred during bulk deletion.' };
   }
 }

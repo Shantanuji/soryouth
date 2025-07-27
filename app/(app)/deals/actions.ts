@@ -374,3 +374,29 @@ export async function addDealActivity(data: AddActivityData): Promise<FollowUp |
     return null;
   }
 }
+
+export async function deleteDeal(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const dealToDelete = await prisma.deal.findUnique({
+      where: { id },
+    });
+    
+    if (!dealToDelete) {
+      return { success: false, error: 'Deal not found' };
+    }
+
+    await prisma.deal.delete({ where: { id } });
+
+    if (dealToDelete.clientId) {
+      // Recalculate total deal value for the client
+      await updateTotalDealValueForClient(dealToDelete.clientId, prisma);
+      revalidatePath(`/clients/${dealToDelete.clientId}`);
+    }
+
+    revalidatePath('/deals');
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete deal:", error);
+    return { success: false, error: 'An unexpected error occurred.' };
+  }
+}
