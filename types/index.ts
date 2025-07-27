@@ -66,6 +66,7 @@ export interface Lead {
   nextFollowUpTime?: string | null;
   kilowatt?: number | null;
   address?: string | null;
+  notes?: string | null;
   priority?: LeadPriorityType | null;
   dropReason?: DropReasonType | "Not Dropped" | null;
   clientType?: ClientType | null;
@@ -98,6 +99,7 @@ export interface Client {
   updatedAt: string;
   kilowatt?: number | null;
   address?: string | null;
+  notes?: string | null;
   clientType?: ClientType | null;
   electricityBillUrls: string[];
   followupCount?: number;

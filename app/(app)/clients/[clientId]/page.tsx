@@ -389,7 +389,7 @@ export default function ClientDetailsPage() {
   };
   
   const handleAttributeChange = (
-    key: 'status' | 'priority' | 'assignedTo' | 'clientType' | 'kilowatt' | 'source',
+    key: 'status' | 'priority' | 'assignedTo' | 'clientType' | 'kilowatt' | 'source' | 'notes',
     value: string | number
   ) => {
     if (!client || value === undefined || isUpdating) return;
@@ -928,7 +928,16 @@ export default function ClientDetailsPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">Notes</CardTitle></CardHeader>
-              <CardContent><Textarea placeholder="Add notes here..." className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" /></CardContent>
+              <CardContent>
+                <Textarea 
+                  key={client.id}
+                  placeholder="Add notes here..." 
+                  defaultValue={client.notes || ''}
+                  onBlur={(e) => handleAttributeChange('notes', e.target.value)}
+                  disabled={isUpdating}
+                  className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" 
+                />
+              </CardContent>
             </Card>
              <Card>
               <CardHeader><CardTitle>Proposal History ({proposals.length})</CardTitle></CardHeader>
