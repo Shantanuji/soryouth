@@ -389,7 +389,7 @@ export default function ClientDetailsPage() {
   };
   
   const handleAttributeChange = (
-    key: 'status' | 'priority' | 'assignedTo' | 'clientType' | 'kilowatt' | 'source',
+    key: 'status' | 'priority' | 'assignedTo' | 'clientType' | 'kilowatt' | 'source' | 'notes',
     value: string | number
   ) => {
     if (!client || value === undefined || isUpdating) return;
@@ -776,19 +776,19 @@ export default function ClientDetailsPage() {
                             {activity.leadStageAtTimeOfFollowUp && (
                               <Badge variant="outline" className="capitalize bg-slate-800 text-white border-transparent hover:bg-slate-700">{activity.leadStageAtTimeOfFollowUp}</Badge>
                             )}
-                             {activity.followupOrTask === 'Task' ? (
-                               activity.taskStatus === 'Closed' ? (
+                              {activity.followupOrTask === 'Task' ? (
+                                activity.taskStatus === 'Closed' ? (
                                     <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
-                                        <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
+                                      <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
                                     </Badge>
-                                ) : (
+                                  ) : (
                                     <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
-                                        Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
+                                      Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
                                     </Badge>
-                                )
-                            ) : (
-                              <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
-                            )}
+                                  )
+                                ) : (
+                                  <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
+                                )}
                           </div>
                         </div>
                       </div>
@@ -928,7 +928,16 @@ export default function ClientDetailsPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">Notes</CardTitle></CardHeader>
-              <CardContent><Textarea placeholder="Add notes here..." className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" /></CardContent>
+              <CardContent>
+                <Textarea 
+                  key={client.id}
+                  placeholder="Add notes here..." 
+                  defaultValue={client.notes || ''}
+                  onBlur={(e) => handleAttributeChange('notes', e.target.value)}
+                  disabled={isUpdating}
+                  className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" 
+                />
+              </CardContent>
             </Card>
              <Card>
               <CardHeader><CardTitle>Proposal History ({proposals.length})</CardTitle></CardHeader>

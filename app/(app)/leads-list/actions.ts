@@ -29,6 +29,7 @@ function mapPrismaLeadToLeadType(prismaLead: any): Lead {
     nextFollowUpTime: prismaLead.nextFollowUpTime ?? undefined,
     kilowatt: prismaLead.kilowatt === null ? undefined : prismaLead.kilowatt,
     address: prismaLead.address ?? undefined,
+    notes: prismaLead.notes ?? undefined,
     priority: prismaLead.priority ?? undefined,
     dropReason: prismaLead.dropReason ?? undefined,
     clientType: prismaLead.clientType ?? undefined,
@@ -86,6 +87,7 @@ function mapPrismaFollowUpToFollowUpType(prismaFollowUp: any): FollowUp {
     taskStatus: prismaFollowUp.taskStatus ?? 'Open',
     lead: prismaFollowUp.lead ? mapPrismaLeadToLeadType(prismaFollowUp.lead) : undefined,
     client: prismaFollowUp.client ? mapPrismaClientToClientType(prismaFollowUp.client) : undefined,
+    deal: prismaFollowUp.deal ? { id: prismaFollowUp.deal.id, clientName: prismaFollowUp.deal.clientName, phone: prismaFollowUp.deal.phone } : undefined,
   } as FollowUp;
 }
 
@@ -187,6 +189,7 @@ export async function createLead(data: CreateLeadData): Promise<Lead | null> {
           source: data.source || null,
           kilowatt: data.kilowatt === undefined ? null : Number(data.kilowatt),
           address: data.address || null,
+          notes: data.notes || null,
           priority: data.priority || null,
           dropReason: data.dropReason || "Not Dropped" || null,
           clientType: data.clientType || null,
@@ -441,6 +444,7 @@ export async function convertToClient(leadId: string): Promise<{ success: boolea
           lastCommentDate: lead.lastCommentDate,
           nextFollowUpDate: lead.nextFollowUpDate,
           nextFollowUpTime: lead.nextFollowUpTime,
+          notes: lead.notes,
         },
       });
 
@@ -771,6 +775,7 @@ export async function getTasksForCurrentUser(): Promise<TaskNotification[]> {
         lead: { select: { name: true, phone: true } },
         client: { select: { name: true, phone: true } },
         droppedLead: { select: { name: true, phone: true } },
+        deal: { select: { clientName: true, phone: true, id: true } }
       },
       orderBy: {
         taskTime: 'asc',
@@ -778,18 +783,22 @@ export async function getTasksForCurrentUser(): Promise<TaskNotification[]> {
     });
 
     return tasks.map(task => {
-        const customer = task.lead || task.client || task.droppedLead;
+        const customer = task.lead || task.client || task.droppedLead ;
+        const customerName = task.deal?.clientName || customer?.name || 'Unknown Customer';
+        const customerPhone = task.deal?.phone || customer?.phone || null;
+
         let link = '#';
         if(task.leadId) link = `/leads/${task.leadId}?from_task=${task.id}`;
         else if(task.clientId) link = `/clients/${task.clientId}?from_task=${task.id}`;
         else if(task.droppedLeadId) link = `/dropped-leads/${task.droppedLeadId}?from_task=${task.id}`;
+        else if(task.dealId) link = `/deals/${task.dealId}?from_task=${task.id}`;
 
         return {
             id: task.id,
             comment: task.comment || 'No comment',
             time: task.taskTime || 'No time set',
-            customerName: customer?.name || 'Unknown Customer',
-            customerPhone: customer?.phone || null,
+            customerName,
+            customerPhone,
             status: task.taskStatus === 'Closed' ? 'Closed' : 'Open',
             link: link,
         };

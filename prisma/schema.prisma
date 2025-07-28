@@ -81,6 +81,7 @@ model Lead {
   totalDealValue    Float?
   electricityBillUrls String[] @default([]) 
   followUpCount     Int @default(0)
+  notes             String?
 
   followUps      FollowUp[]
   proposals      Proposal[]
@@ -150,9 +151,10 @@ model Client {
   lastCommentDate   DateTime? // Store as String, or DateTime if you prefer
   nextFollowUpDate  DateTime? // Store as String, or DateTime
   nextFollowUpTime  String?
-  kilowatt           Float?
-  address            String?
-  clientType         String?
+  kilowatt          Float?
+  address           String?
+  clientType        String?
+  notes             String?
   electricityBillUrls String[] @default([])
   followUpCount Int @default(0)
   followUps          FollowUp[]
@@ -412,6 +414,7 @@ model Deal {
     updatedAt     DateTime @updatedAt
     amcDurationInMonths Int?
     amcEffectiveDate    DateTime?
+    notes               String?
 
     clientId    String?
     client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)

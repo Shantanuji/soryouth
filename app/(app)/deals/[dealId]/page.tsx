@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,13 +15,14 @@ import { Label } from "@/components/ui/label";
 import { DEAL_PIPELINES, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES } from '@/lib/constants';
 import type { Deal, User, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, DealStage, Client } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Loader2, Save, Send, Video, Building, IndianRupee, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, CheckCircle, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Loader2, Save, Send, Video, Building, IndianRupee, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { getDealById, addDealActivity, getActivitiesForDeal, updateDealStage, updateDealEffectiveDate } from '@/app/(app)/deals/actions';
+import { getDealById, addDealActivity, updateDeal, getActivitiesForDeal, updateDealStage, updateDealEffectiveDate } from '@/app/(app)/deals/actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 
@@ -43,6 +44,7 @@ const ActivityIcon = ({ type, className }: { type: string, className?: string })
 export default function DealDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const dealId = typeof params.dealId === 'string' ? params.dealId : null;
   const { toast } = useToast();
   const [deal, setDeal] = useState<Deal | null | undefined>(undefined);
@@ -153,6 +155,35 @@ export default function DealDetailsPage() {
       }
     });
   };
+
+  const handleAttributeChange = (
+    key: 'assignedTo' | 'notes',
+    value: string
+    ) => {
+      if (!deal || isUpdating) return;
+      const originalDeal = { ...deal };
+
+      // Optimistic UI update
+      setDeal(prev => prev ? { ...prev, [key]: value } : null);
+
+      startUpdateTransition(async () => {
+        const result = await updateDeal(deal.id, { [key]: value });
+        if (result) {
+            setDeal(result);
+            toast({
+                title: `${key.charAt(0).toUpperCase() + key.slice(1)} Updated`,
+                description: `Deal ${key} has been updated.`,
+            });
+        } else {
+            setDeal(originalDeal); // Revert on failure
+            toast({
+                title: "Update Failed",
+                description: `Could not update deal ${key}.`,
+                variant: "destructive",
+            });
+        }
+      });
+    };
   
   const handleStageChange = (newStage: DealStage) => {
     if (!deal || isUpdating) return;
@@ -237,6 +268,8 @@ export default function DealDetailsPage() {
   const stagesForPipeline = DEAL_PIPELINES[deal.pipeline] || [];
 
   return (
+    <>
+    {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{deal.clientName}</h1>
@@ -396,10 +429,16 @@ export default function DealDetailsPage() {
                             <Badge variant="secondary" className="capitalize bg-teal-100 text-teal-800 border-transparent hover:bg-teal-200">
                                {activity.type}
                             </Badge>
-                             {activity.followupOrTask === 'Task' ? (
-                               <Badge className="bg-green-600 text-white border-transparent hover:bg-green-700">
-                                Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
-                              </Badge>
+                            {activity.followupOrTask === 'Task' ? (
+                               activity.taskStatus === 'Closed' ? (
+                                    <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
+                                        <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
+                                    </Badge>
+                                ) : (
+                                    <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
+                                        Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
+                                    </Badge>
+                                )
                             ) : (
                               <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
                             )}
@@ -419,19 +458,38 @@ export default function DealDetailsPage() {
             <Card>
               <CardContent className="pt-6 space-y-1">
                 <div className="flex items-center gap-2">
-                   <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${deal.assignedTo?.charAt(0) || 'U'}`} data-ai-hint="user avatar" /><AvatarFallback>{deal.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
-                   <p className="text-sm font-medium flex-grow bg-muted px-3 py-2 rounded-md h-9 flex items-center">{deal.assignedTo || 'Unassigned'}</p>
+                  <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${deal.assignedTo?.charAt(0) || 'U'}`} data-ai-hint="user avatar" /><AvatarFallback>{deal.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                  <Select
+                        value={deal.assignedTo || ''}
+                        onValueChange={(value) => handleAttributeChange('assignedTo', value)}
+                        disabled={isUpdating}
+                    >
+                      <SelectTrigger className="h-9 text-sm flex-grow">
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name} className="text-sm">{user.name}</SelectItem>)}</SelectContent>
+                    </Select>
                 </div>
                 <p className="text-xs text-muted-foreground ml-10">Assigned to</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">Notes</CardTitle></CardHeader>
-              <CardContent><Textarea placeholder="Add notes here..." className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" /></CardContent>
+              <CardContent>
+                <Textarea 
+                  key={deal.id}
+                  placeholder="Add notes here..." 
+                  defaultValue={deal.notes || ''}
+                  onBlur={(e) => handleAttributeChange('notes', e.target.value)}
+                  disabled={isUpdating}
+                  className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" 
+                />
+              </CardContent>
             </Card>
           </div>
         </div>
       </div>
     </div>
+    </>
   );
 }

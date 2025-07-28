@@ -24,6 +24,7 @@ function mapPrismaClientToClientType(prismaClient: any): Client {
     updatedAt: prismaClient.updatedAt.toISOString(),
     kilowatt: prismaClient.kilowatt ?? undefined,
     address: prismaClient.address ?? undefined,
+    notes: prismaClient.notes ?? undefined,
     clientType: prismaClient.clientType ?? undefined,
     electricityBillUrls: prismaClient.electricityBillUrls ?? [],
     followupCount: prismaClient.followUps?.length ?? 0,
@@ -53,6 +54,7 @@ function mapPrismaFollowUpToFollowUpType(prismaFollowUp: any): FollowUp {
     taskForUser: prismaFollowUp.taskForUser?.name ?? undefined,
     taskDate: prismaFollowUp.taskDate?.toISOString() ?? undefined,
     taskTime: prismaFollowUp.taskTime ?? undefined,
+    taskStatus: prismaFollowUp.taskStatus ?? 'Open',
   } as FollowUp;
 }
 
@@ -162,6 +164,7 @@ export async function createClient(data: CreateClientData): Promise<Client | nul
                 source: data.source || null,
                 kilowatt: data.kilowatt === undefined ? null : Number(data.kilowatt),
                 address: data.address || null,
+                notes: data.notes || null,
                 priority: data.priority || null,
                 clientType: data.clientType || null,
                 electricityBillUrls: data.electricityBillUrls || [],
@@ -369,6 +372,7 @@ export async function convertClientToLead(clientId: string): Promise<{ success: 
           createdById: client.createdById,
           assignedToId: client.assignedToId,
           totalDealValue: client.totalDealValue,
+          notes: client.notes,
         },
       });
 

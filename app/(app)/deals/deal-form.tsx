@@ -94,7 +94,7 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
       phone: '',
       pipeline: pipeline || 'Solar PV Plant',
       dealFor: '',
-      source: undefined,
+      source: undefined ,
       stage: initialStage || (pipeline ? DEAL_PIPELINES[pipeline][0] : DEAL_PIPELINES['Solar PV Plant'][0]),
       dealValue: 0,
       assignedTo: undefined,
@@ -122,6 +122,7 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
     form.setValue('contactPerson', client.name);
     form.setValue('email', client.email || '');
     form.setValue('phone', client.phone || '');
+    form.setValue('source', client.source || '');
   };
   
   const handleClientFormSubmit = async (data: CreateClientData | Client) => {

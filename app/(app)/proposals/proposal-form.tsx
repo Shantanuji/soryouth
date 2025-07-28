@@ -460,19 +460,19 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">System Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <FormField name="capacity" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Capacity (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem> )}/>
+                 <FormField name="capacity" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Capacity (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                  <FormField name="moduleType" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Module Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select module type" /></SelectTrigger></FormControl><SelectContent>{MODULE_TYPES.map(type => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
                  <FormField name="moduleWattage" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Module Wattage (W)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Wattage" /></SelectTrigger></FormControl><SelectContent>{MODULE_WATTAGE_OPTIONS.map(wattage => (<SelectItem key={wattage} value={wattage}>{wattage} W</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField name="dcrStatus" control={form.control} render={({ field }) => ( <FormItem><FormLabel>DCR/Non-DCR</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={isDcrDisabled}><FormControl><SelectTrigger><SelectValue placeholder="Select DCR status" /></SelectTrigger></FormControl><SelectContent>{DCR_STATUSES.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select>{isDcrDisabled && <p className="text-xs text-muted-foreground">Auto-set to Non-DCR for Commercial/Industrial.</p>}<FormMessage /></FormItem> )}/>
-                  <FormField name="inverterRating" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Rating (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem> )}/>
-                  <FormField name="inverterQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Quantity</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )}/>
+                  <FormField name="inverterRating" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Rating (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                  <FormField name="inverterQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Quantity</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
               
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">Financials</h3>
-              <FormField name="ratePerWatt" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Rate per Watt (₹)</FormLabel><FormControl><Input type="number" placeholder="e.g., 40" {...field} step="0.01" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem> )}/>
+              <FormField name="ratePerWatt" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Rate per Watt (₹)</FormLabel><FormControl><Input type="number" placeholder="e.g., 40" {...field} step="0.01" /></FormControl><FormMessage /></FormItem> )}/>
               <div className="space-y-2 p-3 border rounded-md bg-muted/50">
                   <div className="flex justify-between items-center"><FormLabel>Base Amount</FormLabel><span className="font-semibold flex items-center"><IndianRupee className="h-4 w-4 mr-0.5"/>{calculatedValues.baseAmount.toFixed(2)}</span></div>
                   <div className="flex justify-between items-center"><FormLabel>CGST (6.9%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.cgstAmount.toFixed(2)}</span></div>
@@ -502,7 +502,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField name="unitRate" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Unit Rate (₹)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem> )}/>
+                  <FormField name="unitRate" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Unit Rate (₹)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                   <FormItem>
                       <FormLabel>Savings/Year (₹)</FormLabel>
                       <FormControl><Input readOnly value={`₹ ${calculatedAdditionalValues.savingsPerYear.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} /></FormControl>

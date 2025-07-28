@@ -96,6 +96,7 @@ export const FOLLOW_UP_STATUSES = ['Answered', 'No reply', 'Rejected', 'Not conn
 export const MODULE_TYPES = ['Mono PERC', 'TOPCon'] as const;
 export const DCR_STATUSES = ['DCR', 'Non-DCR'] as const;
 export const MODULE_WATTAGE_OPTIONS = ["540", "545", "550", "585", "590"] as const;
+export const TASK_PRIORITIES = ['High', 'Medium', 'Low'] as const;
 
 export const MOCK_LEADS: Lead[] = [
   {
@@ -143,7 +144,6 @@ export const METER_PHASES = ['Single Phase', 'Three Phase', 'Not Applicable'] as
 export const CONSUMER_LOAD_TYPES = ['LT', 'HT'] as const;
 export const ROOF_TYPES = ['Metal', 'RCC', 'Asbestos', 'Other'] as const;
 export const DISCOM_OPTIONS = ['MSEDCL', 'Adani Electricity', 'Tata Power', 'Torrent Power', 'Other'] as const;
-export const TASK_PRIORITIES = ['High', 'Medium', 'Low'] as const;
 
 type PlaceholderDef = { placeholder: string; description: string; };
 type PlaceholderGroup = { [groupName: string]: PlaceholderDef[] };

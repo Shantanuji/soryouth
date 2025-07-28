@@ -1,18 +1,19 @@
 
+
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { SiteSurvey, SurveySortConfig } from '@/types';
-import { Search, PlusCircle, Settings2, ListChecks, Rows, ListFilter } from 'lucide-react';
+import { Search, PlusCircle, Settings2, ListChecks, Rows, ListFilter, Trash2 } from 'lucide-react';
 import { SurveysTable } from './surveys-table';
 import { useToast } from "@/hooks/use-toast";
-import { getSiteSurveys } from '@/app/(app)/site-survey/actions';
+import { getSiteSurveys, deleteSurveys } from '@/app/(app)/site-survey/actions';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialogTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -42,6 +43,7 @@ export default function SurveyListPage() {
   const router = useRouter();
   const [surveys, setSurveys] = useState<SiteSurvey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
   const [sortConfig, setSortConfig] = useState<SurveySortConfig | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -49,6 +51,9 @@ export default function SurveyListPage() {
   
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+
   
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     surveyNumber: true,
@@ -57,7 +62,6 @@ export default function SurveyListPage() {
     date: true,
     surveyorName: true,
     consumerCategory: true,
-    status: true,
     numberOfMeters: false,
     meterRating: false,
     meterPhase: false,
@@ -71,21 +75,34 @@ export default function SurveyListPage() {
     remark: true,
   });
 
+  const refreshData = async () => {
+    setIsLoading(true);
+    const fetchedSurveys = await getSiteSurveys();
+    setSurveys(fetchedSurveys);
+    setIsLoading(false);
+  }
+
   useEffect(() => {
-    async function fetchData() {
-        setIsLoading(true);
-        const fetchedSurveys = await getSiteSurveys();
-        setSurveys(fetchedSurveys);
-        setIsLoading(false);
-    }
-    fetchData();
+    refreshData();
   }, []);
 
+  const handleBulkDelete = () => {
+    startDeleteTransition(async () => {
+      const result = await deleteSurveys(selectedIds);
+      if (result.success) {
+        toast({ title: "Surveys Deleted", description: `${selectedIds.length} survey(s) have been deleted.` });
+        setSelectedIds([]);
+        await refreshData();
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to delete surveys.", variant: "destructive" });
+      }
+      setIsAlertOpen(false);
+    });
+  };
 
   const allFilteredSurveys = useMemo(() => {
     let currentSurveys = [...surveys];
-  
-
+    
     if (searchTerm) {
       const lowercasedTerm = searchTerm.toLowerCase();
       currentSurveys = currentSurveys.filter(survey => 
@@ -155,9 +172,33 @@ export default function SurveyListPage() {
         icon={ListChecks}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
-              <Search className="mr-2 h-4 w-4" /> Search
-            </Button>
+            {selectedIds.length > 0 ? (
+                <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedIds.length})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete {selectedIds.length} survey(s) and their associated files. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleBulkDelete} disabled={isDeleting}>
+                        {isDeleting ? 'Deleting...' : 'Yes, delete'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
+                <Search className="mr-2 h-4 w-4" /> Search
+              </Button>
+            )}
             <Button size="sm" onClick={() => router.push('/site-survey')}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Survey
             </Button>
@@ -220,12 +261,11 @@ export default function SurveyListPage() {
         onEditSurvey={(survey) => { 
             toast({title: "Edit Survey Clicked", description: `Survey: ${survey.surveyNumber}. Form not implemented.`})
         }}
-        onDeleteSurvey={(surveyId) => { 
-          toast({ title: "Delete Survey Clicked", description: "Delete action not implemented." });
-        }}
         sortConfig={sortConfig}
         requestSort={requestSort}
         columnVisibility={columnVisibility}
+        selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
       />
 
        <div className="flex items-center justify-between pt-4">

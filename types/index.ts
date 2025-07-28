@@ -66,6 +66,7 @@ export interface Lead {
   nextFollowUpTime?: string | null;
   kilowatt?: number | null;
   address?: string | null;
+  notes?: string | null;
   priority?: LeadPriorityType | null;
   dropReason?: DropReasonType | "Not Dropped" | null;
   clientType?: ClientType | null;
@@ -98,6 +99,7 @@ export interface Client {
   updatedAt: string;
   kilowatt?: number | null;
   address?: string | null;
+  notes?: string | null;
   clientType?: ClientType | null;
   electricityBillUrls: string[];
   followupCount?: number;
@@ -265,9 +267,10 @@ export interface FollowUp {
   taskStatus?: 'Open' | 'Closed'; // Added for task tracking
   lead?: { name: string, phone: string | null } | null;
   client?: { name: string, phone: string | null } | null;
+  deal?: { id: string, clientName: string, phone: string | null } | null;
 }
 
-export type AddActivityData = Omit<FollowUp, 'id' | 'createdAt' | 'droppedLeadId' | 'createdBy' | 'createdById' | 'lead' | 'client'> & {
+export type AddActivityData = Omit<FollowUp, 'id' | 'createdAt' | 'droppedLeadId' | 'createdBy' | 'createdById' | 'lead' | 'client' | 'deal'> & {
   priority?: LeadPriorityType | ClientPriorityType;
 };
 
@@ -430,6 +433,7 @@ export interface Deal {
   updatedAt: string;
   amcDurationInMonths?: number | null;
   amcEffectiveDate?: string | null;
+  notes?: string | null;
 }
 
 export type TaskNotification = {

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { CalendarDays, UserCircle, CheckCircle2, Play, ThumbsDown, Loader2, LinkIcon, Phone, Ticket, ShieldCheck, FileText } from 'lucide-react';
+import { CalendarDays, UserCircle, CheckCircle2, Play, ThumbsDown, Loader2, LinkIcon, Phone, Ticket, ShieldCheck, FileText, Handshake } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
@@ -281,7 +281,7 @@ export function TaskNotifications() {
                         'ticket': Ticket,
                         'financial-doc': FileText,
                     };
-                    const IconComponent = iconMap[task.type];
+                    const IconComponent = task.type === 'follow-up' && (task.data as TaskNotification).link?.includes('/deals/') ? Handshake : iconMap[task.type];
                     return (
                         <div key={task.id} className="block p-3 rounded-md border bg-card cursor-pointer hover:bg-muted/50"
                            onClick={task.type === 'ticket' ? () => handleTicketClick(task.data as TicketType) : undefined}
