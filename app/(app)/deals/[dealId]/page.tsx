@@ -25,6 +25,8 @@ import Link from 'next/link';
 import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { sendCallNotification } from '@/lib/fcm';
+import { useSession } from '@/hooks/use-sessions';
 
 const ActivityIcon = ({ type, className }: { type: string, className?: string }) => {
   const defaultClassName = "h-4 w-4";
@@ -43,6 +45,7 @@ const ActivityIcon = ({ type, className }: { type: string, className?: string })
 
 export default function DealDetailsPage() {
   const router = useRouter();
+  const session = useSession();
   const params = useParams();
   const searchParams = useSearchParams();
   const dealId = typeof params.dealId === 'string' ? params.dealId : null;
@@ -239,6 +242,28 @@ export default function DealDetailsPage() {
     });
   }
 
+  const handleInitiateCall = () => {
+    if (!deal || !deal.phone) {
+        toast({ title: "Cannot Initiate Call", description: "Deal must have a phone number and be assigned to a user.", variant: "destructive" });
+        return;
+    }
+    const loggedInUser = users.find(u => u.id === session?.userId);
+    if (!loggedInUser?.deviceId) {
+        toast({ title: "Cannot Initiate Call", description: "You do not have a registered mobile device. Please login to the mobile app.", variant: "destructive" });
+        return;
+    }
+
+    startUpdateTransition(async () => {
+        toast({ title: "Initiating Call...", description: "Sending notification to your mobile device." });
+        const result = await sendCallNotification(loggedInUser.deviceId!, deal.phone!, deal.clientName);
+        if (result.success) {
+            toast({ title: "Notification Sent", description: "Check your mobile device to place the call." });
+        } else {
+            toast({ title: "Failed to Send Notification", description: result.error, variant: "destructive" });
+        }
+    });
+  };
+
   if (deal === undefined) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
@@ -327,8 +352,8 @@ export default function DealDetailsPage() {
                 <CardTitle className="text-md">Communication</CardTitle>
               </CardHeader>
               <CardContent className="flex justify-around items-center">
-                <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!deal.phone}>
-                  <a href={deal.phone ? `tel:${deal.phone}` : undefined}><Phone className="h-5 w-5" /></a>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!deal.phone || !deal.assignedTo || isUpdating} onClick={handleInitiateCall}>
+                    <Phone className="h-5 w-5" />
                 </Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>

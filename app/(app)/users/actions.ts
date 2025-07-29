@@ -18,6 +18,7 @@ function mapPrismaUserToUserType(prismaUser: any): User {
       phone: prismaUser.phone,
       role: prismaUser.role,
       isActive: prismaUser.isActive,
+      deviceId: prismaUser.deviceId,
       viewPermission: prismaUser.viewPermission,
       createdAt: prismaUser.createdAt.toISOString(),
     };

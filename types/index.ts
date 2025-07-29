@@ -31,6 +31,7 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   viewPermission: ViewPermission;
+  deviceId?: string | null;
 }
 
 export interface RolePermission {

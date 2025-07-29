@@ -49,7 +49,7 @@
     "docxtemplater": "^3.47.2",
     "dotenv": "^16.5.0",
     "exceljs": "^4.4.0",
-    "firebase": "^11.8.1",
+    "firebase-admin": "^12.3.0",
     "genkit": "^1.8.0",
     "jose": "^5.6.3",
     "lucide-react": "^0.475.0",

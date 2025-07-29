@@ -35,7 +35,8 @@ import { ProposalForm } from '@/app/(app)/proposals/proposal-form';
 import { TemplateSelectionDialog } from '@/app/(app)/proposals/template-selection-dialog';
 import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
+import { sendCallNotification } from '@/lib/fcm';
+import { useSession } from '@/hooks/use-sessions';
 
 const dropLeadSchema = z.object({
   dropReason: z.enum(DROP_REASON_OPTIONS, { required_error: "Drop reason is required." }),
@@ -96,6 +97,7 @@ const SurveyDetailsCard = ({ survey }: { survey: SiteSurvey }) => {
 
 
 export default function LeadDetailsPage() {
+  const session = useSession();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -428,6 +430,27 @@ export default function LeadDetailsPage() {
     });
   };
 
+  const handleInitiateCall = () => {
+    if (!lead || !lead.phone) {
+        toast({ title: "Cannot Initiate Call", description: "Lead must have a phone number.", variant: "destructive" });
+        return;
+    }
+    const loggedInUser = users.find(u => u.id === session?.userId);
+    if (!loggedInUser?.deviceId) {
+        toast({ title: "Cannot Initiate Call", description: "You do not have a registered mobile device. Please login to the mobile app.", variant: "destructive" });
+        return;
+    }
+
+    startUpdateTransition(async () => {
+        toast({ title: "Initiating Call...", description: "Sending notification to your mobile device." });
+        const result = await sendCallNotification(loggedInUser.deviceId!, lead.phone!, lead.name);
+        if (result.success) {
+            toast({ title: "Notification Sent", description: "Check your mobile device to place the call." });
+        } else {
+            toast({ title: "Failed to Send Notification", description: result.error, variant: "destructive" });
+        }
+    });
+  };
 
   if (lead === undefined) {
     return (
@@ -571,8 +594,8 @@ export default function LeadDetailsPage() {
                 <CardTitle className="text-md">Communication</CardTitle>
               </CardHeader>
               <CardContent className="flex justify-around items-center">
-                <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!lead.phone}>
-                  <a href={lead.phone ? `tel:${lead.phone}` : undefined}><Phone className="h-5 w-5" /></a>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!lead.phone || !lead.assignedTo || isUpdating} onClick={handleInitiateCall}>
+                    <Phone className="h-5 w-5" textAnchor=''/>
                 </Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>

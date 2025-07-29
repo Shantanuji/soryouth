@@ -92,13 +92,13 @@ function mapPrismaFollowUpToFollowUpType(prismaFollowUp: any): FollowUp {
 }
 
 
-export async function getLeads(): Promise<Lead[]> {
+export async function getLeads({ ignorePermissions = false }: { ignorePermissions?: boolean } = {}): Promise<Lead[]> {
   const session = await verifySession();
   if (!session?.userId) return [];
 
   try {
     const whereClause: Prisma.LeadWhereInput = {};
-    if (session.viewPermission === 'ASSIGNED') {
+    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
       whereClause.assignedToId = session.userId;
     } 
     const leadsFromDb = await prisma.lead.findMany({
@@ -268,6 +268,8 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, 'id' | 'cr
            prismaData[typedKey] = parseISO(data.nextFollowUpDate);
         } else if (typedKey === 'lastCommentDate' && data.lastCommentDate) {
            prismaData[typedKey] = parseISO(data.lastCommentDate.split('-').reverse().join('-'));
+        } else if (typedKey === 'notes') {
+            prismaData.notes = data.notes ?? null;
         }
         else {
           (prismaData as any)[typedKey] = (data as any)[typedKey] ?? null;
