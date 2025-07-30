@@ -130,7 +130,7 @@ const CustomerCombobox = ({ control, index, customers, onSelect }: { control: an
                                 <Check className={cn("mr-2 h-4 w-4", customerId === customer.id ? "opacity-100" : "opacity-0")} />
                                 <div>
                                     <p>{customer.name}</p>
-                                    <p className="text-xs text-muted-foreground">{'source' in customer ? `Lead: ${customer.status}` : `Client: ${customer.status}`}</p>
+                                    <p className="text-xs text-muted-foreground">{'dropReason' in customer ? `Lead: ${customer.status}` : `Client: ${customer.status}`}</p>
                                 </div>
                             </CommandItem>
                         ))}
@@ -221,7 +221,7 @@ export default function BatchProposalsPage() {
 
 
   const handleCustomerSelect = (customer: Client | Lead, index: number) => {
-    const isClient = 'status' in customer && !('source' in customer);
+    const isLead = 'dropReason' in customer ? true : false;
     const capacity = customer.kilowatt || 0;
     const clientType = customer.clientType || 'Other';
     
@@ -234,7 +234,7 @@ export default function BatchProposalsPage() {
     }
 
     form.setValue(`proposals.${index}.customerId`, customer.id);
-    form.setValue(`proposals.${index}.customerType`, isClient ? 'client' : 'lead');
+    form.setValue(`proposals.${index}.customerType`, isLead ? 'lead' : 'client');
     form.setValue(`proposals.${index}.name`, customer.name);
     form.setValue(`proposals.${index}.contactPerson`, customer.name);
     form.setValue(`proposals.${index}.location`, customer.address || '');
