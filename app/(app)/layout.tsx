@@ -16,6 +16,7 @@ import { UserNav } from '@/components/user-nav';
 import { ClientSidebarMenu } from './client-sidebar-menu';
 import { TaskNotifications } from '@/components/task-notifications';
 import { UniversalSearch } from '@/components/universal-search';
+import { OverdueTaskToast } from '@/components/overdue-task-toast';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -47,6 +48,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
         <Toaster />
+        <OverdueTaskToast />
       </SidebarInset>
     </SidebarProvider>
   );

@@ -4,7 +4,7 @@
 import prisma from '@/lib/prisma';
 import type { Lead, FollowUp, AddActivityData, CreateLeadData, Client, DropReasonType, LeadSourceOptionType, UserOptionType, LeadStatusType, TaskNotification } from '@/types';
 import { revalidatePath } from 'next/cache';
-import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, isPast } from 'date-fns';
 import { verifySession } from '@/lib/auth';
 import * as ExcelJS from 'exceljs';
 import { z } from 'zod';
@@ -117,6 +117,63 @@ export async function getLeads({ ignorePermissions = false }: { ignorePermission
     return leadsFromDb.map(mapPrismaLeadToLeadType);
   } catch (error) {
     console.error("Failed to fetch leads:", error);
+    return [];
+  }
+}
+
+export async function getOverdueFollowUpTasksForCurrentUser(): Promise<TaskNotification[]> {
+  const session = await verifySession();
+  if (!session?.userId) return [];
+
+  try {
+    const now = new Date();
+
+    const tasks = await prisma.followUp.findMany({
+      where: {
+        followupOrTask: 'Task',
+        taskForUserId: session.userId,
+        taskStatus: 'Open',
+        // Combine date and time for a true datetime comparison
+        // This is a bit complex with separate date/time fields and requires filtering in code
+      },
+      include: {
+        lead: { select: { name: true, phone: true } },
+        client: { select: { name: true, phone: true } },
+        droppedLead: { select: { name: true, phone: true } },
+        deal: { select: { clientName: true, phone: true, id: true } }
+      },
+    });
+    
+    // Filter for overdue tasks in code since Prisma can't easily compare combined date/time
+    const overdueTasks = tasks.filter(task => {
+        if (!task.taskDate || !task.taskTime) return false;
+        const taskDateTime = parseISO(`${format(task.taskDate, 'yyyy-MM-dd')}T${task.taskTime}:00`);
+        return isPast(taskDateTime);
+    });
+
+    return overdueTasks.map(task => {
+        const customer = task.lead || task.client || task.droppedLead;
+        const customerName = task.deal?.clientName || customer?.name || 'Unknown Customer';
+        const customerPhone = task.deal?.phone || customer?.phone || null;
+
+        let link = '#';
+        if(task.leadId) link = `/leads/${task.leadId}?from_task=${task.id}`;
+        else if(task.clientId) link = `/clients/${task.clientId}?from_task=${task.id}`;
+        else if(task.droppedLeadId) link = `/dropped-leads/${task.droppedLeadId}?from_task=${task.id}`;
+        else if(task.dealId) link = `/deals/${task.dealId}?from_task=${task.id}`;
+
+        return {
+            id: task.id,
+            comment: task.comment || 'No comment',
+            time: task.taskTime || 'No time set',
+            customerName,
+            customerPhone,
+            status: 'Open',
+            link: link,
+        };
+    });
+  } catch (error) {
+    console.error("Failed to fetch overdue tasks for user:", error);
     return [];
   }
 }
