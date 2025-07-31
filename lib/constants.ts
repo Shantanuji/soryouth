@@ -62,7 +62,6 @@ export const TOOLS_NAV_ITEMS: NavItem[] = [
   { href: '/survey-reports', label: 'Survey Reports', icon: MapPinnedIcon },
   { href: '/tickets', label: 'Tickets', icon: Ticket },
   { href: '/proposals/batch', label: 'Batch Proposals', icon: Rows },
-  { href: '/site-survey', label: 'Site Survey Form', icon: ClipboardEdit },
   { href: '/documents', label: 'Documents', icon: Files },
   { href: '', label: 'Financial Documents', icon: IndianRupee },
 ];

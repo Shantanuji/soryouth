@@ -16,8 +16,8 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Lead, Proposal, Client, DroppedLead, User } from '@/types';
-import { getLeads } from '@/app/(app)/leads-list/actions';
+import type { Lead, Proposal, Client, DroppedLead, User, FollowUp } from '@/types';
+import { getLeads , getAllFollowUps} from '@/app/(app)/leads-list/actions';
 import { getDroppedLeads } from '@/app/(app)/dropped-leads-list/actions';
 import { getAllProposals } from '@/app/(app)/proposals/actions';
 import { getActiveClients } from '@/app/(app)/clients-list/actions';
@@ -70,14 +70,27 @@ export default function DayReportPage() {
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [allProposals, setAllProposals] = useState<Proposal[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allFollowUps, setAllFollowUps] = useState<FollowUp[]>([]);
 
   const handleApplyFilters = useCallback(() => {
     const fromDate = dateRange?.from ? startOfDay(dateRange.from) : undefined;
     const toDate = dateRange?.to ? endOfDay(dateRange.to) : undefined;
     const dateInterval = fromDate && toDate ? { start: fromDate, end: toDate } : null;
 
-    const userMatches = (item: { assignedTo?: string | null }) => selectedUserFilter === 'all' || item.assignedTo === selectedUserFilter;
+    const userMatches = (item: { assignedTo?: string | null; createdBy?: string | null }) => {
+        if (selectedUserFilter === 'all') return true;
+        // Check if assignedTo or createdBy matches. Adjust based on what 'user' filter should mean.
+        // For now, let's assume it checks against who the item is assigned to.
+        return item.assignedTo === selectedUserFilter;
+    };
     const dateMatches = (dateStr: string) => dateInterval ? isWithinInterval(parseISO(dateStr), dateInterval) : true;
+    // Filter followups
+    const pageFilteredFollowUps = allFollowUps.filter(followUp => {
+        const userFollowUpMatches = selectedUserFilter === 'all' || followUp.createdBy === allUsers.find(u => u.name === selectedUserFilter)?.name;
+        return dateMatches(followUp.createdAt) && userFollowUpMatches;
+    });
+
+    const callsMade = pageFilteredFollowUps.filter(f => f.type === 'Call').length;
 
     const pageFilteredLeads = allLeads.filter(lead => userMatches(lead) && dateMatches(lead.createdAt));
     const pageFilteredDroppedLeads = allDroppedLeads.filter(lead => userMatches(lead) && dateMatches(lead.droppedAt));
@@ -126,6 +139,7 @@ export default function DayReportPage() {
         const userLeads = allLeads.filter(lead => lead.assignedTo === user.name);
         const userDroppedLeads = allDroppedLeads.filter(lead => lead.assignedTo === user.name);
         const userClients = allClients.filter(client => client.assignedTo === user.name);
+        const userFollowUps = allFollowUps.filter(fu => fu.createdBy === user.name);
         
         const userLeadsCreatedInRange = userLeads.filter(lead => dateMatches(lead.createdAt)).length;
         const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
@@ -141,6 +155,8 @@ export default function DayReportPage() {
             lead.nextFollowUpDate && dateMatches(lead.nextFollowUpDate)
         ).length;
 
+        const userCallsInRange = userFollowUps.filter(fu => fu.type === 'Call' && dateMatches(fu.createdAt)).length;
+
         return {
             userId: user.id,
             userName: user.name,
@@ -151,7 +167,7 @@ export default function DayReportPage() {
             dealsWon: userDealsWonInRange,
             dealsLost: userLeadsDroppedInRange,
             followUps: userFollowUpsInRange,
-            calls: 0,
+            calls: userCallsInRange,
             callDuration: "0h 0m",
             reminders: 0,
         };
@@ -164,30 +180,32 @@ export default function DayReportPage() {
       dealsWon,
       dealsLost: leadsDropped,
       followUps,
-      calls: 0, 
+      calls: callsMade, 
       reminders: 0, 
       chartData: chartDataFinal,
       droppedLeadsDetails: pageFilteredDroppedLeads.slice(0, 5),
       wonDealsDetails: pageFilteredWonDeals.slice(0, 5),
       userWiseSummary: userWiseSummaryData,
     });
-  }, [dateRange, selectedUserFilter, allLeads, allDroppedLeads, allClients, allProposals, allUsers]);
+  }, [dateRange, selectedUserFilter, allLeads, allDroppedLeads, allClients, allProposals, allUsers, allFollowUps]);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const [leads, droppedLeads, clients, proposals, users] = await Promise.all([
+      const [leads, droppedLeads, clients, proposals, users, followUps] = await Promise.all([
         getLeads(),
         getDroppedLeads(),
         getActiveClients(),
         getAllProposals(),
         getUsers(),
+        getAllFollowUps(),
       ]);
       setAllLeads(leads);
       setAllDroppedLeads(droppedLeads);
       setAllClients(clients);
       setAllProposals(proposals);
       setAllUsers(users);
+      setAllFollowUps(followUps);
       setIsLoading(false);
     };
     fetchData();
@@ -256,6 +274,7 @@ export default function DayReportPage() {
                   selected={dateRange}
                   onSelect={setDateRange}
                   numberOfMonths={2}
+                  showOutsideDays={false}
                 />
               </PopoverContent>
             </Popover>

@@ -1,131 +1,186 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
-import { CalendarIcon, Phone, MessageSquare, Mail, Users, UserCircle, ListChecks, Briefcase, FileText } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
-import { USER_OPTIONS } from '@/lib/constants';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { CalendarIcon, Phone, MessageSquare, Mail, Users, UserCircle, Loader2 } from 'lucide-react';
+import { format, formatDistanceToNow, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { getAllFollowUps } from '@/app/(app)/leads-list/actions';
+import { getUsers } from '@/app/(app)/users/actions';
+import type { FollowUp, User } from '@/types';
+import { useSession } from '@/hooks/use-sessions';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { sendCallNotification } from '@/lib/fcm';
+import Link from 'next/link';
 
-// Mock data based on the image for UI representation
-const activityStatsData = [
-  { type: 'Calls', count: 426, Icon: Phone, color: 'bg-blue-500 dark:bg-blue-600' },
-  { type: 'Whatsapp', count: 0, Icon: MessageSquare, color: 'bg-green-500 dark:bg-green-600' },
-  { type: 'SMS', count: 0, Icon: MessageSquare, color: 'bg-green-500 dark:bg-green-600' },
-  { type: 'Email', count: 0, Icon: Mail, color: 'bg-green-500 dark:bg-green-600' },
-  { type: 'Visits', count: 0, Icon: Users, color: 'bg-yellow-500 dark:bg-yellow-600' },
-];
+// Helper to get customer name from a followup
+const getCustomerName = (followUp: FollowUp): string | null => {
+  if (followUp.lead) return followUp.lead.name;
+  if (followUp.client) return followUp.client.name;
+  if (followUp.deal) return followUp.deal.clientName;
+  return null;
+};
 
-const activityTypeChartData = [
-  { name: 'Calls', value: 426, fill: 'hsl(var(--chart-1))' },
-  { name: 'Whatsapp', value: 0, fill: 'hsl(var(--chart-2))' },
-  { name: 'SMS', value: 0, fill: 'hsl(var(--chart-3))' },
-  { name: 'Email', value: 0, fill: 'hsl(var(--chart-4))' },
-  { name: 'Visits', value: 0, fill: 'hsl(var(--chart-5))' },
-];
+// Helper to get customer phone from a followup
+const getCustomerPhone = (followUp: FollowUp): string | null => {
+    if (followUp.lead) return followUp.lead.phone ?? null;
+    if (followUp.client) return followUp.client.phone ?? null;
+    if (followUp.deal) return followUp.deal.phone ?? null;
+    return null;
+};
 
-const userActivityChartData = [
-  { name: 'tejas', value: 150, fill: 'hsl(var(--chart-1))' },
-  { name: 'Kanchan Nikam', value: 100, fill: 'hsl(var(--chart-2))' },
-  { name: 'MAYUR', value: 120, fill: 'hsl(var(--chart-3))' },
-  { name: 'Prasad mudholkar', value: 50, fill: 'hsl(var(--chart-4))' },
-  { name: 'Ritesh', value: 6, fill: 'hsl(var(--chart-5))' },
-];
-
-// Sample roles for users based on image and placeholders
-const teamMembers = USER_OPTIONS.map(user => {
-    let role = 'User'; // Default role
-    if (user === 'tejas') role = 'Support';
-    else if (user === 'MAYUR') role = 'Admin';
-    else if (user === 'Kanchan Nikam') role = 'User';
-    else if (user === 'Prasad mudholkar') role = 'User';
-    else if (user === 'Ritesh') role = 'User';
-    return {
-        name: user,
-        role: role,
-        avatar: `https://placehold.co/40x40.png?text=${user.charAt(0)}`,
-        avatarHint: "user avatar"
-    }
-}).slice(0, 6);
-
-const mockActivities = [
-  { id: 'act1', user: 'Kanchan Nikam', leadName: 'Anil Kumar', action: 'called', type: 'Call' as const, timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), details: "Had a discussion about 3KW On-Grid Solar system." },
-  { id: 'act2', user: 'tejas', leadName: 'Priya Sharma', action: 'sent email to', type: 'Email' as const, timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), details: "Quotation for 5KW system sent." },
-  { id: 'act3', user: 'MAYUR', leadName: 'Green Valley Society', action: 'had meeting with', type: 'Meeting' as const, timestamp: new Date(Date.now() - 20 * 60 * 60 * 1000), details: "Finalized proposal details for society rooftop." },
-  { id: 'act4', user: 'Kanchan Nikam', leadName: 'Rajesh Singh', action: 'updated lead', type: 'LeadUpdate' as const, timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000), details: "Changed status to 'Followup'." },
-  { id: 'act5', user: 'tejas', leadName: 'Sunil Agro Farms', action: 'created proposal for', type: 'Proposal' as const, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), details: "Proposal P-2024-078 for 100kW solar pump." },
-];
-
-const ActivityIcon = ({ type }: { type: 'Call' | 'Email' | 'Meeting' | 'LeadUpdate' | 'Proposal' | string }) => {
-  switch (type) {
-    case 'Call': return <Phone className="h-4 w-4 text-blue-500" />;
-    case 'Email': return <Mail className="h-4 w-4 text-red-500" />;
-    case 'Meeting': return <Users className="h-4 w-4 text-purple-500" />;
-    case 'LeadUpdate': return <ListChecks className="h-4 w-4 text-orange-500" />;
-    case 'Proposal': return <FileText className="h-4 w-4 text-green-500" />;
-    default: return <Briefcase className="h-4 w-4 text-gray-500" />;
-  }
+// Helper to get customer link from a followup
+const getCustomerLink = (followUp: FollowUp): string | null => {
+    if (followUp.leadId) return `/leads/${followUp.leadId}`;
+    if (followUp.clientId) return `/clients/${followUp.clientId}`;
+    if (followUp.dealId) return `/deals/${followUp.dealId}`;
+    return null;
 };
 
 
 export default function ActivityPage() {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-10')); // Matching image
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [allFollowUps, setAllFollowUps] = useState<FollowUp[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const { toast } = useToast();
+  const session = useSession();
+  const isMobile = useIsMobile();
+  const [isCalling, setIsCalling] = useState<string | null>(null);
 
-  const activityChartConfig: ChartConfig = useMemo(() => {
-    const config: ChartConfig = {};
-    activityTypeChartData.forEach(item => {
-      config[item.name] = { label: item.name, color: item.fill };
-    });
-    return config;
+  useEffect(() => {
+    async function fetchData() {
+        setIsLoading(true);
+        const [followUpsData, usersData] = await Promise.all([
+            getAllFollowUps(),
+            getUsers(),
+        ]);
+        setAllFollowUps(followUpsData);
+        setUsers(usersData);
+        setIsLoading(false);
+    }
+    fetchData();
   }, []);
 
-  const userChartConfig: ChartConfig = useMemo(() => {
+  const filteredData = useMemo(() => {
+    if (!selectedDate) return [];
+    
+    const start = startOfDay(selectedDate);
+    const end = endOfDay(selectedDate);
+    const dateInterval = { start, end };
+    
+    return allFollowUps.filter(followUp => {
+        const dateMatches = isWithinInterval(parseISO(followUp.createdAt), dateInterval);
+        const userMatches = selectedUserId === 'all' || followUp.createdById === selectedUserId;
+        return dateMatches && userMatches;
+    });
+  }, [allFollowUps, selectedDate, selectedUserId]);
+
+  const activityStats = useMemo(() => {
+    const stats: Record<string, number> = { Call: 0, SMS: 0, Email: 0, Visit: 0, Meeting: 0 };
+    filteredData.forEach(fu => {
+        if(stats[fu.type] !== undefined) {
+            stats[fu.type]++;
+        }
+    });
+    return [
+      { type: 'Calls', count: stats.Call, Icon: Phone, color: 'bg-blue-500 dark:bg-blue-600' },
+      { type: 'SMS', count: stats.SMS, Icon: MessageSquare, color: 'bg-green-500 dark:bg-green-600' },
+      { type: 'Email', count: stats.Email, Icon: Mail, color: 'bg-red-500 dark:bg-red-600' },
+      { type: 'Visits', count: stats.Visit, Icon: Users, color: 'bg-yellow-500 dark:bg-yellow-600' },
+      { type: 'Meetings', count: stats.Meeting, Icon: Users, color: 'bg-purple-500 dark:bg-purple-600' },
+    ].filter(stat => stat.count > 0);
+  }, [filteredData]);
+  
+  const activityTypeChartData = useMemo(() => {
+    const counts = activityStats.reduce((acc, stat) => {
+        acc[stat.type] = stat.count;
+        return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${index + 1}))`}));
+  }, [activityStats]);
+
+  const userActivityChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    users.forEach(u => counts[u.name] = 0);
+    
+    // Filter by date, but ignore user selection for this chart
+     const dateFilteredFollowUps = allFollowUps.filter(followUp => {
+        if (!selectedDate) return false;
+        return isWithinInterval(parseISO(followUp.createdAt), { start: startOfDay(selectedDate), end: endOfDay(selectedDate) });
+     });
+
+    dateFilteredFollowUps.forEach(fu => {
+        if(fu.createdBy && counts[fu.createdBy] !== undefined) {
+            counts[fu.createdBy]++;
+        }
+    });
+    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${index + 1}))`})).filter(u => u.value > 0);
+  }, [allFollowUps, users, selectedDate]);
+  
+  const chartConfig = (data: {name: string, fill: string}[]) => useMemo(() => {
     const config: ChartConfig = {};
-    userActivityChartData.forEach(item => {
-      config[item.name] = { label: item.name, color: item.fill };
+    data.forEach(item => {
+        config[item.name] = { label: item.name, color: item.fill };
     });
     return config;
-  }, []);
+  }, [data]);
+  
+  const handleInitiateCall = async (followUp: FollowUp) => {
+    const phone = getCustomerPhone(followUp);
+    const name = getCustomerName(followUp);
+
+    if (!phone) {
+        toast({ title: "Cannot Initiate Call", description: "Customer does not have a phone number.", variant: "destructive" });
+        return;
+    }
+    const loggedInUser = users.find(u => u.id === session?.userId);
+    if (!loggedInUser?.deviceId) {
+        toast({ title: "Cannot Initiate Call", description: "You do not have a registered mobile device. Please login to the mobile app.", variant: "destructive" });
+        return;
+    }
+    
+    setIsCalling(followUp.id);
+    toast({ title: "Initiating Call...", description: "Sending notification to your mobile device." });
+    const result = await sendCallNotification(loggedInUser.deviceId!, phone!, name || 'Customer');
+    if (result.success) {
+        toast({ title: "Notification Sent", description: "Check your mobile device to place the call." });
+    } else {
+        toast({ title: "Failed to Send Notification", description: result.error, variant: "destructive" });
+    }
+    setIsCalling(null);
+  };
 
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-full">
-      {/* Main Content Area */}
       <div className="flex-grow lg:w-2/3 space-y-6">
         <div className="flex justify-between items-center">
-          <div></div> {/* Spacer */}
+          <div></div> 
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className="w-[200px] justify-start text-left font-normal"
-              >
+              <Button variant={"outline"} className="w-[200px] justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {selectedDate ? format(selectedDate, "dd-MM-yyyy") : <span>Pick a date</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                initialFocus
-              />
+              <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
 
-        {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {activityStatsData.map((stat) => (
+          {activityStats.map((stat) => (
             <Card key={stat.type} className="shadow-md">
               <CardContent className="p-4 flex items-center gap-4">
                 <div className={`flex-shrink-0 h-12 w-12 rounded-full ${stat.color} flex items-center justify-center text-white font-bold text-lg`}>
@@ -140,93 +195,107 @@ export default function ActivityPage() {
           ))}
         </div>
 
-        {/* Pie Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle>Activity type</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Activity type</CardTitle></CardHeader>
             <CardContent className="h-[250px] pb-0">
-              <ChartContainer config={activityChartConfig} className="w-full h-full">
+              <ChartContainer config={chartConfig(activityTypeChartData)} className="w-full h-full">
+                <ResponsiveContainer>
                 <PieChart accessibilityLayer>
                   <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Pie data={activityTypeChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                  <Pie data={activityTypeChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, value }) => `${name}: ${value}`}>
                     {activityTypeChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
                 </PieChart>
+                </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
           <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle>User</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>User</CardTitle></CardHeader>
             <CardContent className="h-[250px] pb-0">
-                <ChartContainer config={userChartConfig} className="w-full h-full">
+                <ChartContainer config={chartConfig(userActivityChartData)} className="w-full h-full">
+                <ResponsiveContainer>
                 <PieChart accessibilityLayer>
                   <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Pie data={userActivityChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                  <Pie data={userActivityChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, value }) => `${name}: ${value}`}>
                     {userActivityChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
                 </PieChart>
+                </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
         </div>
 
-        {/* Activity List */}
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Activity list</CardTitle>
-            <CardDescription>Recent activities performed by users.</CardDescription>
+            <CardTitle>Activity list ({filteredData.length})</CardTitle>
+            <CardDescription>List of activities performed on {selectedDate ? format(selectedDate, "dd-MM-yyyy") : 'the selected date'}.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
+            {isLoading ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div> :
             <ScrollArea className="h-[400px]">
               <div className="divide-y divide-border">
-                {mockActivities.map(activity => (
-                  <div key={activity.id} className="p-4 flex items-start gap-4 hover:bg-muted/50">
-                    <div className="mt-1">
-                      <ActivityIcon type={activity.type} />
-                    </div>
+                {filteredData.length > 0 ? filteredData.map(activity => {
+                  const customerName = getCustomerName(activity);
+                  const customerPhone = getCustomerPhone(activity);
+                  const customerLink = getCustomerLink(activity);
+                  
+                  const CallButton = () => {
+                        if (!customerPhone) return null;
+                        if (isMobile) {
+                            return <a href={`tel:${customerPhone}`}><Button size="sm">Call</Button></a>;
+                        }
+                        return <Button size="sm" onClick={() => handleInitiateCall(activity)} disabled={isCalling === activity.id}>{isCalling === activity.id ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Call'}</Button>
+                  };
+
+                  return (
+                  <div key={activity.id} className="p-4 flex items-center gap-4 hover:bg-muted/50">
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src={`https://placehold.co/40x40.png?text=${activity.createdBy?.charAt(0) || 'S'}`} data-ai-hint="user avatar" alt={activity.createdBy} />
+                        <AvatarFallback>{activity.createdBy?.charAt(0).toUpperCase() || 'S'}</AvatarFallback>
+                    </Avatar>
                     <div className="flex-grow">
-                      <p className="text-sm">
-                        <span className="font-semibold">{activity.user}</span> {activity.action} <span className="font-medium text-primary">{activity.leadName}</span>
+                      <p className="text-sm font-semibold">{activity.comment}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {activity.createdBy} - {customerLink ? <Link href={customerLink} className="hover:underline text-primary">{customerName}</Link> : customerName} - {format(parseISO(activity.createdAt), 'dd-MM-yyyy p')}
                       </p>
-                      <p className="text-xs text-muted-foreground">{activity.details}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-                    </p>
+                     <CallButton/>
                   </div>
-                ))}
+                )}) : (
+                   <div className="p-6 text-center text-muted-foreground">No activities found for this day.</div>
+                )}
               </div>
-              {mockActivities.length === 0 && (
-                <div className="p-6 text-center text-muted-foreground">No activities to display.</div>
-              )}
             </ScrollArea>
+            }
           </CardContent>
         </Card>
 
       </div>
 
-      {/* Team Sidebar Area */}
       <div className="lg:w-1/3 lg:max-w-xs flex-shrink-0">
         <Card className="shadow-md h-full flex flex-col">
           <CardHeader>
             <CardTitle>Team</CardTitle>
-            <CardDescription>Select users to filter activities.</CardDescription>
+            <CardDescription>Select a user to filter activities.</CardDescription>
           </CardHeader>
           <CardContent className="flex-grow overflow-hidden p-0">
             <ScrollArea className="h-full">
-              <div className="p-4 space-y-4">
-                {teamMembers.map(member => (
-                  <div key={member.name} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+              <div className="p-4 space-y-1">
+                <div onClick={() => setSelectedUserId('all')} className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${selectedUserId === 'all' ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
+                    <Avatar className="h-9 w-9"><UserCircle className="h-full w-full"/></Avatar>
+                    <div><p className="text-sm font-medium">All Users</p></div>
+                </div>
+                {users.map(member => (
+                  <div key={member.id} onClick={() => setSelectedUserId(member.id)} className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${selectedUserId === member.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={member.avatar} data-ai-hint={member.avatarHint} alt={member.name} />
+                      <AvatarImage src={`https://placehold.co/40x40.png?text=${member.name.charAt(0)}`} data-ai-hint="user avatar" alt={member.name} />
                       <AvatarFallback>{member.name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
@@ -238,11 +307,8 @@ export default function ActivityPage() {
               </div>
             </ScrollArea>
           </CardContent>
-          {/* Removed chat icon footer */}
         </Card>
       </div>
     </div>
   );
 }
-
-    
