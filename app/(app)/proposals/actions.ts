@@ -144,64 +144,74 @@ export async function deleteProposal(proposalId: string): Promise<{ success: boo
   }
 }
 
-export async function bulkCreateProposals(proposals: Partial<Proposal>[]): Promise<{ success: boolean; count: number; message?: string }> {
-  try {
-    const dataToSave = proposals.map(p => {
-        // Explicitly build the object with only valid fields for the Proposal model
-        return {
-          proposalNumber: p.proposalNumber!,
-          name: p.name!,
-          clientType: p.clientType!,
-          contactPerson: p.contactPerson!,
-          location: p.location!,
-          capacity: p.capacity!,
-          moduleType: p.moduleType!,
-          moduleWattage: p.moduleWattage!,
-          dcrStatus: p.dcrStatus!,
-          inverterRating: p.inverterRating!,
-          inverterQty: p.inverterQty!,
-          ratePerWatt: p.ratePerWatt!,
-          proposalDate: p.proposalDate ? parseISO(p.proposalDate) : new Date(),
-          baseAmount: p.baseAmount!,
-          cgstAmount: p.cgstAmount!,
-          sgstAmount: p.sgstAmount!,
-          subtotalAmount: p.subtotalAmount!,
-          finalAmount: p.finalAmount!,
-          subsidyAmount: p.subsidyAmount!,
-          requiredSpace: p.requiredSpace,
-          generationPerDay: p.generationPerDay,
-          generationPerYear: p.generationPerYear,
-          unitRate: p.unitRate,
-          savingsPerYear: p.savingsPerYear,
-          laKitQty: p.laKitQty,
-          acdbDcdbQty: p.acdbDcdbQty,
-          earthingKitQty: p.earthingKitQty,
-          pdfUrl: p.pdfUrl,
-          docxUrl: p.docxUrl,
-          templateId: p.templateId,
-          leadId: p.leadId || null,
-          clientId: p.clientId || null,
-        };
-    });
+export async function bulkCreateProposals(proposalsData: Partial<Proposal>[]): Promise<{ success: boolean; createdProposals: Proposal[]; message?: string }> {
+    const createdProposals: Proposal[] = [];
+    try {
+      await prisma.$transaction(async (tx) => {
+        for (const p of proposalsData) {
+            const dataToSave: any = {
+                // All fields from your schema that are in Partial<Proposal>
+                proposalNumber: p.proposalNumber!,
+                name: p.name!,
+                clientType: p.clientType!,
+                contactPerson: p.contactPerson!,
+                location: p.location!,
+                capacity: p.capacity!,
+                moduleType: p.moduleType!,
+                moduleWattage: p.moduleWattage!,
+                dcrStatus: p.dcrStatus!,
+                inverterRating: p.inverterRating!,
+                inverterQty: p.inverterQty!,
+                ratePerWatt: p.ratePerWatt!,
+                proposalDate: p.proposalDate ? parseISO(p.proposalDate) : new Date(),
+                baseAmount: p.baseAmount!,
+                cgstAmount: p.cgstAmount!,
+                sgstAmount: p.sgstAmount!,
+                subtotalAmount: p.subtotalAmount!,
+                finalAmount: p.finalAmount!,
+                subsidyAmount: p.subsidyAmount!,
+                pdfUrl: p.pdfUrl,
+                docxUrl: p.docxUrl,
+                templateId: p.templateId,
+                // Optional fields
+                requiredSpace: p.requiredSpace,
+                generationPerDay: p.generationPerDay,
+                generationPerYear: p.generationPerYear,
+                unitRate: p.unitRate,
+                savingsPerYear: p.savingsPerYear,
+                laKitQty: p.laKitQty,
+                acdbDcdbQty: p.acdbDcdbQty,
+                earthingKitQty: p.earthingKitQty,
+            };
 
-    const result = await prisma.proposal.createMany({
-      data: dataToSave,
-      skipDuplicates: true
-    });
-    
-    revalidatePath('/proposals');
-    proposals.forEach(p => {
-        if (p.leadId) revalidatePath(`/leads/${p.leadId}`);
-        if (p.clientId) revalidatePath(`/clients/${p.clientId}`);
-    });
-    
-    return { success: true, count: result.count };
+            // Conditionally add leadId or clientId
+            if (p.leadId) {
+                dataToSave.leadId = p.leadId;
+            }
+            if (p.clientId) {
+                dataToSave.clientId = p.clientId;
+            }
 
-  } catch (error) {
-    console.error("Failed to bulk create proposals:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    return { success: false, count: 0, message: errorMessage };
-  }
+            const created = await tx.proposal.create({
+                data: dataToSave,
+            });
+            createdProposals.push(mapPrismaProposalToProposalType(created));
+        }
+
+        revalidatePath('/proposals');
+        proposalsData.forEach(p => {
+            if (p.leadId) revalidatePath(`/leads/${p.leadId}`);
+            if (p.clientId) revalidatePath(`/clients/${p.clientId}`);
+        });
+
+      });
+
+        return { success: true, createdProposals };
+    } catch (error) {
+        console.error("Failed to bulk create proposals:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during database save.";
+        return { success: false, createdProposals: [], message: errorMessage };
+    }
 }
 
 export async function getProposalsForLead(leadId: string): Promise<Proposal[]> {

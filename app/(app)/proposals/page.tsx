@@ -175,7 +175,7 @@ export default function ProposalsListPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {customerProposalGroups.map(({ details, proposals: customerProposals, totalValue, lastProposalDate }) => {
-            const customerType = 'source' in details ? 'lead' : 'client';
+            const customerType = 'dropReason' in details ? 'lead' : 'client';
             const link = `/proposals/${details.id}`;
 
             return (

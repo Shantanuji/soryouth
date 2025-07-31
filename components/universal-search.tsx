@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Search, User, Briefcase, UserX, Archive, Loader2 } from 'lucide-react';
 import { universalSearch, SearchResult } from '@/app/(app)/search/actions';
 import { useDebounce } from '@/hooks/use-debounce';
+import { DialogTitle } from '@/components/ui/dialog';
 
 const ResultIcon = ({ type }: { type: SearchResult['type'] }) => {
   switch (type) {
@@ -70,6 +71,7 @@ export function UniversalSearch() {
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
+        <DialogTitle className="sr-only">Universal Search</DialogTitle>
         <CommandInput
           placeholder="Search by name, email, or phone..."
           value={query}

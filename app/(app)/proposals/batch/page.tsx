@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageHeader } from '@/components/page-header';
-import { PlusCircle, Trash2, Rows, Check, ChevronsUpDown, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Rows, Check, ChevronsUpDown, Loader2, CheckCircle2, XCircle, Eye } from 'lucide-react';
 import { CLIENT_TYPES, MODULE_TYPES, DCR_STATUSES, MODULE_WATTAGE_OPTIONS } from '@/lib/constants';
 import type { Proposal, Client, Lead, ClientType, ModuleType, DCRStatus, ModuleWattage } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -19,12 +19,15 @@ import { Form, FormControl, FormMessage, FormItem } from '@/components/ui/form';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog';
+import { ProposalPreviewDialog } from '../proposal-preview-dialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getActiveClients } from '@/app/(app)/clients-list/actions';
 import { getLeads } from '@/app/(app)/leads-list/actions';
 import { bulkCreateProposals } from '../actions';
+import Link from 'next/link';
 
 const batchRowSchema = z.object({
   id: z.string().optional(),
@@ -50,8 +53,7 @@ const batchProposalsSchema = z.object({
 
 type BatchProposalsFormValues = z.infer<typeof batchProposalsSchema>;
 type BatchRow = z.infer<typeof batchRowSchema>;
-type ProgressState = { name: string; status: 'pending' | 'generating' | 'success' | 'error'; message?: string };
-
+type ProgressState = { name: string; status: 'pending' | 'generating' | 'success' | 'error'; message?: string; generatedProposal?: Partial<Proposal> };
 
 const getDefaultProposalRow = (): Omit<BatchRow, 'customerType' | 'customerId'> => ({
   name: '',
@@ -154,6 +156,9 @@ export default function BatchProposalsPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isGenerating, startGenerationTransition] = useTransition();
   const [progress, setProgress] = useState<ProgressState[]>([]);
+  const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [proposalForPreview, setProposalForPreview] = useState<Partial<Proposal> | null>(null);
 
   const allCustomers = useMemo(() => [...clients, ...leads].sort((a,b) => a.name.localeCompare(b.name)), [clients, leads]);
 
@@ -202,7 +207,6 @@ export default function BatchProposalsPage() {
     }
   }, [watchedProposals, isDataLoading]);
   
-  // Effect to update unitRate when clientType changes manually
   useEffect(() => {
     watchedClientTypes.forEach((proposal, index) => {
         const clientType = proposal.clientType;
@@ -219,9 +223,8 @@ export default function BatchProposalsPage() {
     });
   }, [watchedClientTypes, form]);
 
-
   const handleCustomerSelect = (customer: Client | Lead, index: number) => {
-    const isLead = 'dropReason' in customer ? true : false;
+    const isLead = 'dropReason' in customer? true : false;
     const capacity = customer.kilowatt || 0;
     const clientType = customer.clientType || 'Other';
     
@@ -240,8 +243,8 @@ export default function BatchProposalsPage() {
     form.setValue(`proposals.${index}.location`, customer.address || '');
     form.setValue(`proposals.${index}.clientType`, clientType);
     form.setValue(`proposals.${index}.capacity`, capacity);
-    form.setValue(`proposals.${index}.inverterRating`, capacity); // Set inverter rating default
-    form.setValue(`proposals.${index}.unitRate`, unitRate); // Set unit rate
+    form.setValue(`proposals.${index}.inverterRating`, capacity);
+    form.setValue(`proposals.${index}.unitRate`, unitRate);
   };
   
   const processAllProposals = (data: BatchProposalsFormValues) => {
@@ -250,6 +253,7 @@ export default function BatchProposalsPage() {
         
         const initialProgress = data.proposals.map(p => ({ name: p.name, status: 'generating' as const }));
         setProgress(initialProgress);
+        setIsResultDialogOpen(true);
         
         const generationPromises = data.proposals.map(async (row, index) => {
             try {
@@ -274,35 +278,37 @@ export default function BatchProposalsPage() {
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || `Failed to generate for ${row.name}`);
 
-                setProgress(prev => prev.map((p, i) => i === index ? { ...p, status: 'success' } : p));
-                return { ...submissionData, pdfUrl: result.pdfUrl, docxUrl: result.docxUrl };
+                const generatedProposal = { ...submissionData, pdfUrl: result.pdfUrl, docxUrl: result.docxUrl };
+                setProgress(prev => prev.map((p, i) => i === index ? { ...p, status: 'success', generatedProposal } : p));
+                return generatedProposal;
 
             } catch (error) {
                  setProgress(prev => prev.map((p, i) => i === index ? { ...p, status: 'error', message: (error as Error).message } : p));
-                 throw error; // Re-throw to be caught by allSettled
+                 throw error;
             }
         });
 
         const results = await Promise.allSettled(generationPromises);
         
         const successfulProposals = results.filter(r => r.status === 'fulfilled').map(r => (r as PromiseFulfilledResult<any>).value);
-        const failedCount = results.filter(r => r.status === 'rejected').length;
-
+        
         if (successfulProposals.length > 0) {
             const saveResult = await bulkCreateProposals(successfulProposals);
             if (saveResult.success) {
-                toast({ title: `Batch Complete: ${saveResult.count} proposals saved.`, description: failedCount > 0 ? `${failedCount} failed.` : 'All successful.'});
-                 localStorage.removeItem(BATCH_PROPOSAL_CACHE_KEY); // Clear cache on success
+                toast({ title: "Database Updated", description: `${saveResult.createdProposals.length} proposals saved successfully.`});
+                localStorage.removeItem(BATCH_PROPOSAL_CACHE_KEY); // Clear cache on success
             } else {
                 toast({ title: "Database Save Failed", description: saveResult.message, variant: "destructive" });
             }
-        } else {
-             toast({ title: "Batch Failed", description: "No proposals were successfully generated.", variant: "destructive" });
         }
-        
-        setTimeout(() => router.push('/proposals'), 3000); // Redirect after a short delay to allow user to see results
     });
   };
+
+  const handleViewProposal = (proposal: Partial<Proposal>) => {
+    setProposalForPreview(proposal);
+    setIsPreviewOpen(true);
+  };
+
 
   if (isDataLoading || !templateId) return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /><p className="ml-4">Loading data...</p></div>;
 
@@ -351,30 +357,50 @@ export default function BatchProposalsPage() {
         </form>
       </Form>
 
-       {isGenerating && (
-        <Card className="mt-6">
-            <CardHeader>
-                <CardTitle>Batch Generation Progress</CardTitle>
-                <CardDescription>Generating {progress.length} proposals. Please do not navigate away from this page.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Progress value={overallProgress} className="w-full" />
-                <div className="space-y-2 max-h-60 overflow-y-auto p-1">
-                    {progress.map((p, i) => (
-                        <div key={i} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                            <div className="flex items-center gap-2">
-                                {p.status === 'generating' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                                {p.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                                {p.status === 'error' && <XCircle className="h-4 w-4 text-destructive" />}
-                                <span className="text-sm">{p.name}</span>
+       {isResultDialogOpen && (
+        <Dialog open={isResultDialogOpen} onOpenChange={(open) => { if (!open) router.push('/proposals'); }}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Batch Generation Summary</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <Progress value={overallProgress} className="w-full" />
+                    <div className="space-y-2 max-h-80 overflow-y-auto p-1">
+                        {progress.map((p, i) => (
+                            <div key={i} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                <div className="flex items-center gap-2">
+                                    {p.status === 'generating' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                    {p.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                    {p.status === 'error' && <XCircle className="h-4 w-4 text-destructive" />}
+                                    <div>
+                                      <span className="text-sm">{p.name}</span>
+                                      {p.status === 'error' && <p className="text-xs text-destructive">{p.message}</p>}
+                                    </div>
+                                </div>
+                                {p.status === 'success' && p.generatedProposal && (
+                                  <Button size="sm" variant="outline" onClick={() => handleViewProposal(p.generatedProposal!)}><Eye className="mr-2 h-4 w-4"/>View</Button>
+                                )}
                             </div>
-                            <span className="text-sm font-medium capitalize">{p.status === 'error' ? 'Failed' : p.status}</span>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
+                     <CardFooter className="justify-center">
+                        <Button onClick={() => router.push('/proposals')}>
+                           Back to Proposals
+                        </Button>
+                    </CardFooter>
                 </div>
-            </CardContent>
-        </Card>
-    )}
+            </DialogContent>
+        </Dialog>
+      )}
+
+      {isPreviewOpen && proposalForPreview && (
+          <ProposalPreviewDialog
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            pdfUrl={proposalForPreview.pdfUrl || null}
+            docxUrl={proposalForPreview.docxUrl || null}
+          />
+      )}
     </>
   );
 }

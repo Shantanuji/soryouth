@@ -135,7 +135,7 @@ export const DOCUMENT_TYPES_CONFIG: Array<{ type: DocumentType; icon: React.Comp
 
 export const MOCK_DOCUMENTS: Document[] = [];
 export const MOCK_COMMUNICATIONS: Communication[] = [];
-export const EXPENSE_CATEGORIES = ['Travel', 'Food', 'Supplies', 'Utilities', 'Software', 'Training', 'Marketing', 'Other'] as const;
+export const EXPENSE_CATEGORIES = ['Travel', 'Food', 'Supplies', 'Utilities', 'Software', 'Training', 'Marketing', 'Incentive' ,'Other'] as const;
 export const EXPENSE_STATUSES = ['Pending', 'Approved', 'Rejected'] as const;
 export const MOCK_EXPENSES: Expense[] = [];
 export const SURVEY_TYPE_OPTIONS = ['Commercial', 'Residential', 'Industrial', 'Agricultural', 'Other'] as const;

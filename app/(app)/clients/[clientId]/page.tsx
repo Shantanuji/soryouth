@@ -37,6 +37,7 @@ import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { sendCallNotification } from '@/lib/fcm';
 import { useSession } from '@/hooks/use-sessions';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ActivityIcon = ({ type, className }: { type: string, className?: string }) => {
   const defaultClassName = "h-4 w-4";
@@ -92,6 +93,7 @@ const SurveyDetailsCard = ({ survey }: { survey: SiteSurvey }) => {
 export default function ClientDetailsPage() {
   const router = useRouter();
   const session = useSession();
+  const isMobile = useIsMobile();
   const params = useParams();
   const searchParams = useSearchParams();
   const clientId = typeof params.clientId === 'string' ? params.clientId : null;
@@ -505,6 +507,30 @@ export default function ClientDetailsPage() {
     });
   };
 
+  const CallButton = () => {
+    if (!client?.phone) {
+      return (
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled>
+          <Phone className="h-5 w-5" />
+        </Button>
+      );
+    }
+    if (isMobile) {
+      return (
+        <a href={`tel:${client.phone}`}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+            <Phone className="h-5 w-5" />
+          </Button>
+        </a>
+      );
+    }
+    return (
+      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={isUpdating} onClick={handleInitiateCall}>
+        <Phone className="h-5 w-5" />
+      </Button>
+    );
+  };
+
   if (client === undefined) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
@@ -596,9 +622,7 @@ export default function ClientDetailsPage() {
                 <CardTitle className="text-md">Communication</CardTitle>
               </CardHeader>
               <CardContent className="flex justify-around items-center">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!client.phone || !client.assignedTo || isUpdating} onClick={handleInitiateCall}>
-                  <Phone className="h-5 w-5" />
-                </Button>
+                <CallButton />
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageCircle className="h-5 w-5" /></Button>

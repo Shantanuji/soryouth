@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProposalPreviewDialog } from '@/app/(app)/proposals/proposal-preview-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const ActivityIcon = ({ type, className }: { type: string, className?: string }) => {
@@ -77,6 +78,7 @@ const SurveyDetailsCard = ({ survey }: { survey: SiteSurvey }) => {
 
 export default function DroppedLeadDetailsPage() {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const params = useParams();
   const droppedId = typeof params.droppedId === 'string' ? params.droppedId : null;
   const { toast } = useToast();
@@ -196,6 +198,30 @@ export default function DroppedLeadDetailsPage() {
             });
         }
     });
+  };
+
+  const CallButton = () => {
+    if (!droppedLead?.phone) {
+      return (
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled>
+          <Phone className="h-5 w-5" />
+        </Button>
+      );
+    }
+    if (isMobile) {
+      return (
+        <a href={`tel:${droppedLead.phone}`}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+            <Phone className="h-5 w-5" />
+          </Button>
+        </a>
+      );
+    }
+    return (
+      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled>
+        <Phone className="h-5 w-5" />
+      </Button>
+    );
   };
 
   if (droppedLead === undefined) {

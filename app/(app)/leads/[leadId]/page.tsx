@@ -37,6 +37,7 @@ import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { sendCallNotification } from '@/lib/fcm';
 import { useSession } from '@/hooks/use-sessions';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const dropLeadSchema = z.object({
   dropReason: z.enum(DROP_REASON_OPTIONS, { required_error: "Drop reason is required." }),
@@ -98,6 +99,7 @@ const SurveyDetailsCard = ({ survey }: { survey: SiteSurvey }) => {
 
 export default function LeadDetailsPage() {
   const session = useSession();
+  const isMobile = useIsMobile();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -452,6 +454,30 @@ export default function LeadDetailsPage() {
     });
   };
 
+  const CallButton = () => {
+    if (!lead?.phone) {
+      return (
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled>
+          <Phone className="h-5 w-5" />
+        </Button>
+      );
+    }
+    if (isMobile) {
+      return (
+        <a href={`tel:${lead.phone}`}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+            <Phone className="h-5 w-5" />
+          </Button>
+        </a>
+      );
+    }
+    return (
+      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={isUpdating} onClick={handleInitiateCall}>
+        <Phone className="h-5 w-5" />
+      </Button>
+    );
+  };
+
   if (lead === undefined) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
@@ -594,9 +620,7 @@ export default function LeadDetailsPage() {
                 <CardTitle className="text-md">Communication</CardTitle>
               </CardHeader>
               <CardContent className="flex justify-around items-center">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!lead.phone || !lead.assignedTo || isUpdating} onClick={handleInitiateCall}>
-                    <Phone className="h-5 w-5" textAnchor=''/>
-                </Button>
+                <CallButton />
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageCircle className="h-5 w-5" /></Button>
