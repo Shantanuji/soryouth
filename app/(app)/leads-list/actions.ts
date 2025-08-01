@@ -4,7 +4,7 @@
 import prisma from '@/lib/prisma';
 import type { Lead, FollowUp, AddActivityData, CreateLeadData, Client, DropReasonType, LeadSourceOptionType, UserOptionType, LeadStatusType, TaskNotification } from '@/types';
 import { revalidatePath } from 'next/cache';
-import { format, parseISO, startOfDay, endOfDay, isPast } from 'date-fns';
+import { format, parse, parseISO, startOfDay, endOfDay, isPast, isValid } from 'date-fns';
 import { verifySession } from '@/lib/auth';
 import * as ExcelJS from 'exceljs';
 import { z } from 'zod';
@@ -126,8 +126,6 @@ export async function getOverdueFollowUpTasksForCurrentUser(): Promise<TaskNotif
   if (!session?.userId) return [];
 
   try {
-    const now = new Date();
-
     const tasks = await prisma.followUp.findMany({
       where: {
         followupOrTask: 'Task',
@@ -144,11 +142,38 @@ export async function getOverdueFollowUpTasksForCurrentUser(): Promise<TaskNotif
       },
     });
     
-    // Filter for overdue tasks in code since Prisma can't easily compare combined date/time
+    // Filter for overdue tasks in code with robust time parsing
     const overdueTasks = tasks.filter(task => {
         if (!task.taskDate || !task.taskTime) return false;
-        const taskDateTime = parseISO(`${format(task.taskDate, 'yyyy-MM-dd')}T${task.taskTime}:00`);
-        return isPast(taskDateTime);
+        // Construct a full date-time string
+        const dateString = format(task.taskDate, 'yyyy-MM-dd');
+        const dateTimeString = `${dateString} ${task.taskTime}`;
+
+        // Define possible formats. Add more as needed.
+        const formats = [
+            'yyyy-MM-dd HH:mm:ss',
+            'yyyy-MM-dd hh:mm:ss a',
+            'yyyy-MM-dd HH:mm',
+        ];
+
+        let taskDateTime: Date | null = null;
+        for (const fmt of formats) {
+            const parsedDate = parse(dateTimeString, fmt, new Date());
+            if (isValid(parsedDate)) {
+                taskDateTime = parsedDate;
+                break;
+            }
+        }
+        
+        // Fallback for just time without seconds
+        if (!taskDateTime) {
+            const fallbackParsed = parse(dateTimeString, 'yyyy-MM-dd hh:mm a', new Date());
+             if (isValid(fallbackParsed)) {
+                taskDateTime = fallbackParsed;
+             }
+        }
+        
+        return taskDateTime ? isPast(taskDateTime) : false;
     });
 
     return overdueTasks.map(task => {
