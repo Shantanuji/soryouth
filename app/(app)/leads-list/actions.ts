@@ -187,6 +187,7 @@ export async function getAllFollowUps(): Promise<FollowUp[]> {
                 taskForUser: true,
                 lead: true,
                 client: true,
+                deal: true,
             }
         });
         return followUps.map(mapPrismaFollowUpToFollowUpType);

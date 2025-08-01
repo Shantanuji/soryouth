@@ -2,14 +2,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useTransition } from 'react';
-import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { TasksTable } from './tasks-table';
-import { ClipboardCheck, CalendarIcon, Loader2, UserCircle, Users, Briefcase } from 'lucide-react';
+import { ClipboardCheck, CalendarIcon, Loader2, UserCircle, Users, Briefcase, Handshake } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -21,8 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 
 type TaskStatusFilter = 'Open' | 'Closed' | 'all';
-type DataTypeFilter = 'lead' | 'client' | 'all';
-type CustomerTypeFilter = ClientType | 'all';
+type DataTypeFilter = 'lead' | 'client' | 'deal' | 'all';
 
 export default function TasksPage() {
   const router = useRouter();
@@ -31,11 +28,13 @@ export default function TasksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, startUpdateTransition] = useTransition();
 
+  const [pageSize, setPageSize] = useState(25);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: subDays(new Date(), 30), to: new Date() });
   const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>('Open');
   const [dataTypeFilter, setDataTypeFilter] = useState<DataTypeFilter>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
-  const [customerTypeFilter, setCustomerTypeFilter] = useState<CustomerTypeFilter>('all');
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -64,12 +63,13 @@ export default function TasksPage() {
     const filtered = allTasks.filter(task => {
       if (statusFilter !== 'all' && task.taskStatus !== statusFilter) return false;
       
-      const customer = task.lead || task.client;
       if (dataTypeFilter !== 'all') {
         const isLead = !!task.leadId;
         const isClient = !!task.clientId;
+        const isDeal = !!task.dealId;
         if (dataTypeFilter === 'lead' && !isLead) return false;
         if (dataTypeFilter === 'client' && !isClient) return false;
+        if (dataTypeFilter === 'deal' && !isDeal) return false;
       }
 
       if (userFilter !== 'all' && task.taskForUser !== userFilter) return false;
@@ -77,59 +77,59 @@ export default function TasksPage() {
       if (task.taskDate && dateInterval) {
         if (!isWithinInterval(parseISO(task.taskDate), dateInterval)) return false;
       }
-      
-      if (customerTypeFilter !== 'all') {
-        const customerType = customer?.clientType;
-        if (customerType !== customerTypeFilter) {
-            return false;
-        }
-      }
 
       return true;
     });
     
-    // Return only top 25 results
-    return filtered.slice(0, 25);
+    return filtered;
 
-  }, [allTasks, dateRange, statusFilter, dataTypeFilter, userFilter, customerTypeFilter]);
+  }, [allTasks, dateRange, statusFilter, dataTypeFilter, userFilter]);
   
-  const customerTypeCounts = useMemo(() => {
-    const counts: Record<ClientType, number> = {
-      Commercial: 0,
-      Industrial: 0,
-      'Housing Society': 0,
-      'Individual/Bungalow': 0,
-      Other: 0
-    };
-    allTasks.forEach(task => {
-        const type = task.lead?.clientType || task.client?.clientType;
-        if (type && type in counts) {
-            counts[type]++;
-        }
-    });
-    return counts;
-  }, [allTasks]);
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredTasks.slice(start, end);
+  }, [filteredTasks, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredTasks.length / pageSize);
 
 
   return (
     <div className="flex gap-6 h-full">
       <main className="flex-1 space-y-4">
-        <PageHeader title={`Tasks (${filteredTasks.length})`} icon={ClipboardCheck} />
-         <div className="flex justify-between items-center">
-            <div className="flex flex-wrap gap-2 items-center">
-                <Button variant={customerTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCustomerTypeFilter('all')}>Show all</Button>
-                <Button variant={customerTypeFilter === 'Commercial' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCustomerTypeFilter('Commercial')}>Commercial <Badge variant="outline" className="ml-2">{customerTypeCounts.Commercial}</Badge></Button>
-                <Button variant={customerTypeFilter === 'Industrial' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCustomerTypeFilter('Industrial')}>Industrial <Badge variant="outline" className="ml-2">{customerTypeCounts.Industrial}</Badge></Button>
-                <Button variant={customerTypeFilter === 'Housing Society' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCustomerTypeFilter('Housing Society')}>Housing Society <Badge variant="outline" className="ml-2">{customerTypeCounts['Housing Society']}</Badge></Button>
-                <Button variant={customerTypeFilter === 'Individual/Bungalow' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCustomerTypeFilter('Individual/Bungalow')}>Individual/Bungalow <Badge variant="outline" className="ml-2">{customerTypeCounts['Individual/Bungalow']}</Badge></Button>
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold tracking-tight">Tasks ({filteredTasks.length})</h2>
+        </div>
+        <TasksTable tasks={paginatedTasks} onStatusChange={handleStatusUpdate} isLoading={isLoading || isUpdating} />
+         <div className="flex items-center justify-between pt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {paginatedTasks.length} of {filteredTasks.length} tasks.
             </div>
-             <div className="flex items-center gap-2">
-                 <Popover>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage >= totalPages}>
+                Next
+              </Button>
+            </div>
+         </div>
+      </main>
+
+       <aside className="w-64 flex-shrink-0">
+          <Card>
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                  <h4 className="font-semibold text-sm mb-2">Filter by Date</h4>
+                  <Popover>
                     <PopoverTrigger asChild>
                     <Button
                         id="date"
                         variant={"outline"}
-                        className={cn("w-[260px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
+                        className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
                     >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange?.from ? ( dateRange.to ? (<> {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")} </>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
@@ -138,20 +138,14 @@ export default function TasksPage() {
                     <PopoverContent className="w-auto p-0" align="end">
                         <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
                     </PopoverContent>
-                </Popover>
-            </div>
-         </div>
-        <TasksTable tasks={filteredTasks} onStatusChange={handleStatusUpdate} isLoading={isLoading || isUpdating} />
-      </main>
-
-       <aside className="w-64 flex-shrink-0">
-          <Card>
-            <CardContent className="pt-6 space-y-6">
+                  </Popover>
+              </div>
                <div>
                   <h4 className="font-semibold text-sm mb-2">Status</h4>
                   <div className="space-y-1 text-sm">
                      <div className={cn("flex justify-between items-center cursor-pointer p-1 rounded-md hover:bg-muted", statusFilter === 'Open' && 'bg-primary/10')} onClick={() => setStatusFilter('Open')}><p>Open</p><Badge variant="outline">{allTasks.filter(t => t.taskStatus === 'Open').length}</Badge></div>
                      <div className={cn("flex justify-between items-center cursor-pointer p-1 rounded-md hover:bg-muted", statusFilter === 'Closed' && 'bg-primary/10')} onClick={() => setStatusFilter('Closed')}><p>Closed</p><Badge variant="outline">{allTasks.filter(t => t.taskStatus === 'Closed').length}</Badge></div>
+                     <div className={cn("flex justify-between items-center cursor-pointer p-1 rounded-md hover:bg-muted", statusFilter === 'all' && 'bg-primary/10')} onClick={() => setStatusFilter('all')}><p>Show all</p></div>
                   </div>
                </div>
                <div>
@@ -160,6 +154,7 @@ export default function TasksPage() {
                       <div className={cn("flex items-center gap-2 p-1 rounded-md hover:bg-muted cursor-pointer", dataTypeFilter === 'all' && 'bg-primary/10')} onClick={() => setDataTypeFilter('all')}><Users className="h-4 w-4"/><span>Show all</span></div>
                       <div className={cn("flex items-center gap-2 p-1 rounded-md hover:bg-muted cursor-pointer", dataTypeFilter === 'lead' && 'bg-primary/10')} onClick={() => setDataTypeFilter('lead')}><Users className="h-4 w-4"/><span>Lead</span></div>
                       <div className={cn("flex items-center gap-2 p-1 rounded-md hover:bg-muted cursor-pointer", dataTypeFilter === 'client' && 'bg-primary/10')} onClick={() => setDataTypeFilter('client')}><Briefcase className="h-4 w-4"/><span>Client</span></div>
+                      <div className={cn("flex items-center gap-2 p-1 rounded-md hover:bg-muted cursor-pointer", dataTypeFilter === 'deal' && 'bg-primary/10')} onClick={() => setDataTypeFilter('deal')}><Handshake className="h-4 w-4"/><span>Deal</span></div>
                   </div>
                </div>
                <div>
