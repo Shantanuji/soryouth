@@ -78,7 +78,6 @@ function mapPrismaSurveyToSiteSurvey(survey: any): SiteSurvey {
     sanctionedLoad: survey.sanctionedLoad ?? undefined,
     remark: survey.remark ?? undefined,
     electricityBillFiles: survey.electricityBillFiles ?? [],
-    status: survey.status,
     createdAt: survey.createdAt.toISOString(),
     updatedAt: survey.updatedAt.toISOString(),
     leadId: survey.leadId ?? undefined,
@@ -115,13 +114,13 @@ function mapPrismaProposalToProposalType(prismaProposal: any): Proposal {
   };
 }
 
-export async function getDroppedLeads(): Promise<DroppedLead[]> {
+export async function getDroppedLeads({ ignorePermissions = false }: { ignorePermissions?: boolean } = {}): Promise<DroppedLead[]> {
      const session = await verifySession();
     if (!session?.userId) return [];
 
     try {
         const whereClause: Prisma.DroppedLeadWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED') {
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
           whereClause.assignedToId = session.userId;
         }
 
@@ -301,7 +300,10 @@ export async function updateDroppedLead(id: string, data: Partial<Omit<DroppedLe
                     prismaData[typedKey] = parseISO(data.nextFollowUpDate);
                 } else if (typedKey === 'lastCommentDate' && data.lastCommentDate) {
                     prismaData[typedKey] = parseISO(data.lastCommentDate.split('-').reverse().join('-'));
-                } else {
+                } else if (typedKey === 'notes') {
+                    prismaData.notes = data.notes ?? null;
+                }
+                else {
                     prismaData[typedKey] = (data as any)[typedKey] ?? null;
                 }
             }

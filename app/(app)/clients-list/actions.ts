@@ -58,7 +58,7 @@ function mapPrismaFollowUpToFollowUpType(prismaFollowUp: any): FollowUp {
   } as FollowUp;
 }
 
-export async function getActiveClients(): Promise<Client[]> {
+export async function getActiveClients({ ignorePermissions = false }: { ignorePermissions?: boolean } = {}): Promise<Client[]> {
   const session = await verifySession();
   if (!session?.userId) return [];
   
@@ -67,7 +67,7 @@ export async function getActiveClients(): Promise<Client[]> {
       status: { not: 'Inactive' },
     };
 
-    if (session.viewPermission === 'ASSIGNED') {
+    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
       whereClause.assignedToId = session.userId;
     }
 
@@ -90,7 +90,7 @@ export async function getActiveClients(): Promise<Client[]> {
   }
 }
 
-export async function getInactiveClients(): Promise<Client[]> {
+export async function getInactiveClients({ ignorePermissions = false }: { ignorePermissions?: boolean } = {}): Promise<Client[]> {
   const session = await verifySession();
   if (!session?.userId) return [];
 
@@ -98,7 +98,7 @@ export async function getInactiveClients(): Promise<Client[]> {
     const whereClause: Prisma.ClientWhereInput = {
       status: 'Inactive',
     };
-    if (session.viewPermission === 'ASSIGNED') {
+    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
       whereClause.assignedToId = session.userId;
     }
     const clientsFromDb = await prisma.client.findMany({

@@ -12,10 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useState, useEffect, useMemo, useTransition } from 'react';
-import { Ticket, PlusCircle, CalendarIcon, UserCircle, Users, ChevronDown, Loader2, Filter, MoreVertical } from 'lucide-react';
+import { Ticket, PlusCircle, CalendarIcon, UserCircle, Users, ChevronDown, Loader2, Filter, MoreVertical, Trash2 } from 'lucide-react';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { getTickets, updateTicketStatus } from './actions';
+import { getTickets, updateTicketStatus, deleteClosedTickets } from './actions';
 import { getUsers } from '../users/actions';
 import type { Tickets as TicketsType, User, TicketStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +25,8 @@ import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertDialogTrigger, AlertDialogFooter, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 
 type TicketFilters = {
   dueDate: Date | undefined;
@@ -96,6 +98,8 @@ export default function TicketsPage() {
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
   const [isRemarkDialogOpen, setIsRemarkDialogOpen] = useState(false);
   const [ticketForRemark, setTicketForRemark] = useState<{ id: string, status: TicketStatus } | null>(null);
+  const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+  const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
 
   const [filters, setFilters] = useState<TicketFilters>({
@@ -140,6 +144,19 @@ export default function TicketsPage() {
     setIsRemarkDialogOpen(false);
     setTicketForRemark(null);
   };
+  
+  const handleBulkDelete = () => {
+    startDeleteTransition(async () => {
+        const result = await deleteClosedTickets(selectedTicketIds);
+        if(result.success) {
+            toast({ title: "Tickets Deleted", description: `${result.count} closed ticket(s) have been deleted.` });
+            refreshTickets();
+            setSelectedTicketIds([]);
+        } else {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
+    });
+  }
 
   const statusCounts = useMemo(() => {
     const counts = { Open: 0, 'On Hold': 0, Closed: 0 };
@@ -158,7 +175,6 @@ export default function TicketsPage() {
       if (filters.assignedToId !== 'all' && ticket.assignedToId !== filters.assignedToId) return false;
       if (filters.dueDate && format(new Date(ticket.dueDate), 'yyyy-MM-dd') !== format(filters.dueDate, 'yyyy-MM-dd')) return false;
       
-      // Corrected overdue logic
       if (filters.isOverdue) {
         const isTicketOverdue = isBefore(new Date(ticket.dueDate), startOfDay(new Date()));
         if (!isTicketOverdue || ticket.status === 'Closed') {
@@ -178,6 +194,20 @@ export default function TicketsPage() {
       default: return 'outline';
     }
   };
+  
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+        const closedTicketIds = filteredTickets.filter(t => t.status === 'Closed').map(t => t.id);
+        setSelectedTicketIds(closedTicketIds);
+    } else {
+        setSelectedTicketIds([]);
+    }
+  };
+
+  const handleSelectOne = (ticketId: string, checked: boolean) => {
+    setSelectedTicketIds(prev => checked ? [...prev, ticketId] : prev.filter(id => id !== ticketId));
+  };
+
 
   return (
     <>
@@ -187,10 +217,35 @@ export default function TicketsPage() {
         icon={Ticket}
         actions={
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}>
-                    <Filter className="mr-2 h-4 w-4" />
-                    <span>{isFilterSidebarOpen ? 'Hide' : 'Show'} Filters</span>
-                </Button>
+                 {selectedTicketIds.length > 0 ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedTicketIds.length}) Closed
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Selected Tickets?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently delete the {selectedTicketIds.length} selected tickets that are marked as 'Closed'. This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleBulkDelete} disabled={isDeleting}>
+                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                 ) : (
+                    <Button variant="outline" size="sm" onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}>
+                        <Filter className="mr-2 h-4 w-4" />
+                        <span>{isFilterSidebarOpen ? 'Hide' : 'Show'} Filters</span>
+                    </Button>
+                 )}
                 <Button size="sm" onClick={() => setIsFormOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Create Ticket
                 </Button>
@@ -210,13 +265,18 @@ export default function TicketsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                         <Checkbox
+                            onCheckedChange={handleSelectAll}
+                            checked={selectedTicketIds.length > 0 && selectedTicketIds.length === filteredTickets.filter(t => t.status === 'Closed').length}
+                            aria-label="Select all closed tickets"
+                        />
+                      </TableHead>
                       <TableHead>Ticket ID</TableHead>
                       <TableHead>Subject</TableHead>
-                      <TableHead>Description</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Remark</TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead>Assigned To</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -224,13 +284,20 @@ export default function TicketsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredTickets.length === 0 ? (
-                        <TableRow><TableCell colSpan={10} className="text-center h-24">No tickets found.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center h-24">No tickets found.</TableCell></TableRow>
                     ) : (
                         filteredTickets.map((ticket) => (
-                        <TableRow key={ticket.id}>
+                        <TableRow key={ticket.id} data-state={selectedTicketIds.includes(ticket.id) && "selected"}>
+                             <TableCell>
+                                <Checkbox
+                                    checked={selectedTicketIds.includes(ticket.id)}
+                                    onCheckedChange={(checked) => handleSelectOne(ticket.id, !!checked)}
+                                    aria-label={`Select ticket ${ticket.id.slice(-6)}`}
+                                    disabled={ticket.status !== 'Closed'}
+                                />
+                            </TableCell>
                             <TableCell className="font-medium">#{ticket.id.slice(-6)}</TableCell>
                             <TableCell>{ticket.subject}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-pre-wrap">{ticket.description}</TableCell>
                             <TableCell>
                                 <Link href={`/clients/${ticket.clientId}`} className="hover:underline text-primary">{ticket.clientName}</Link>
                             </TableCell>
@@ -238,7 +305,6 @@ export default function TicketsPage() {
                                 <Badge variant={getPriorityBadgeVariant(ticket.priority)}>{ticket.priority}</Badge>
                             </TableCell>
                             <TableCell>{ticket.status}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{ticket.remark || '-'}</TableCell>
                             <TableCell>{format(new Date(ticket.dueDate), 'dd MMM, yyyy')}</TableCell>
                             <TableCell>{ticket.assignedTo?.name || 'Unassigned'}</TableCell>
                              <TableCell className="text-right">

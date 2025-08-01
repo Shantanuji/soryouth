@@ -31,6 +31,7 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   viewPermission: ViewPermission;
+  deviceId?: string | null;
 }
 
 export interface RolePermission {
@@ -265,9 +266,9 @@ export interface FollowUp {
   taskDate?: string;
   taskTime?: string;
   taskStatus?: 'Open' | 'Closed'; // Added for task tracking
-  lead?: { name: string, phone: string | null } | null;
-  client?: { name: string, phone: string | null } | null;
-  deal?: { id: string, clientName: string, phone: string | null } | null;
+  lead?: { name: string, phone: string, clientType: ClientType | null } | null;
+  client?: { name: string, phone: string, clientType: ClientType | null } | null;
+  deal?: { id: string, clientName: string, phone: string, clientType: ClientType | null } | null;
 }
 
 export type AddActivityData = Omit<FollowUp, 'id' | 'createdAt' | 'droppedLeadId' | 'createdBy' | 'createdById' | 'lead' | 'client' | 'deal'> & {
@@ -408,6 +409,8 @@ export interface Attendance {
   userName: string;
   punchInTime: string;
   punchOutTime?: string | null;
+  punchInLocation: string;
+  punchOutLocation: string | null;
   workDuration?: string | null; // e.g., "8h 30m"
 }
 

@@ -16,10 +16,12 @@ import {
   CalendarRange, 
   Sigma,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  IndianRupee,
+  LineChart as LineChartIcon,
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import type { Lead, Client, DroppedLead, User } from '@/types';
 import { getLeads } from '@/app/(app)/leads-list/actions';
@@ -28,11 +30,16 @@ import { getActiveClients, getInactiveClients } from '@/app/(app)/clients-list/a
 import { getUsers } from '@/app/(app)/users/actions';
 import { useToast } from '@/hooks/use-toast';
 import { punchIn, punchOut, getCurrentUserAttendanceStatus } from '@/app/(app)/attendance/actions';
-import { format } from 'date-fns';
+import { format, parseISO, startOfMonth } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
+const chartConfig: ChartConfig = {
+  value: { label: "Value (₹)", color: "hsl(var(--chart-1))" },
+  count: { label: "Count", color: "hsl(var(--chart-2))" },
+};
 
 export default function DashboardOverviewPage() {
   const [dashboardData, setDashboardData] = useState({
@@ -42,6 +49,7 @@ export default function DashboardOverviewPage() {
     leadsDropped: 0,
     dealsByUser: [] as { name: string; value: number; fill: string }[],
     leadsByUser: [] as { name: string; value: number; fill: string }[],
+    yearlySales: [] as { month: string; value: number; count: number }[],
   });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -62,10 +70,10 @@ export default function DashboardOverviewPage() {
       setIsLoading(true);
       try {
         const [activeLeads, droppedLeads, activeClients, inactiveClients, users] = await Promise.all([
-            getLeads(),
-            getDroppedLeads(),
-            getActiveClients(),
-            getInactiveClients(),
+            getLeads({ ignorePermissions: true }),
+            getDroppedLeads({ ignorePermissions: true }),
+            getActiveClients({ ignorePermissions: true }),
+            getInactiveClients({ ignorePermissions: true }),
             getUsers(),
         ]);
         
@@ -82,6 +90,30 @@ export default function DashboardOverviewPage() {
             value: activeClients.filter(client => client.assignedTo === user).length,
             fill: COLORS[index % COLORS.length],
         })).filter(item => item.value > 0);
+        
+        // Process data for yearly charts
+        const monthlyData: Record<string, { value: number, count: number }> = {};
+        const currentYear = new Date().getFullYear();
+
+        // Initialize all months for the current year
+        for (let i = 0; i < 12; i++) {
+            const monthName = format(new Date(currentYear, i), 'MMM');
+            monthlyData[monthName] = { value: 0, count: 0 };
+        }
+        
+        activeClients.forEach(client => {
+            const dealDate = parseISO(client.updatedAt);
+            if (dealDate.getFullYear() === currentYear) {
+                const month = format(dealDate, 'MMM');
+                monthlyData[month].value += client.totalDealValue || 0;
+                monthlyData[month].count += 1;
+            }
+        });
+        
+        const yearlySales = Object.entries(monthlyData).map(([month, data]) => ({
+            month, ...data
+        }));
+
 
         setDashboardData({
             totalLeads: activeLeads.length,
@@ -90,6 +122,7 @@ export default function DashboardOverviewPage() {
             leadsDropped: droppedLeads.length,
             leadsByUser,
             dealsByUser,
+            yearlySales,
         });
 
         await refreshAttendanceStatus();
@@ -322,29 +355,45 @@ export default function DashboardOverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CalendarRange className="h-5 w-5 text-primary" />
+              <IndianRupee className="h-5 w-5 text-primary" />
               Yearly Sales (Value)
             </CardTitle>
             <CardDescription>Total sales value over the year.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center h-60 bg-muted rounded-md">
-              <img src="https://placehold.co/500x300.png" data-ai-hint="yearly sales value chart" alt="Yearly Sales Value Chart" className="w-full h-full object-contain"/>
-            </div>
+          <CardContent className="h-[300px]">
+             <ChartContainer config={chartConfig} className="w-full h-full">
+                 <ResponsiveContainer>
+                  <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis tickFormatter={(value) => `Rs${Number(value) / 1000}k`} />
+                    <Tooltip content={<ChartTooltipContent indicator="line" />} />
+                    <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-             <Sigma className="h-5 w-5 text-primary" />
+             <LineChartIcon className="h-5 w-5 text-primary" />
               Yearly Sales (Count)
             </CardTitle>
             <CardDescription>Total number of deals closed over the year.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center h-60 bg-muted rounded-md">
-              <img src="https://placehold.co/500x300.png" data-ai-hint="yearly sales count chart" alt="Yearly Sales Count Chart" className="w-full h-full object-contain"/>
-            </div>
+          <CardContent className="h-[300px]">
+             <ChartContainer config={chartConfig} className="w-full h-full">
+                 <ResponsiveContainer>
+                  <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip content={<ChartTooltipContent indicator="line" />} />
+                    <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>

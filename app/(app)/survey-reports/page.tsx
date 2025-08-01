@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, Legend as RechartsLegend, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
-import { ClipboardList, CalendarDays, MapPin, Building, Home, Sun, List, Loader2 } from 'lucide-react';
+import { ClipboardList, CalendarDays, MapPin, Building, Home, Sun, List, Loader2, User } from 'lucide-react';
 import { format, subDays, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { CONSUMER_CATEGORIES_OPTIONS } from '@/lib/constants';
 import type { SiteSurvey, ConsumerCategoryType } from '@/types';
@@ -39,13 +39,13 @@ export default function SurveyReportsPage() {
     });
   }, [surveys]);
 
-  const locationDistributionData = useMemo(() => {
+  const userDistributionData = useMemo(() => {
     const counts: Record<string, number> = {};
     surveysInLast30Days.forEach(survey => {
-      counts[survey.location] = (counts[survey.location] || 0) + 1;
+      counts[survey.surveyorName] = (counts[survey.surveyorName] || 0) + 1;
     });
     return Object.entries(counts)
-      .map(([location, count]) => ({ location, surveys: count }))
+      .map(([user, count]) => ({ user, surveys: count }))
       .sort((a, b) => b.surveys - a.surveys);
   }, [surveysInLast30Days]);
 
@@ -65,7 +65,7 @@ export default function SurveyReportsPage() {
     })).filter(item => item.value > 0);
   }, [surveysInLast30Days]);
 
-  const locationChartConfig: ChartConfig = {
+  const userChartConfig: ChartConfig = {
     surveys: { label: 'Surveys', color: 'hsl(var(--chart-1))' },
   };
 
@@ -77,16 +77,6 @@ export default function SurveyReportsPage() {
     return config;
   }, [typeDistributionData]);
 
-  const ConsumerCategoryIcon = ({ type }: { type: ConsumerCategoryType }) => {
-    switch (type) {
-      case 'Commercial': return <Building className="h-4 w-4 text-muted-foreground" />;
-      case 'Industrial': return <Sun className="h-4 w-4 text-muted-foreground" />; 
-      case 'Housing Society': return <Building className="h-4 w-4 text-muted-foreground" />;
-      case 'Individual/Bungalow': return <Home className="h-4 w-4 text-muted-foreground" />;
-      default: return <ClipboardList className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-  
   if (isLoading) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
@@ -110,7 +100,6 @@ export default function SurveyReportsPage() {
           </Button>
         }
       />
-
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -124,26 +113,25 @@ export default function SurveyReportsPage() {
             </p>
           </CardContent>
         </Card>
-        {/* Add more stat cards if needed */}
       </div>
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
-                <CardTitle>Location-wise Distribution</CardTitle>
+                <User className="h-5 w-5 text-primary" />
+                <CardTitle>User-wise Distribution</CardTitle>
             </div>
-            <CardDescription>Number of surveys conducted per location in the last 30 days.</CardDescription>
+            <CardDescription>Number of surveys conducted per user in the last 30 days.</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px] pb-0">
-            {locationDistributionData.length > 0 ? (
-              <ChartContainer config={locationChartConfig} className="w-full h-full">
+            {userDistributionData.length > 0 ? (
+              <ChartContainer config={userChartConfig} className="w-full h-full">
                 <ResponsiveContainer>
-                  <BarChart data={locationDistributionData} layout="vertical" margin={{ right: 30, left: 10 }}>
+                  <BarChart data={userDistributionData} layout="vertical" margin={{ right: 30, left: 10 }}>
                     <CartesianGrid horizontal={false} />
                     <XAxis type="number" allowDecimals={false} />
-                    <YAxis dataKey="location" type="category" tickLine={false} axisLine={false} tickMargin={8} width={80} />
+                    <YAxis dataKey="user" type="category" tickLine={false} axisLine={false} tickMargin={8} width={80} />
                     <RechartsTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="surveys" fill="var(--color-surveys)" radius={[0, 4, 4, 0]} barSize={30}>
                         <LabelList dataKey="surveys" position="right" offset={8} className="fill-foreground" fontSize={12} />
@@ -152,7 +140,7 @@ export default function SurveyReportsPage() {
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">No survey data for location distribution.</div>
+              <div className="flex items-center justify-center h-full text-muted-foreground">No survey data for user distribution.</div>
             )}
           </CardContent>
         </Card>
@@ -163,7 +151,7 @@ export default function SurveyReportsPage() {
                 <ClipboardList className="h-5 w-5 text-primary" />
                 <CardTitle>Type-wise Distribution</CardTitle>
             </div>
-            <CardDescription>Breakdown of surveys by type in the last 30 days.</CardDescription>
+            <CardDescription>Breakdown of surveys by consumer type in the last 30 days.</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px] pb-0">
             {typeDistributionData.length > 0 ? (
@@ -189,7 +177,7 @@ export default function SurveyReportsPage() {
       
       <Card className="mt-6">
         <CardHeader>
-            <CardTitle>Recent Surveys List (Last 30 Days)</CardTitle>
+            <CardTitle>Recent Surveys (Last 30 Days)</CardTitle>
             <CardDescription>A quick look at the most recent surveys.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,10 +186,9 @@ export default function SurveyReportsPage() {
                     {surveysInLast30Days.slice(0, 5).map(survey => ( 
                         <div key={survey.id} className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50">
                             <div>
-                                <p className="font-medium text-sm">Survey No: {survey.surveyNumber.slice(-8)}</p>
+                                <p className="font-medium text-sm">{survey.consumerName}</p>
                                 <p className="text-xs text-muted-foreground">
-                                    <MapPin className="inline h-3 w-3 mr-1"/>{survey.location} - 
-                                    <ConsumerCategoryIcon type={survey.consumerCategory as ConsumerCategoryType}/> {survey.consumerCategory}
+                                    {survey.location} - {survey.consumerCategory}
                                 </p>
                             </div>
                             <div className="text-right">
@@ -216,7 +203,6 @@ export default function SurveyReportsPage() {
             )}
         </CardContent>
       </Card>
-
     </>
   );
 }

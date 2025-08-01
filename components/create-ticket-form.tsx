@@ -107,7 +107,7 @@ export const CreateTicketForm: React.FC<CreateTicketFormProps> = ({ isOpen, onCl
   };
   
   const handleDealSelect = (deal: Deal) => {
-      form.setValue('ticketFor', deal.dealFor || `Deal ID: ${deal.id}`);
+      form.setValue('ticketFor', deal.dealFor || `Deal Value: ${deal.dealValue}`);
       form.setValue('dealId', deal.id);
   };
 
@@ -169,7 +169,7 @@ export const CreateTicketForm: React.FC<CreateTicketFormProps> = ({ isOpen, onCl
                             <SelectValue placeholder="Select deal" />
                         </SelectTrigger>
                         <SelectContent>
-                            {deals.map(d => <SelectItem key={d.id} value={d.id}>{d.dealFor || `Deal ID: ${d.id}`}</SelectItem>)}
+                            {deals.map(d => <SelectItem key={d.id} value={d.id}>{ d.dealFor || `Deal Value: ${d.dealValue}`}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <FormControl>

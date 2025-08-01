@@ -24,6 +24,7 @@ model User {
   phone     String
   password  String
   role      String   @default("TechnoSales")
+  deviceId  String?  @unique
   isActive  Boolean  @default(true)
   viewPermission   ViewPermission @default(ASSIGNED)
   createdAt DateTime @default(now())

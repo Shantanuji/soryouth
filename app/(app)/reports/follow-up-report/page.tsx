@@ -160,7 +160,7 @@ export default function FollowUpReportPage() {
                             <CardTitle>soryouth renewable energy private limited</CardTitle>
                             <CardDescription>9967691159 / soryouthenergy@gmail.com</CardDescription>
                         </div>
-                         <img src="https://placehold.co/150x50.png?text=Bytepaper" data-ai-hint="logo placeholder" alt="Bytepaper logo placeholder" />
+                         <img src="https://placehold.co/150x50.png?text=Soryouth" data-ai-hint="logo placeholder" alt="Bytepaper logo placeholder" />
                     </CardHeader>
                     <CardContent>
                         <p className="text-center font-semibold mb-4">Follow-up report</p>

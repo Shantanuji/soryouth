@@ -170,7 +170,7 @@ export default function DealsPage() {
                     {...provided.droppableProps}
                     className={`p-4 border-2 border-dashed rounded-full transition-colors duration-200 ${snapshot.isDraggingOver ? 'border-destructive bg-destructive/20' : 'border-muted-foreground/50'}`}
                 >
-                    <Trash2 className={`h-8 w-8 transition-colors ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                    <Trash2 className={`h-5 w-8 transition-colors ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
                      {provided.placeholder}
                 </div>
             )}

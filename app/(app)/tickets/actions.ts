@@ -130,3 +130,26 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus,
         return { success: false, error: 'An unexpected error occurred.' };
     }
 }
+
+export async function deleteClosedTickets(ticketIds: string[]): Promise<{ success: boolean; count: number; error?: string }> {
+    const session = await verifySession();
+    if (!session?.userId) {
+        return { success: false, count: 0, error: 'Authentication required.' };
+    }
+
+    try {
+        const { count } = await prisma.ticket.deleteMany({
+            where: {
+                id: {
+                    in: ticketIds,
+                },
+                status: 'Closed',
+            },
+        });
+        revalidatePath('/tickets');
+        return { success: true, count };
+    } catch (error) {
+        console.error('Failed to delete closed tickets:', error);
+        return { success: false, count: 0, error: 'An unexpected error occurred.' };
+    }
+}

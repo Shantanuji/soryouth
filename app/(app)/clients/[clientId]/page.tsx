@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES, DEAL_PIPELINES } from '@/lib/constants';
 import type { Client, User, UserOptionType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateClientData, ClientStatusType, ClientPriorityType, Proposal, CustomSetting, SiteSurvey, DocumentType, Deal, DealPipelineType, DealStage, ClientType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, LoaderPinwheel } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getClientById, updateClient, addClientActivity, getActivitiesForClient, convertClientToLead } from '@/app/(app)/clients-list/actions';
 import { getProposalsForClient, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -35,7 +35,9 @@ import { DocumentCreationDialog } from '@/app/(app)/documents/document-creation-
 import { DocumentTemplateSelectionDialog } from '@/app/(app)/documents/document-template-selection-dialog';
 import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
+import { sendCallNotification } from '@/lib/fcm';
+import { useSession } from '@/hooks/use-sessions';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ActivityIcon = ({ type, className }: { type: string, className?: string }) => {
   const defaultClassName = "h-4 w-4";
@@ -90,6 +92,8 @@ const SurveyDetailsCard = ({ survey }: { survey: SiteSurvey }) => {
 
 export default function ClientDetailsPage() {
   const router = useRouter();
+  const session = useSession();
+  const isMobile = useIsMobile();
   const params = useParams();
   const searchParams = useSearchParams();
   const clientId = typeof params.clientId === 'string' ? params.clientId : null;
@@ -479,11 +483,58 @@ export default function ClientDetailsPage() {
       }
     });
   };
+  
+
+  const handleInitiateCall = () => {
+    if (!client || !client.phone ) {
+        toast({ title: "Cannot Initiate Call", description: "Client must have a phone number and be assigned to a user.", variant: "destructive" });
+        return;
+    }
+    const loggedInUser = users.find(u => u.id === session?.userId);
+    if (!loggedInUser?.deviceId) {
+        toast({ title: "Cannot Initiate Call", description: "You do not have a registered mobile device. Please login to the mobile app.", variant: "destructive" });
+        return;
+    }
+
+    startUpdateTransition(async () => {
+        toast({ title: "Initiating Call...", description: "Sending notification to your mobile device." });
+        const result = await sendCallNotification(loggedInUser.deviceId!, client.phone!, client.name);
+        if (result.success) {
+            toast({ title: "Notification Sent", description: "Check your mobile device to place the call." });
+        } else {
+            toast({ title: "Failed to Send Notification", description: result.error, variant: "destructive" });
+        }
+    });
+  };
+
+  const CallButton = () => {
+    if (!client?.phone) {
+      return (
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled>
+          <Phone className="h-5 w-5" />
+        </Button>
+      );
+    }
+    if (isMobile) {
+      return (
+        <a href={`tel:${client.phone}`}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+            <Phone className="h-5 w-5" />
+          </Button>
+        </a>
+      );
+    }
+    return (
+      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={isUpdating} onClick={handleInitiateCall}>
+        <Phone className="h-5 w-5" />
+      </Button>
+    );
+  };
 
   if (client === undefined) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <LoaderPinwheel className="h-12 w-12 animate-spin text-primary" />
             <p className="ml-4 text-lg text-muted-foreground">Loading Client Details...</p>
         </div>
     );
@@ -571,9 +622,7 @@ export default function ClientDetailsPage() {
                 <CardTitle className="text-md">Communication</CardTitle>
               </CardHeader>
               <CardContent className="flex justify-around items-center">
-                <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled={!client.phone}>
-                  <a href={client.phone ? `tel:${client.phone}` : undefined}><Phone className="h-5 w-5" /></a>
-                </Button>
+                <CallButton />
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageCircle className="h-5 w-5" /></Button>
