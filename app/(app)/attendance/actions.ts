@@ -5,7 +5,8 @@ import prisma from '@/lib/prisma';
 import { verifySession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { differenceInMinutes, format, startOfDay, endOfDay } from 'date-fns';
-import type { Attendance } from '@/types';
+import type { Attendance, User } from '@/types';
+import { getUsers } from '../users/actions';
 
 // Helper to format duration from minutes to "Xh Ym"
 function formatDuration(minutes: number | null | undefined): string {
@@ -120,15 +121,22 @@ export async function punchOut(location: { latitude: number; longitude: number }
     }
 }
 
-export async function getAllAttendanceRecords(): Promise<Attendance[]> {
+export async function getAttendanceData(): Promise<{ records: Attendance[], users: User[] }> {
     try {
-        const records = await prisma.attendance.findMany({
-            include: { user: { select: { name: true } } },
-            orderBy: { punchInTime: 'desc' },
-        });
-        return records.map(mapPrismaAttendance);
+        const [records, users] = await Promise.all([
+            prisma.attendance.findMany({
+                include: { user: { select: { name: true } } },
+                orderBy: { punchInTime: 'desc' },
+            }),
+            getUsers()
+        ]);
+        
+        return {
+            records: records.map(mapPrismaAttendance),
+            users: users
+        };
     } catch (error) {
-        console.error('Failed to get attendance records:', error);
-        return [];
+        console.error('Failed to get attendance data:', error);
+        return { records: [], users: [] };
     }
 }
