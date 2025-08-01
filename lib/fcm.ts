@@ -5,15 +5,20 @@ import admin from 'firebase-admin';
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
   try {
-    const serviceAccount = require('calltriggerapp-55e2f-firebase-key.json');
     const projectId = process.env.FCM_PROJECT_ID;
+    const clientEmail = process.env.FCM_CLIENT_EMAIL;
+    const privateKey = process.env.FCM_PRIVATE_KEY; 
 
     if (!projectId) {
       throw new Error("FCM environment variable - FCM_PROJECT_ID & Service Account Path are not set.");
     }
     
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert({
+        projectId: projectId,
+        clientEmail: clientEmail,
+        privateKey: privateKey,
+      }),
       databaseURL: undefined,
     });
     console.log("Firebase Admin SDK initialized successfully.");
