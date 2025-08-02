@@ -55,7 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
 // Secondary Navigation for tools/other sections, in user profile dropdown
 export const TOOLS_NAV_ITEMS: NavItem[] = [
   { href: '/survey-list', label: 'Survey List', icon: ClipboardList },
-  { href: '/site-survey', label: 'Survey Form', icon: MapPinnedIcon}
+  { href: '/site-survey', label: 'Survey Form', icon: MapPinnedIcon},
   { href: '/expenses', label: 'Expenses', icon: Notebook },
   { href: '/view-expenses', label: 'View Expenses', icon: ClipboardCheck },
   { href: '/attendance', label: 'Attendance', icon: CheckSquare },
