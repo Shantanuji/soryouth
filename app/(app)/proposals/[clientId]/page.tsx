@@ -108,7 +108,7 @@ export default function CustomerProposalsPage() {
   
   const getCustomerDetailLink = () => {
       if (!customer) return '#';
-      if ('source' in customer) return `/leads/${customer.id}`; // Lead
+      if ('dropReason' in customer) return `/leads/${customer.id}`; // Lead
       if ('droppedAt' in customer) return `/dropped-leads/${customer.id}`; // Dropped Lead
       return `/clients/${customer.id}`; // Client
   };
