@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CLIENT_TYPES } from '@/lib/constants';
 import type { DroppedLead, FollowUp, SiteSurvey, Proposal, LeadSourceOptionType, ClientType, CustomSetting } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, UserCircle2, Loader2, Send, Video, Building, Repeat, CalendarX2, Phone, MessageSquare, Mail, ClipboardEdit, Eye, UploadCloud, FileText, IndianRupee } from 'lucide-react';
+import { ChevronLeft, ChevronsLeft, ChevronsRight,UserCircle2, Loader2, Send, Video, Building, Repeat, CalendarX2, Phone, MessageSquare, Mail, ClipboardEdit, Eye, UploadCloud, FileText, IndianRupee } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getDroppedLeadById, getActivitiesForDroppedLead, reactivateLead, getSurveysForDroppedLead, getProposalsForDroppedLead, updateDroppedLead } from '@/app/(app)/dropped-leads-list/actions';
 import { getLeadSources } from '@/app/(app)/settings/actions';
@@ -94,6 +94,32 @@ export default function DroppedLeadDetailsPage() {
   const [billToPreview, setBillToPreview] = useState<string|null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedProposalForPreview, setSelectedProposalForPreview] = useState<Proposal | null>(null);
+
+    const [navigationIds, setNavigationIds] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+
+  useEffect(() => {
+    try {
+        const storedIds = sessionStorage.getItem('navigation_ids');
+        if (storedIds) {
+            const ids = JSON.parse(storedIds);
+            setNavigationIds(ids);
+            if (droppedId) {
+                setCurrentIndex(ids.indexOf(droppedId));
+            }
+        }
+    } catch (e) {
+        console.error("Failed to parse navigation IDs from sessionStorage", e);
+    }
+  }, [droppedId]);
+
+  const navigateTo = (direction: 'next' | 'prev') => {
+    if(currentIndex === -1) return;
+    const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if(navigationIds[nextIndex]) {
+        router.push(`/dropped-leads/${navigationIds[nextIndex]}`);
+    }
+  };
 
   useEffect(() => {
     if (droppedId) {
@@ -260,6 +286,12 @@ export default function DroppedLeadDetailsPage() {
           <Button variant="outline" size="sm" onClick={() => router.back()}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
+          <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
+                <ChevronsLeft className="h-4 w-4 mr-1" /> Prev
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
+                Next <ChevronsRight className="h-4 w-4 ml-1" />
+            </Button>
         </div>
       </div>
 

@@ -7,20 +7,22 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Proposal, Client, Lead, ClientType, DroppedLead } from '@/types';
-import { FileText, PlusCircle, User, Building, Home, Briefcase, Rows, IndianRupee, Loader2, Search, UserX } from 'lucide-react';
+import { FileText, PlusCircle, User, Building, Home, Briefcase, Rows, IndianRupee, Loader2, Search, UserX, Filter as FilterIcon,  ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { getActiveClients, getInactiveClients } from '@/app/(app)/clients-list/actions';
 import { getLeads } from '@/app/(app)/leads-list/actions';
 import { getDroppedLeads } from '@/app/(app)/dropped-leads-list/actions';
-import { getAllProposals } from './actions';
+import { getAllProposals, createOrUpdateProposal } from './actions';
 import { TemplateSelectionDialog } from './template-selection-dialog';
 import { Badge } from '@/components/ui/badge';
 import { ProposalForm } from './proposal-form';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 
 type Customer = (Client | Lead | DroppedLead) & { isDropped?: boolean; isInactive?: boolean };
+type SortOption = 'newest' | 'oldest' | 'value_high' | 'value_low' | 'name_asc';
 
 interface CustomerProposalGroup {
   details: Customer;
@@ -56,25 +58,27 @@ export default function ProposalsListPage() {
   const [isBatchTemplateDialogOpen, setIsBatchTemplateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
 
+  const fetchData = async () => {
+    setIsLoading(true);
+    const [fetchedClients, fetchedInactiveClients, fetchedLeads, fetchedProposals, fetchedDroppedLeads] = await Promise.all([
+      getActiveClients(),
+      getInactiveClients(),
+      getLeads(),
+      getAllProposals(),
+      getDroppedLeads(),
+    ]);
+    setClients(fetchedClients);
+    setInactiveClients(fetchedInactiveClients);
+    setLeads(fetchedLeads);
+    setProposals(fetchedProposals);
+    setDroppedLeads(fetchedDroppedLeads);
+    setIsLoading(false);
+  };
+  
   useEffect(() => {
-    const fetchAllData = async () => {
-      setIsLoading(true);
-      const [fetchedClients, fetchedInactiveClients, fetchedLeads, fetchedProposals, fetchedDroppedLeads] = await Promise.all([
-        getActiveClients(),
-        getInactiveClients(),
-        getLeads(),
-        getAllProposals(),
-        getDroppedLeads(),
-      ]);
-      setClients(fetchedClients);
-      setInactiveClients(fetchedInactiveClients);
-      setLeads(fetchedLeads);
-      setProposals(fetchedProposals);
-      setDroppedLeads(fetchedDroppedLeads);
-      setIsLoading(false);
-    };
-    fetchAllData();
+    fetchData();
   }, []);
   
   const customerProposalGroups = useMemo(() => {
@@ -117,8 +121,23 @@ export default function ProposalsListPage() {
       }
     });
 
-    return Array.from(groups.values()).sort((a,b) => new Date(b.lastProposalDate).getTime() - new Date(a.lastProposalDate).getTime());
-  }, [proposals, clients, inactiveClients, leads, droppedLeads, searchTerm]);
+const sortedGroups = Array.from(groups.values()).sort((a,b) => {
+        switch (sortOption) {
+            case 'oldest':
+                return new Date(a.lastProposalDate).getTime() - new Date(b.lastProposalDate).getTime();
+            case 'value_high':
+                return b.totalValue - a.totalValue;
+            case 'value_low':
+                return a.totalValue - b.totalValue;
+            case 'name_asc':
+                return a.details.name.localeCompare(b.details.name);
+            case 'newest':
+            default:
+                return new Date(b.lastProposalDate).getTime() - new Date(a.lastProposalDate).getTime();
+        }
+    });
+    return sortedGroups;
+  }, [proposals, clients, inactiveClients, leads, droppedLeads, searchTerm, sortOption]);
   
   const handleCreateNewProposal = () => {
     setIsTemplateDialogOpen(true);
@@ -133,6 +152,24 @@ export default function ProposalsListPage() {
   const handleBatchTemplateSelected = (templateId: string) => {
     setIsBatchTemplateDialogOpen(false);
     router.push(`/proposals/batch?templateId=${templateId}`);
+  };
+
+  const handleFormSubmit = async (data: Partial<Proposal>) => {
+    const result = await createOrUpdateProposal(data);
+    if (result) {
+        toast({ title: 'Success', description: `Proposal ${result.proposalNumber} has been created.` });
+        setIsFormOpen(false);
+        fetchData(); // Refresh all data
+    } else {
+        toast({ title: 'Error', description: 'Failed to create the proposal.', variant: 'destructive' });
+    }
+  };
+
+  const getCustomerDetailLink = (details: Customer) => {
+      if ('dropReason' in details) return `/dropped-leads/${details.id}`;
+      // Check for lead-specific property that isn't on a client
+      if ('nextFollowUpDate' in details && !details.isInactive) return `/leads/${details.id}`; 
+      return `/clients/${details.id}`;
   };
 
   return (
@@ -153,6 +190,21 @@ export default function ProposalsListPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                        <ArrowUpDown className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Sort Customers By</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={sortOption} onValueChange={(v) => setSortOption(v as SortOption)}>
+                        <DropdownMenuRadioItem value="newest">Newest First</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="oldest">Oldest First</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
              <Button variant="outline" onClick={() => setIsBatchTemplateDialogOpen(true)}>
                 <Rows className="mr-2 h-4 w-4" /> Batch Proposals
             </Button>
@@ -227,10 +279,7 @@ export default function ProposalsListPage() {
          <ProposalForm
           isOpen={isFormOpen}
           onClose={() => { setIsFormOpen(false); setSelectedTemplateId(null); }}
-          onSubmit={(data) => {
-            toast({ title: "Redirecting...", description: "Proposal form logic is handled in the detail pages." });
-            setIsFormOpen(false);
-          }}
+          onSubmit={handleFormSubmit}
           templateId={selectedTemplateId}
           clients={clients}
           leads={leads}

@@ -595,6 +595,7 @@ export default function LeadsListPage() {
         columnVisibility={columnVisibility}
         selectedIds={selectedLeadIds}
         setSelectedIds={setSelectedLeadIds}
+        allFilteredIds={allFilteredLeads.map(l => l.id)}
       />
 
        <div className="flex items-center justify-between pt-4">

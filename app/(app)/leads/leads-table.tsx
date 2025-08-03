@@ -49,6 +49,7 @@ interface LeadsTableProps<T extends Item> {
   columnVisibility?: Record<string, boolean>;
   selectedIds: string[];
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
+  allFilteredIds: string[];
 }
 
 const formatDate = (dateString?: string | null) => {
@@ -64,7 +65,11 @@ const formatDate = (dateString?: string | null) => {
   }
 };
 
-export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, sortConfig, requestSort, columnVisibility, selectedIds, setSelectedIds }: LeadsTableProps<T>) {
+export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, sortConfig, requestSort, columnVisibility, selectedIds, setSelectedIds, allFilteredIds }: LeadsTableProps<T>) {
+
+  const handleRowClick = () => {
+    sessionStorage.setItem('navigation_ids', JSON.stringify(allFilteredIds));
+  };
 
   const getSourceBadgeVariant = (source?: string | null) => {
     if (!source) return 'outline';
@@ -122,7 +127,7 @@ export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, 
         />
       </TableCell>
       <TableCell className="font-medium py-3">
-        <Link href={href} className="hover:underline text-primary">
+        <Link href={href} className="hover:underline text-primary" onClick={handleRowClick}>
           {item.name}
         </Link>
       </TableCell>
