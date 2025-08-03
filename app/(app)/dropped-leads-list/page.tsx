@@ -318,6 +318,7 @@ export default function DroppedLeadsListPage() {
         columnVisibility={columnVisibility}
         selectedIds={selectedLeadIds}
         setSelectedIds={setSelectedLeadIds}
+        allFilteredIds={allFilteredLeads.map(l => l.id)}
       />
       <div className="flex items-center justify-between pt-4">
         <div className="text-sm text-muted-foreground">

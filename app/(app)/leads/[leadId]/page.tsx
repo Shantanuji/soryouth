@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { LEAD_PRIORITY_OPTIONS, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_TYPES, DROP_REASON_OPTIONS } from '@/lib/constants';
 import type { Lead, User, LeadStatusType, LeadPriorityType, ClientType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateLeadData, DropReasonType, Proposal, CustomSetting, SiteSurvey, LeadSourceOptionType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead } from '@/app/(app)/leads-list/actions';
 import { getProposalsForLead, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -140,6 +140,32 @@ export default function LeadDetailsPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedProposalForPreview, setSelectedProposalForPreview] = useState<Proposal | null>(null);
   const [billToPreview, setBillToPreview] = useState<string|null>(null);
+
+  const [navigationIds, setNavigationIds] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+
+  useEffect(() => {
+    try {
+        const storedIds = sessionStorage.getItem('navigation_ids');
+        if (storedIds) {
+            const ids = JSON.parse(storedIds);
+            setNavigationIds(ids);
+            if (leadId) {
+                setCurrentIndex(ids.indexOf(leadId));
+            }
+        }
+    } catch (e) {
+        console.error("Failed to parse navigation IDs from sessionStorage", e);
+    }
+  }, [leadId]);
+
+  const navigateTo = (direction: 'next' | 'prev') => {
+    if(currentIndex === -1) return;
+    const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if(navigationIds[nextIndex]) {
+        router.push(`/leads/${navigationIds[nextIndex]}`);
+    }
+  };
 
   const dropForm = useForm<DropLeadFormValues>({
     resolver: zodResolver(dropLeadSchema),
@@ -566,9 +592,14 @@ export default function LeadDetailsPage() {
                 </AlertDialogContent>
             </AlertDialog>
           <Button variant="outline" size="sm" onClick={() => router.back()}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back
+            <ChevronLeft className="h-4 w-4 mr-1" /> Back To List
           </Button>
-          <Button variant="outline" size="sm" disabled>Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+          <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
+                <ChevronsLeft className="h-4 w-4 mr-1" /> Prev
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
+                Next <ChevronsRight className="h-4 w-4 ml-1" />
+            </Button>
         </div>
       </div>
 

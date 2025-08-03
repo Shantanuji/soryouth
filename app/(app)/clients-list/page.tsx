@@ -436,6 +436,7 @@ export default function ClientsListPage() {
         columnVisibility={columnVisibility}
         selectedIds={selectedClientIds}
         setSelectedIds={setSelectedClientIds}
+        allFilteredIds={allFilteredClients.map(c => c.id)}
       />
 
        <div className="flex items-center justify-between pt-4">

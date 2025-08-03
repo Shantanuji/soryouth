@@ -142,6 +142,32 @@ export default function ClientDetailsPage() {
   const [selectedProposalForPreview, setSelectedProposalForPreview] = useState<Proposal | null>(null);
   const [billToPreview, setBillToPreview] = useState<string|null>(null);
 
+  const [navigationIds, setNavigationIds] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+
+  useEffect(() => {
+    try {
+        const storedIds = sessionStorage.getItem('navigation_ids');
+        if (storedIds) {
+            const ids = JSON.parse(storedIds);
+            setNavigationIds(ids);
+            if (clientId) {
+                setCurrentIndex(ids.indexOf(clientId));
+            }
+        }
+    } catch (e) {
+        console.error("Failed to parse navigation IDs from sessionStorage", e);
+    }
+  }, [clientId]);
+
+  const navigateTo = (direction: 'next' | 'prev') => {
+    if(currentIndex === -1) return;
+    const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if(navigationIds[nextIndex]) {
+        router.push(`/clients/${navigationIds[nextIndex]}`);
+    }
+  };
+
   const fetchProposals = async () => {
     if (clientId) {
       const fetchedProposals = await getProposalsForClient(clientId);
@@ -570,7 +596,12 @@ export default function ClientDetailsPage() {
           <Button variant="outline" size="sm" onClick={() => router.back()}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
-          <Button variant="outline" size="sm" disabled>Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+          <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
         </div>
       </div>
 
