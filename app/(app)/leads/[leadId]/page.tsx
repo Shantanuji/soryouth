@@ -591,7 +591,7 @@ export default function LeadDetailsPage() {
                     </Form>
                 </AlertDialogContent>
             </AlertDialog>
-          <Button variant="outline" size="sm" onClick={() => router.back()}>
+          <Button variant="outline" size="sm" onClick={() => router.push('/leads-list')}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back To List
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>

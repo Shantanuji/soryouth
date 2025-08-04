@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES, DEAL_PIPELINES } from '@/lib/constants';
 import type { Client, User, UserOptionType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateClientData, ClientStatusType, ClientPriorityType, Proposal, CustomSetting, SiteSurvey, DocumentType, Deal, DealPipelineType, DealStage, ClientType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, LoaderPinwheel, LoaderIcon, Loader } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getClientById, updateClient, addClientActivity, getActivitiesForClient, convertClientToLead } from '@/app/(app)/clients-list/actions';
 import { getProposalsForClient, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -593,14 +593,14 @@ export default function ClientDetailsPage() {
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{client.name}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.back()}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back
+          <Button variant="outline" size="sm" onClick={() => router.push(client.status === 'Inactive' ? '/inactive-clients' : '/clients-list')}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Back to List
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
-                <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                <ChevronsLeft className="h-4 w-4 mr-1" /> Prev
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
-                Next <ChevronRight className="h-4 w-4 ml-1" />
+                Next <ChevronsRight className="h-4 w-4 ml-1" />
             </Button>
         </div>
       </div>
