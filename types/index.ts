@@ -433,6 +433,7 @@ export interface Deal {
   assignedTo?: string | null;
   poWoDate: string; // ISO string
   createdAt: string;
+  createdBy: string | null;
   updatedAt: string;
   amcDurationInMonths?: number | null;
   amcEffectiveDate?: string | null;

@@ -17,6 +17,7 @@ function mapPrismaDeal(deal: any): Deal {
         dealValue: Number(deal.dealValue),
         poWoDate: deal.poWoDate.toISOString(),
         createdAt: deal.createdAt.toISOString(),
+        createdBy: deal.createdBy?.name,
         updatedAt: deal.updatedAt.toISOString(),
         assignedTo: deal.assignedTo?.name,
         clientId: deal.clientId ?? undefined,
@@ -145,12 +146,12 @@ export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | nu
                 resultDeal = await tx.deal.update({
                     where: { id: data.id },
                     data: { ...dataToSave, ...relationalData, },
-                    include: { client: true, assignedTo: true }
+                    include: { client: true, assignedTo: true, createdBy: true }
                 });
             } else {
                  resultDeal = await tx.deal.create({
                     data: { ...dataToSave, createdBy: { connect: { id: session.userId! } }, ...relationalData, },
-                    include: { client: true, assignedTo: true }
+                    include: { client: true, assignedTo: true, createdBy: true }
                 });
             }
 
@@ -168,6 +169,7 @@ export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | nu
             revalidatePath(`/clients/${savedDeal.clientId}`);
         }
         revalidatePath('/deals');
+        revalidatePath('/dashboard');
 
         return mapPrismaDeal(savedDeal);
     } catch (error) {
@@ -182,7 +184,7 @@ export async function getDealsForClient(clientId: string): Promise<Deal[]> {
         const deals = await prisma.deal.findMany({
             where: { clientId },
             orderBy: { createdAt: 'desc' },
-            include: { assignedTo: true, client: true }
+            include: { assignedTo: true, client: true, createdBy: true }
         });
         return deals.map(mapPrismaDeal);
     } catch (error) {
@@ -204,7 +206,7 @@ export async function getAllDeals(): Promise<Deal[]> {
         const deals = await prisma.deal.findMany({
             where: whereClause,
             orderBy: { createdAt: 'desc' },
-            include: { assignedTo: true, client: true }
+            include: { assignedTo: true, client: true, createdBy: true }
         });
         return deals.map(mapPrismaDeal);
     } catch (error) {
@@ -230,7 +232,7 @@ export async function updateDealStage(dealId: string, newStage: DealStage): Prom
                     // Set effective date only if it's the first time moving to Active
                     amcEffectiveDate: isBecomingActiveAmc && !dealToUpdate.amcEffectiveDate ? new Date() : dealToUpdate.amcEffectiveDate,
                  },
-                include: { assignedTo: true, client: true }
+                include: { assignedTo: true, client: true, createdBy: true }
             });
             
             const dealWithDate = await tx.deal.findUnique({ where: {id: dealId}});
@@ -242,6 +244,7 @@ export async function updateDealStage(dealId: string, newStage: DealStage): Prom
 
         revalidatePath('/deals');
         revalidatePath(`/deals/${dealId}`);
+        revalidatePath('/dashboard');
         return { success: true, deal: mapPrismaDeal(updatedDeal), tasksCreatedCount };
     } catch (error) {
         console.error(`Failed to update stage for deal ${dealId}:`, error);
@@ -272,6 +275,7 @@ export async function updateDeal(id: string, data: Partial<Pick<Deal, 'assignedT
         });
 
         revalidatePath(`/deals/${id}`);
+        revalidatePath('/dashboard');
         return mapPrismaDeal(updatedDeal);
     } catch (error) {
         console.error(`Failed to update deal ${id}:`, error);
@@ -286,7 +290,7 @@ export async function updateDealEffectiveDate(dealId: string, newDate: Date): Pr
             const deal = await tx.deal.update({
                 where: { id: dealId },
                 data: { amcEffectiveDate: newDate },
-                include: { assignedTo: true, client: true },
+                include: { assignedTo: true, client: true, createdBy: true },
             });
 
             tasksCreatedCount = await createAmcTasks(tx, deal);
@@ -294,6 +298,7 @@ export async function updateDealEffectiveDate(dealId: string, newDate: Date): Pr
         });
 
         revalidatePath(`/deals/${dealId}`);
+        revalidatePath('/dashboard');
         return { success: true, deal: mapPrismaDeal(updatedDeal), tasksCreatedCount };
     } catch (error) {
         console.error(`Failed to update effective date for deal ${dealId}:`, error);
@@ -367,6 +372,7 @@ export async function addDealActivity(data: AddActivityData): Promise<FollowUp |
     });
 
     revalidatePath(`/deals/${data.dealId}`);
+    revalidatePath('/dashboard');
 
     return newActivity ? mapPrismaFollowUpToFollowUpType(newActivity) : null;
   } catch (error) {

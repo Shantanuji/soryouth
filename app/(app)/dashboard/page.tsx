@@ -23,14 +23,15 @@ import {
 import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
-import type { Lead, Client, DroppedLead, User } from '@/types';
+import type { Lead, Client, DroppedLead, User, Deal } from '@/types';
 import { getLeads } from '@/app/(app)/leads-list/actions';
 import { getDroppedLeads } from '@/app/(app)/dropped-leads-list/actions';
 import { getActiveClients, getInactiveClients } from '@/app/(app)/clients-list/actions';
 import { getUsers } from '@/app/(app)/users/actions';
+import { getAllDeals } from '@/app/(app)/deals/actions';
 import { useToast } from '@/hooks/use-toast';
 import { punchIn, punchOut, getCurrentUserAttendanceStatus } from '@/app/(app)/attendance/actions';
-import { format, parseISO, startOfMonth } from 'date-fns';
+import { format, parseISO, startOfMonth, getYear, getMonth } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
@@ -50,6 +51,8 @@ export default function DashboardOverviewPage() {
     dealsByUser: [] as { name: string; value: number; fill: string }[],
     leadsByUser: [] as { name: string; value: number; fill: string }[],
     yearlySales: [] as { month: string; value: number; count: number }[],
+    totalSalesValue: 0,
+    totalSalesCount: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -69,12 +72,13 @@ export default function DashboardOverviewPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [activeLeads, droppedLeads, activeClients, inactiveClients, users] = await Promise.all([
+        const [activeLeads, droppedLeads, activeClients, inactiveClients, users, allDeals] = await Promise.all([
             getLeads({ ignorePermissions: true }),
             getDroppedLeads({ ignorePermissions: true }),
             getActiveClients({ ignorePermissions: true }),
             getInactiveClients({ ignorePermissions: true }),
             getUsers(),
+            getAllDeals(),
         ]);
         
         const userNames = users.map(u => u.name);
@@ -87,42 +91,66 @@ export default function DashboardOverviewPage() {
 
         const dealsByUser = userNames.map((user, index) => ({
             name: user,
-            value: activeClients.filter(client => client.assignedTo === user).length,
+            value: allDeals.filter(deal => deal.createdBy === user).length,
             fill: COLORS[index % COLORS.length],
         })).filter(item => item.value > 0);
         
-        // Process data for yearly charts
+        // Process data for yearly charts (Financial Year: April - March)
         const monthlyData: Record<string, { value: number, count: number }> = {};
-        const currentYear = new Date().getFullYear();
+        const now = new Date();
+        const currentMonth = getMonth(now); // 0-11
+        const currentYear = getYear(now);
+        
+        // Financial year starts in April. If we are before April, the financial year started last calendar year.
+        const financialYearStart = currentMonth < 3 ? currentYear - 1 : currentYear;
 
-        // Initialize all months for the current year
         for (let i = 0; i < 12; i++) {
-            const monthName = format(new Date(currentYear, i), 'MMM');
+            const monthIndex = (i + 3) % 12; // Start from April (month 3)
+            const year = financialYearStart + (monthIndex < 3 ? 1 : 0);
+            const monthName = format(new Date(year, monthIndex), 'MMM');
             monthlyData[monthName] = { value: 0, count: 0 };
         }
         
-        activeClients.forEach(client => {
-            const dealDate = parseISO(client.updatedAt);
-            if (dealDate.getFullYear() === currentYear) {
+        let totalSalesValue = 0;
+        let totalSalesCount = 0;
+
+        allDeals.forEach(deal => {
+            const dealDate = parseISO(deal.poWoDate);
+            const dealYear = getYear(dealDate);
+            const dealMonth = getMonth(dealDate);
+
+            const isCurrentFinancialYear = (dealYear === financialYearStart && dealMonth >= 3) || (dealYear === financialYearStart + 1 && dealMonth < 3);
+
+            if (isCurrentFinancialYear) {
                 const month = format(dealDate, 'MMM');
-                monthlyData[month].value += client.totalDealValue || 0;
+                monthlyData[month].value += deal.dealValue || 0;
                 monthlyData[month].count += 1;
+                totalSalesValue += deal.dealValue || 0;
+                totalSalesCount += 1;
             }
         });
         
-        const yearlySales = Object.entries(monthlyData).map(([month, data]) => ({
-            month, ...data
+        const financialYearMonths = Array.from({length: 12}, (_, i) => {
+            const monthIndex = (i + 3) % 12;
+            const year = financialYearStart + (monthIndex < 3 ? 1 : 0);
+            return format(new Date(year, monthIndex), 'MMM');
+        });
+
+        const yearlySales = financialYearMonths.map(month => ({
+            month, ...monthlyData[month]
         }));
 
 
         setDashboardData({
             totalLeads: activeLeads.length,
             totalClients: activeClients.length + inactiveClients.length,
-            dealsWon: activeClients.length,
+            dealsWon: activeClients.length, // This might need clarification if "Deals Won" means something else
             leadsDropped: droppedLeads.length,
             leadsByUser,
             dealsByUser,
             yearlySales,
+            totalSalesValue,
+            totalSalesCount,
         });
 
         await refreshAttendanceStatus();
@@ -188,8 +216,8 @@ export default function DashboardOverviewPage() {
     return config;
   }, [dashboardData.leadsByUser]);
 
-  const topSalesPerformers = [...dashboardData.dealsByUser].sort((a,b) => b.value - a.value).slice(0, 3);
-  const topLeadHandlers = [...dashboardData.leadsByUser].sort((a,b) => b.value - a.value).slice(0, 3);
+  const topSalesPerformers = [...dashboardData.dealsByUser].sort((a,b) => b.value - a.value);
+  const topLeadHandlers = [...dashboardData.leadsByUser].sort((a,b) => b.value - a.value);
 
   if (isLoading) {
     return (
@@ -356,17 +384,17 @@ export default function DashboardOverviewPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <IndianRupee className="h-5 w-5 text-primary" />
-              Yearly Sales (Value)
+              Yearly Sales (Value) - Total: ₹{dashboardData.totalSalesValue.toLocaleString('en-IN')}
             </CardTitle>
-            <CardDescription>Total sales value over the year.</CardDescription>
+            <CardDescription>Total sales value over the financial year (Apr-Mar).</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
              <ChartContainer config={chartConfig} className="w-full h-full">
                  <ResponsiveContainer>
-                  <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickFormatter={(value) => `Rs${Number(value) / 1000}k`} />
+                    <YAxis tickFormatter={(value) => `₹${Number(value) / 1000}k`} />
                     <Tooltip content={<ChartTooltipContent indicator="line" />} />
                     <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                   </LineChart>
@@ -378,9 +406,9 @@ export default function DashboardOverviewPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
              <LineChartIcon className="h-5 w-5 text-primary" />
-              Yearly Sales (Count)
+              Yearly Sales (Count) - Total: {dashboardData.totalSalesCount}
             </CardTitle>
-            <CardDescription>Total number of deals closed over the year.</CardDescription>
+            <CardDescription>Total number of deals closed over the financial year (Apr-Mar).</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
              <ChartContainer config={chartConfig} className="w-full h-full">
