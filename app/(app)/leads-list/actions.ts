@@ -735,6 +735,7 @@ const leadImportSchema = z.object({
   Address: z.string().optional().or(z.literal('')),
   Priority: z.string().optional().or(z.literal('')),
   'Customer Type': z.string().optional().or(z.literal('')),
+  'Last Comment': z.string().optional().or(z.literal('')),
 });
 
 export async function importLeads(formData: FormData): Promise<{ success: boolean; message: string; createdCount: number, errorCount: number }> {
@@ -790,6 +791,7 @@ export async function importLeads(formData: FormData): Promise<{ success: boolea
         const userMap = new Map(users.map(u => [u.name.toLowerCase(), u.id]));
 
         const leadsToCreate = [];
+        let createdCount = 0;
         let errorCount = 0;
 
         for (const row of data) {
@@ -801,38 +803,51 @@ export async function importLeads(formData: FormData): Promise<{ success: boolea
 
             const { data: validRow } = validation;
             
-            let assignedToId: string | undefined = undefined;
-            if (validRow['Assigned To']) {
-                assignedToId = userMap.get(validRow['Assigned To'].toLowerCase());
-            }
+            await prisma.$transaction(async (tx) => {
+              let assignedToId: string | undefined = undefined;
+              if (validRow['Assigned To']) {
+                  assignedToId = userMap.get(validRow['Assigned To'].toLowerCase());
+              }
 
-            const leadData = {
-                name: validRow.Name,
-                email: validRow.Email || null,
-                phone: String(validRow.Phone || ''),
-                status: validRow.Status || 'Fresher',
-                source: validRow.Source || 'Other',
-                kilowatt: validRow.Kilowatt || null,
-                address: validRow.Address || null,
-                priority: validRow.Priority || 'Average',
-                clientType: validRow['Customer Type'] || 'Other',
-                createdById: session.userId,
-                assignedToId: assignedToId || null,
-            };
-            leadsToCreate.push(leadData);
-        }
+            const newLead = await tx.lead.create({
+                  data: {
+                      name: validRow.Name,
+                      email: validRow.Email || null,
+                      phone: String(validRow.Phone || ''),
+                      status: validRow.Status || 'Fresher',
+                      source: validRow.Source || 'Other',
+                      kilowatt: validRow.Kilowatt || null,
+                      address: validRow.Address || null,
+                      priority: validRow.Priority || 'Average',
+                      clientType: validRow['Customer Type'] || 'Other',
+                      createdById: session.userId,
+                      assignedToId: assignedToId || null,
+                      lastCommentText: validRow['Last Comment'] || null,
+                      lastCommentDate: validRow['Last Comment'] ? new Date() : null,
+                  }
+              });
 
-        if (leadsToCreate.length > 0) {
-            await prisma.lead.createMany({
-                data: leadsToCreate,
-                skipDuplicates: true,
+              if(validRow['Last Comment']) {
+                await tx.followUp.create({
+                  data: {
+                    leadId: newLead.id,
+                    type: 'Call',
+                    date: new Date(),
+                    status: 'Answered',
+                    comment: validRow['Last Comment'],
+                    followupOrTask: 'Followup',
+                    createdById: session.userId!,
+                  }
+                });
+              }
+              createdCount++;
             });
         }
         
         revalidatePath('/leads-list');
         
-        const message = `Import complete. ${leadsToCreate.length} leads successfully imported. ${errorCount > 0 ? `${errorCount} rows had errors and were skipped.` : ''}`;
-        return { success: true, message, createdCount: leadsToCreate.length, errorCount };
+        const message = `Import complete. ${createdCount} leads successfully imported. ${errorCount > 0 ? `${errorCount} rows had errors and were skipped.` : ''}`;
+        return { success: true, message, createdCount: createdCount, errorCount };
 
     } catch (error) {
         console.error("Failed to import leads:", error);
