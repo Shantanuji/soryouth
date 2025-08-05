@@ -283,7 +283,7 @@ export default function DroppedLeadDetailsPage() {
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{droppedLead.name}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.back()}>
+          <Button variant="outline" size="sm" onClick={() => router.push('/dropped-leads-list')}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>

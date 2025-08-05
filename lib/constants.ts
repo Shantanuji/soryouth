@@ -62,7 +62,6 @@ export const TOOLS_NAV_ITEMS: NavItem[] = [
   { href: '/survey-reports', label: 'Survey Reports', icon: MapPinnedIcon },
   { href: '/tickets', label: 'Tickets', icon: Ticket },
   { href: '/documents', label: 'Documents', icon: Files },
-  { href: '/documents', label: 'Financial Documents', icon: IndianRupee },
 ];
 
 export const DEAL_STAGES_SOLAR = ['Deal Done', 'Procurement', 'Installation', 'Commissioning', 'Handover'] as const;

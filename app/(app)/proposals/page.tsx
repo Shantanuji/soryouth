@@ -60,6 +60,9 @@ export default function ProposalsListPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('newest');
 
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const fetchData = async () => {
     setIsLoading(true);
     const [fetchedClients, fetchedInactiveClients, fetchedLeads, fetchedProposals, fetchedDroppedLeads] = await Promise.all([
@@ -138,6 +141,14 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
     });
     return sortedGroups;
   }, [proposals, clients, inactiveClients, leads, droppedLeads, searchTerm, sortOption]);
+
+   const paginatedGroups = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return customerProposalGroups.slice(start, end);
+  }, [customerProposalGroups, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(customerProposalGroups.length / pageSize);
   
   const handleCreateNewProposal = () => {
     setIsTemplateDialogOpen(true);
@@ -200,8 +211,11 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
                     <DropdownMenuLabel>Sort Customers By</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={sortOption} onValueChange={(v) => setSortOption(v as SortOption)}>
-                        <DropdownMenuRadioItem value="newest">Newest First</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="newest">Latest First</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="oldest">Oldest First</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="value_high">Value (High-Low)</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="value_low">Value (Low-High)</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="name_asc">Name (A-Z)</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -225,6 +239,7 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {customerProposalGroups.map(({ details, proposals: customerProposals, totalValue, lastProposalDate }) => {
             const customerType = 'dropReason' in details ? 'lead' : 'client';
@@ -261,6 +276,33 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
             );
           })}
         </div>
+        <div className="flex items-center justify-between pt-6">
+            <div className="text-sm text-muted-foreground">
+              Showing {paginatedGroups.length} of {customerProposalGroups.length} customers.
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
       )}
       
       <TemplateSelectionDialog
