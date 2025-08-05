@@ -2,13 +2,14 @@
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart3, Phone, ListChecks, Users, ChevronRight, Ticket, ClipboardCheck, ShieldCheck } from 'lucide-react'; // Assuming a generic icon for reports
+import { BarChart3, Phone, ListChecks, Users, ChevronRight, Ticket, ClipboardCheck, ShieldCheck, Handshake } from 'lucide-react'; // Assuming a generic icon for reports
 
 const reportItems = [
   { title: 'Call logs', description: 'Calls made by team in selected period of time', href: '/reports/call-logs', icon: Phone },
   { title: 'Follow-up report', description: 'Follow-up calls report in selected period of time', href: '/reports/follow-up-report', icon: ListChecks },
   { title: 'Follow-up dispositions', description: 'Follow-up calls disposition in selected period of time', href: '/reports/follow-up-dispositions', icon: Users },
   { title: 'Task report', description: 'Task report in selected period of time', href: '/reports/task-report', icon: ClipboardCheck },
+  { title: 'Deals report', description: 'Deals report in selected period of time', href: '/reports/deals-report', icon: Handshake },
   { title: 'All tickets', description: 'List of all tickets', href: '/tickets', icon: Ticket }, // Links to existing tickets page
   { title: 'Open tickets', description: 'List of open tickets', href: '/tickets?status=Open', icon: Ticket }, // Links to tickets page with filter
   { title: 'Closed tickets', description: 'List of closed tickets', href: '/tickets?status=Closed', icon: Ticket }, // Links to tickets page with filter
