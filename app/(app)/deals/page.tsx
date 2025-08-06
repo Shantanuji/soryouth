@@ -2,10 +2,10 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Handshake, Loader2, Trash2 } from 'lucide-react';
+import { Handshake, Loader2, Trash2, Search } from 'lucide-react';
 import { DEAL_PIPELINES, type DealPipelineType, type DealStage } from '@/lib/constants';
 import { DealsKanbanView } from './deals-kanban-view';
 import { DealForm, type DealFormValues } from './deal-form';
@@ -18,6 +18,8 @@ import { format } from 'date-fns';
 import { DragDropContext, type DropResult, Droppable } from '@hello-pangea/dnd';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function DealsPage() {
   const [selectedPipeline, setSelectedPipeline] = useState<DealPipelineType>('Solar PV Plant');
@@ -32,6 +34,8 @@ export default function DealsPage() {
 
   const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
 
   const refreshData = async () => {
@@ -51,8 +55,28 @@ export default function DealsPage() {
     refreshData();
   }, []);
 
+  const dealsForPipeline = useMemo(() => {
+    return deals.filter(d => {
+        if (d.pipeline !== selectedPipeline) return false;
+
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            const dealValueString = String(d.dealValue);
+            const kilowattString = String(d.kilowatt);
+
+            return (
+                d.clientName.toLowerCase().includes(lowercasedTerm) ||
+                (d.phone && d.phone.includes(lowercasedTerm)) ||
+                dealValueString.includes(lowercasedTerm) ||
+                (d.kilowatt != null && kilowattString.includes(lowercasedTerm))
+            );
+        }
+        
+        return true;
+    });
+  }, [deals, selectedPipeline, searchTerm]);
+
   const stages = DEAL_PIPELINES[selectedPipeline];
-  const dealsForPipeline = deals.filter(d => d.pipeline === selectedPipeline);
   const totalDeals = dealsForPipeline.length;
   const totalValue = dealsForPipeline.reduce((sum, deal) => sum + deal.dealValue, 0);
 
@@ -163,30 +187,35 @@ export default function DealsPage() {
             title={`Deals (${totalDeals} - ${totalValue.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 })})`}
             icon={Handshake}
         />
-        <Droppable droppableId="delete-zone">
-            {(provided, snapshot) => (
-                <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={`p-4 border-2 border-dashed rounded-full transition-colors duration-200 ${snapshot.isDraggingOver ? 'border-destructive bg-destructive/20' : 'border-muted-foreground/50'}`}
-                >
-                    <Trash2 className={`h-5 w-8 transition-colors ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
-                     {provided.placeholder}
+        <div className="flex items-center gap-4">
+            <Droppable droppableId="delete-zone">
+                {(provided, snapshot) => (
+                    <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`p-4 border-2 border-dashed rounded-full transition-colors duration-200 ${snapshot.isDraggingOver ? 'border-destructive bg-destructive/20' : 'border-muted-foreground/50'}`}
+                    >
+                        <Trash2 className={`h-8 w-8 transition-colors ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        {provided.placeholder}
+                    </div>
+                )}
+            </Droppable>
+            <div className="flex items-center gap-2">
+                 <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
+                  <Search className="mr-2 h-4 w-4" /> Search
+                </Button>
+                <div className="w-48">
+                <Select value={selectedPipeline} onValueChange={(value) => setSelectedPipeline(value as DealPipelineType)}>
+                    <SelectTrigger>
+                    <SelectValue placeholder="Select a pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    {Object.keys(DEAL_PIPELINES).map(pipeline => (
+                        <SelectItem key={pipeline} value={pipeline}>{pipeline}</SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
                 </div>
-            )}
-        </Droppable>
-        <div className="flex items-center gap-2">
-            <div className="w-48">
-              <Select value={selectedPipeline} onValueChange={(value) => setSelectedPipeline(value as DealPipelineType)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a pipeline" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(DEAL_PIPELINES).map(pipeline => (
-                    <SelectItem key={pipeline} value={pipeline}>{pipeline}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
         </div>
       </div>
@@ -222,6 +251,31 @@ export default function DealsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+       {isSearchOpen && (
+        <AlertDialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Search Deals</AlertDialogTitle>
+              <AlertDialogDescription>
+                Search by client name, mobile no, deal value, or kW.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4">
+              <Label htmlFor="search-input" className="sr-only">Search</Label>
+              <Input 
+                id="search-input"
+                placeholder="e.g. Green Valley, 987..., 500000, 50kW"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
+              <AlertDialogAction onClick={() => setIsSearchOpen(false)}>Apply</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
