@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useMemo, useEffect, useTransition } from 'react';
+import React, { useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { LeadsTable } from '@/app/(app)/leads/leads-table'; // Reusing this for consistent display
 import { Filter, Search, Settings2, ListFilter, Rows, Archive, ChevronDown } from 'lucide-react';
@@ -42,18 +42,20 @@ export default function InactiveClientsListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  
   const [sortConfig, setSortConfig] = useState<ClientSortConfig | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const [pageSize, setPageSize] = useState(10);
-  const currentPage = Number(searchParams.get('page')) || 1;
 
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [isAssignDialogOpen, setAssignDialogOpen] = useState(false);
   const [isStatusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignToUser, setAssignToUser] = useState<string>('');
   const [updateStatusTo, setUpdateStatusTo] = useState<ClientStatusType | ''>('');
+
+  // Read state from URL
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const searchTerm = searchParams.get('search') || '';
+  const pageSize = Number(searchParams.get('pageSize')) || 10;
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     email: true, phone: true, status: true, lastCommentText: true,
@@ -81,10 +83,26 @@ export default function InactiveClientsListPage() {
     fetchClients();
   }, []);
 
-  const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(newPage));
-    router.push(`${pathname}?${params.toString()}`);
+  const createQueryString = useCallback(
+    (paramsToUpdate: Record<string, string | number>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(paramsToUpdate).forEach(([key, value]) => {
+        if (value) {
+            params.set(key, String(value));
+        } else {
+            params.delete(key);
+        }
+      });
+      if (!('page' in paramsToUpdate)) {
+          params.set('page', '1');
+      }
+      return params.toString();
+    },
+    [searchParams]
+  );
+
+  const handleFilterChange = (params: Record<string, string | number>) => {
+      router.push(`${pathname}?${createQueryString(params)}`);
   };
   
   const handleBulkUpdate = (action: 'assign' | 'status') => {
@@ -239,7 +257,7 @@ export default function InactiveClientsListPage() {
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); handlePageChange(1); }}>
+                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => handleFilterChange({ pageSize: Number(value) })}>
                                     {[10, 20, 50, 100].map(size => (
                                         <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
                                     ))}
@@ -270,10 +288,10 @@ export default function InactiveClientsListPage() {
           Showing {paginatedClients.length} of {allFilteredClients.length} inactive clients.
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+          <Button variant="outline" size="sm" onClick={() => handleFilterChange({ page: currentPage - 1 })} disabled={currentPage === 1}>
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
+          <Button variant="outline" size="sm" onClick={() => handleFilterChange({ page: currentPage + 1 })} disabled={currentPage >= totalPages}>
             Next
           </Button>
         </div>
@@ -293,12 +311,12 @@ export default function InactiveClientsListPage() {
               <Input 
                 id="search-input"
                 placeholder="e.g. Old Project Inc, old@example.com, 987..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                defaultValue={searchTerm}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => {handleFilterChange({ search: '' }); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
               <AlertDialogAction onClick={() => setIsSearchOpen(false)}>Apply</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

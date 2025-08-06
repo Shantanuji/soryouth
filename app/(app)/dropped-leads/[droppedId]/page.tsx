@@ -82,7 +82,6 @@ export default function DroppedLeadDetailsPage() {
   const params = useParams();
   const droppedId = typeof params.droppedId === 'string' ? params.droppedId : null;
   const searchParams = useSearchParams();
-  const page = searchParams.get('page');
   const { toast } = useToast();
   const [droppedLead, setDroppedLead] = useState<DroppedLead | null | undefined>(undefined);
   const [leadSources, setLeadSources] = useState<CustomSetting[]>([]);
@@ -119,7 +118,7 @@ export default function DroppedLeadDetailsPage() {
     if(currentIndex === -1) return;
     const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
     if(navigationIds[nextIndex]) {
-      router.push(`/dropped-leads/${navigationIds[nextIndex]}?page=${page || 1}`);
+      router.push(`/dropped-leads/${navigationIds[nextIndex]}?${searchParams.toString()}`);
     }
   };
 
@@ -252,7 +251,7 @@ export default function DroppedLeadDetailsPage() {
     );
   };
 
-  const backToListUrl = page ? `/dropped-leads-list?page=${page}` : '/dropped-leads-list';
+const backToListUrl = `/dropped-leads-list?${searchParams.toString()}`;
 
   if (droppedLead === undefined) {
     return (

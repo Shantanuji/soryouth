@@ -4,6 +4,7 @@
 import type { Lead, Client, DroppedLead } from '@/types';
 import React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -68,6 +69,8 @@ const formatDate = (dateString?: string | null) => {
 
 export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, sortConfig, requestSort, columnVisibility, selectedIds, setSelectedIds, allFilteredIds, currentPage = 1}: LeadsTableProps<T>) {
 
+  const searchParams = useSearchParams();
+
   const handleRowClick = () => {
     const itemIdsOnCurrentPage = items.map(item => item.id);
     sessionStorage.setItem('navigation_ids', JSON.stringify(itemIdsOnCurrentPage));
@@ -117,7 +120,7 @@ export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, 
     const baseHref = viewType === 'client' ? `/clients/${item.id}` :
                  viewType === 'dropped' ? `/dropped-leads/${item.id}` :
                  `/leads/${item.id}`;
-    const href = `${baseHref}?page=${currentPage}`;
+    const href = `${baseHref}?${searchParams.toString()}`;
     
     return (
      <TableRow key={item.id} className="hover:bg-muted/20" data-state={selectedIds.includes(item.id) ? 'selected' : undefined}>

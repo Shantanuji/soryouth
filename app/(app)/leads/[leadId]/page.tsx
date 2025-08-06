@@ -104,7 +104,6 @@ export default function LeadDetailsPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const leadId = typeof params.leadId === 'string' ? params.leadId : null;
-  const page = searchParams.get('page');
   const { toast } = useToast();
   const [lead, setLead] = useState<Lead | null | undefined>(undefined);
   const [users, setUsers] = useState<User[]>([]);
@@ -164,7 +163,7 @@ export default function LeadDetailsPage() {
     if(currentIndex === -1) return;
     const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
     if(navigationIds[nextIndex]) {
-      router.push(`/leads/${navigationIds[nextIndex]}?page=${page || 1}`);
+      router.push(`/leads/${navigationIds[nextIndex]}?${searchParams.toString()}`);
     }
   };
 
@@ -505,7 +504,7 @@ export default function LeadDetailsPage() {
     );
   };
 
-  const backToListUrl = page ? `/leads-list?page=${page}` : '/leads-list';
+  const backToListUrl = `/leads-list?${searchParams.toString()}`;
 
   if (lead === undefined) {
     return (
