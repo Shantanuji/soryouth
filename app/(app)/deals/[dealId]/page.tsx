@@ -318,12 +318,14 @@ export default function DealDetailsPage() {
   const poWoDateDisplay = deal.poWoDate && isValid(parseISO(deal.poWoDate)) ? format(parseISO(deal.poWoDate), 'dd MMM, yyyy') : 'N/A';
   const stagesForPipeline = DEAL_PIPELINES[deal.pipeline] || [];
 
+  const dealTitle = `${deal.clientName}${deal.dealFor ? ` - ${deal.dealFor}` : ''}${deal.kilowatt ? ` - ${deal.kilowatt} kW` : ''}`;
+
   return (
     <>
     {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
-        <h1 className="text-xl font-semibold font-headline">{deal.clientName}</h1>
+        <h1 className="text-xl font-semibold font-headline">{dealTitle}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => router.back()}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back

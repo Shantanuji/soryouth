@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useMemo, useEffect, useTransition } from 'react';
+import React, { useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { LeadsTable } from '@/app/(app)/leads/leads-table';
 import { DROP_REASON_OPTIONS } from '@/lib/constants';
@@ -16,6 +16,7 @@ import { getUsers } from '@/app/(app)/users/actions';
 import { getLeadSources } from '@/app/(app)/settings/actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const allColumns: Record<string, string> = {
     email: 'Email',
@@ -30,24 +31,31 @@ const allColumns: Record<string, string> = {
 
 
 export default function DroppedLeadsListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [droppedLeads, setDroppedLeads] = useState<DroppedLead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [sources, setSources] = useState<CustomSetting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<DropReasonType | 'all'>('all');
+
   const [sortConfig, setSortConfig] = useState<DroppedLeadSortConfig | null>(null);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   
-  const [userFilter, setUserFilter] = useState<string>('all');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+   // Read state from URL
+  
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const activeFilter = (searchParams.get('reason') || 'all') as DropReasonType | 'all';
+  const userFilter = searchParams.get('user') || 'all';
+  const sourceFilter = searchParams.get('source') || 'all';
+  const searchTerm = searchParams.get('search') || '';
+  const pageSize = Number(searchParams.get('pageSize')) || 10;
   
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     email: true, phone: true, status: true, dropReason: true, lastCommentText: false,
@@ -73,6 +81,28 @@ export default function DroppedLeadsListPage() {
     }
     fetchData();
   }, []);
+
+  const createQueryString = useCallback(
+    (paramsToUpdate: Record<string, string | number>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(paramsToUpdate).forEach(([key, value]) => {
+        if (value) {
+            params.set(key, String(value));
+        } else {
+            params.delete(key);
+        }
+      });
+      if (!('page' in paramsToUpdate)) {
+          params.set('page', '1');
+      }
+      return params.toString();
+    },
+    [searchParams]
+  );
+  
+  const handleFilterChange = (params: Record<string, string | number>) => {
+      router.push(`${pathname}?${createQueryString(params)}`);
+  };
 
   const handleBulkReactivate = () => {
     startTransition(async () => {
@@ -209,7 +239,7 @@ export default function DroppedLeadsListPage() {
                         <DropdownMenuSubTrigger>Assigned To</DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                         <DropdownMenuSubContent>
-                            <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
+                            <DropdownMenuRadioGroup value={userFilter} onValueChange={(value) => handleFilterChange({ user: value })}>
                                 <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
                                 {users.map(user => (
                                     <DropdownMenuRadioItem key={user.id} value={user.name}>{user.name}</DropdownMenuRadioItem>
@@ -222,7 +252,7 @@ export default function DroppedLeadsListPage() {
                         <DropdownMenuSubTrigger>Source</DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                         <DropdownMenuSubContent>
-                             <DropdownMenuRadioGroup value={sourceFilter} onValueChange={setSourceFilter}>
+                             <DropdownMenuRadioGroup value={sourceFilter} onValueChange={(value) => handleFilterChange({ source: value })}>
                                 <DropdownMenuRadioItem value="all">All Sources</DropdownMenuRadioItem>
                                 {sources.map(source => (
                                     <DropdownMenuRadioItem key={source.id} value={source.name}>{source.name}</DropdownMenuRadioItem>
@@ -278,7 +308,7 @@ export default function DroppedLeadsListPage() {
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); setCurrentPage(1); }}>
+                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => handleFilterChange({ pageSize: Number(value) })}>
                                     {[10, 20, 50, 100].map(size => (
                                         <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
                                     ))}
@@ -298,7 +328,7 @@ export default function DroppedLeadsListPage() {
               key={filter.value}
               variant={activeFilter === filter.value ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setActiveFilter(filter.value)}
+              onClick={() => handleFilterChange({ reason: filter.value })}
               className={`py-1 px-3 h-auto text-xs rounded-full ${activeFilter === filter.value ? 'border-b-2 border-primary font-semibold' : 'text-muted-foreground'}`}
             >
               {filter.label}
@@ -319,16 +349,17 @@ export default function DroppedLeadsListPage() {
         selectedIds={selectedLeadIds}
         setSelectedIds={setSelectedLeadIds}
         allFilteredIds={allFilteredLeads.map(l => l.id)}
+        currentPage={currentPage}
       />
       <div className="flex items-center justify-between pt-4">
         <div className="text-sm text-muted-foreground">
           Showing {paginatedLeads.length} of {allFilteredLeads.length} dropped leads.
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+          <Button variant="outline" size="sm" onClick={() => handleFilterChange({ page: currentPage - 1 })} disabled={currentPage === 1}>
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage >= totalPages}>
+          <Button variant="outline" size="sm" onClick={() => handleFilterChange({ page: currentPage + 1 })} disabled={currentPage >= totalPages}>
             Next
           </Button>
         </div>
@@ -348,12 +379,12 @@ export default function DroppedLeadsListPage() {
               <Input 
                 id="search-input"
                 placeholder="e.g. Lost Cause Inc, old@example.com, 987..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                defaultValue={searchTerm}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => {handleFilterChange({ search: '' }); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
               <AlertDialogAction onClick={() => setIsSearchOpen(false)}>Apply</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

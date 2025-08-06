@@ -54,6 +54,7 @@ const getDealSchema = (sources: string[]) => z.object({
   source: z.string().optional().refine(val => !val || sources.includes(val), { message: "Please select a valid source." }),
   stage: z.enum(ALL_DEAL_STAGES, { required_error: "Stage is required." }),
   dealValue: z.coerce.number().min(0, { message: "Deal value cannot be negative." }),
+  kilowatt: z.coerce.number().min(0).optional(),
   assignedTo: z.string().optional(),
   poWoDate: z.date({ required_error: "A PO/WO date is required." }),
   amcDurationInMonths: z.coerce.number().int().min(0).optional(),
@@ -97,6 +98,7 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
       source: undefined ,
       stage: initialStage || (pipeline ? DEAL_PIPELINES[pipeline][0] : DEAL_PIPELINES['Solar PV Plant'][0]),
       dealValue: 0,
+      kilowatt: 0,
       assignedTo: undefined,
       poWoDate: new Date(),
       amcDurationInMonths: 0,
@@ -123,6 +125,7 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
     form.setValue('email', client.email || '');
     form.setValue('phone', client.phone || '');
     form.setValue('source', client.source || '');
+    form.setValue('kilowatt', client.kilowatt || 0);
   };
   
   const handleClientFormSubmit = async (data: CreateClientData | Client) => {
@@ -156,6 +159,7 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
         source: deal?.source || undefined,
         stage: initialStage || deal?.stage || (pipeline ? DEAL_PIPELINES[pipeline][0] : DEAL_PIPELINES['Solar PV Plant'][0]),
         dealValue: deal?.dealValue || 0,
+        kilowatt: deal?.kilowatt || 0,
         assignedTo: deal?.assignedTo || undefined,
         poWoDate: deal?.poWoDate ? (deal.poWoDate instanceof Date ? deal.poWoDate : new Date(deal.poWoDate)) : new Date(),
         amcDurationInMonths: deal?.amcDurationInMonths || 0,
@@ -283,18 +287,33 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
                     </FormItem>
                 )} />
             </div>
-             <FormField control={form.control} name="dealValue" render={({ field }) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField control={form.control} name="dealValue" render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Deal Value (₹)</FormLabel>
-                    <FormControl>
-                        <div className="relative">
-                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input type="number" placeholder="0.00" className="pl-8" {...field} />
-                        </div>
-                    </FormControl>
-                    <FormMessage />
+                  <FormLabel>Deal Value (₹)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="number" placeholder="0.00" className="pl-8" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
-            )} />
+              )} />
+              <FormField
+                control={form.control}
+                name="kilowatt"
+                render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Kilowatt (kW)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="0" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             {watchedPipeline === 'AMC' && (
                 <FormField control={form.control} name="amcDurationInMonths" render={({ field }) => (
                     <FormItem>

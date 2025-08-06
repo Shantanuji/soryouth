@@ -410,6 +410,7 @@ model Deal {
     dealFor       String?
     source        String?
     dealValue     Float  @default(0)
+    kilowatt      Float  @default(0)
     poWoDate      DateTime
     createdAt     DateTime @default(now())
     updatedAt     DateTime @updatedAt

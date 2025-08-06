@@ -32,6 +32,8 @@ export default function DealsReportPage() {
   const [selectedStage, setSelectedStage] = useState<DealStage | 'all'>('all');
   const [minValue, setMinValue] = useState('');
   const [maxValue, setMaxValue] = useState('');
+  const [minKilowatt, setMinKilowatt] = useState('');
+  const [maxKilowatt, setMaxKilowatt] = useState('');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, startDownloadTransition] = useTransition();
@@ -56,8 +58,10 @@ export default function DealsReportPage() {
     const toDate = dateRange?.to ? endOfDay(dateRange.to) : undefined;
     const dateInterval = fromDate && toDate ? { start: fromDate, end: toDate } : null;
 
-    const min = parseFloat(minValue);
-    const max = parseFloat(maxValue);
+    const minVal = parseFloat(minValue);
+    const maxVal = parseFloat(maxValue);
+    const minKw = parseFloat(minKilowatt);
+    const maxKw = parseFloat(maxKilowatt);
 
     return allDeals.filter(deal => {
         const dateMatches = dateInterval ? isWithinInterval(parseISO(deal.poWoDate), dateInterval) : true;
@@ -65,11 +69,12 @@ export default function DealsReportPage() {
         const assignedToMatches = selectedAssignedToId === 'all' || deal.assignedTo === users.find(u => u.id === selectedAssignedToId)?.name;
         const pipelineMatches = selectedPipeline === 'all' || deal.pipeline === selectedPipeline;
         const stageMatches = selectedStage === 'all' || deal.stage === selectedStage;
-        const valueMatches = (isNaN(min) || deal.dealValue >= min) && (isNaN(max) || deal.dealValue <= max);
+        const valueMatches = (isNaN(minVal) || deal.dealValue >= minVal) && (isNaN(maxVal) || deal.dealValue <= maxVal);
+        const kilowattMatches = (isNaN(minKw) || (deal.kilowatt ?? 0) >= minKw) && (isNaN(maxKw) || (deal.kilowatt ?? 0) <= maxKw);
         
-        return dateMatches && createdByMatches && assignedToMatches && pipelineMatches && stageMatches && valueMatches;
+        return dateMatches && createdByMatches && assignedToMatches && pipelineMatches && stageMatches && valueMatches && kilowattMatches;
     });
-  }, [allDeals, users, dateRange, selectedCreatedById, selectedAssignedToId, selectedPipeline, selectedStage, isLoading, minValue, maxValue]);
+  }, [allDeals, users, dateRange, selectedCreatedById, selectedAssignedToId, selectedPipeline, selectedStage, isLoading, minValue, maxValue, minKilowatt, maxKilowatt]);
 
   const stagesForSelectedPipeline = useMemo(() => {
     if (selectedPipeline === 'all') return [];
@@ -100,6 +105,8 @@ export default function DealsReportPage() {
                     stage: selectedStage,
                     minValue,
                     maxValue,
+                    minKilowatt,
+                    maxKilowatt,
                 }),
             });
 
@@ -187,13 +194,21 @@ export default function DealsReportPage() {
                     </SelectContent>
                 </Select>
                 <div className="flex items-center gap-2">
-                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <div className="grid w-full max-w-[120px] items-center gap-1.5">
                         <Label htmlFor="min-value" className="text-xs">Min Value</Label>
                         <Input type="number" id="min-value" placeholder="e.g., 50000" value={minValue} onChange={(e) => setMinValue(e.target.value)} className="h-9"/>
                     </div>
-                     <div className="grid w-full max-w-sm items-center gap-1.5">
+                     <div className="grid w-full max-w-[120px] items-center gap-1.5">
                         <Label htmlFor="max-value" className="text-xs">Max Value</Label>
                         <Input type="number" id="max-value" placeholder="e.g., 500000" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} className="h-9"/>
+                    </div>
+                    <div className="grid w-full max-w-[120px] items-center gap-1.5">
+                        <Label htmlFor="min-kw" className="text-xs">Min kW</Label>
+                        <Input type="number" id="min-kw" placeholder="e.g., 10" value={minKilowatt} onChange={(e) => setMinKilowatt(e.target.value)} className="h-9"/>
+                    </div>
+                     <div className="grid w-full max-w-[120px] items-center gap-1.5">
+                        <Label htmlFor="max-kw" className="text-xs">Max kW</Label>
+                        <Input type="number" id="max-kw" placeholder="e.g., 100" value={maxKilowatt} onChange={(e) => setMaxKilowatt(e.target.value)} className="h-9"/>
                     </div>
                 </div>
               </div>
@@ -226,6 +241,7 @@ export default function DealsReportPage() {
                                     <TableHead>Pipeline</TableHead>
                                     <TableHead>Stage</TableHead>
                                     <TableHead>PO/WO Date</TableHead>
+                                    <TableHead>Capacity (kW)</TableHead>
                                     <TableHead>Deal Value</TableHead>
                                     <TableHead>Created By</TableHead>
                                     <TableHead>Assigned To</TableHead>
@@ -233,7 +249,7 @@ export default function DealsReportPage() {
                             </TableHeader>
                             <TableBody>
                                 {filteredData.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} className="text-center h-24">No data for selected filters.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={9} className="text-center h-24">No data for selected filters.</TableCell></TableRow>
                                 ) : (
                                     filteredData.map((deal, index) => (
                                         <TableRow key={deal.id}>
@@ -242,6 +258,7 @@ export default function DealsReportPage() {
                                             <TableCell>{deal.pipeline}</TableCell>
                                             <TableCell>{deal.stage}</TableCell>
                                             <TableCell>{format(parseISO(deal.poWoDate), 'dd MMM, yyyy')}</TableCell>
+                                            <TableCell>{deal.kilowatt ?? '-'}</TableCell>
                                             <TableCell className="flex items-center">
                                                 <IndianRupee className="h-4 w-4 mr-0.5" />
                                                 {deal.dealValue.toLocaleString('en-IN')}

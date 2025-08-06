@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useMemo, useEffect, useTransition } from 'react';
+import React, { useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { LeadsTable } from '@/app/(app)/leads/leads-table';
 import { DROP_REASON_OPTIONS } from '@/lib/constants';
@@ -26,6 +26,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormMessage, FormField, FormItem } from '@/components/ui/form';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+
 
 const allColumns: Record<string, string> = {
     email: 'Email',
@@ -121,6 +123,10 @@ function BulkImportDialog({ isOpen, onClose, onImportSuccess }: { isOpen: boolea
 }
 
 export default function LeadsListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<CustomSetting[]>([]);
@@ -131,17 +137,20 @@ export default function LeadsListPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState<Lead | null>(null);
   const { toast } = useToast();
-  const [activeFilter, setActiveFilter] = useState<LeadStatusType | 'all'>('all');
-  const [quickFilter, setQuickFilter] = useState<string>('Show all');
-  const [userFilter, setUserFilter] = useState<string>('all');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  
   const [sortConfig, setSortConfig] = useState<LeadSortConfig | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Read state from URL
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const activeFilter = searchParams.get('status') || 'all';
+  const quickFilter = searchParams.get('quickFilter') || 'Show all';
+  const userFilter = searchParams.get('user') || 'all';
+  const sourceFilter = searchParams.get('source') || 'all';
+  const searchTerm = searchParams.get('search') || '';
+  const pageSize = Number(searchParams.get('pageSize')) || 10;
 
   // State for bulk actions
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -193,6 +202,30 @@ export default function LeadsListPage() {
     }
     fetchData();
   }, []);
+
+  const createQueryString = useCallback(
+    (paramsToUpdate: Record<string, string | number>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(paramsToUpdate).forEach(([key, value]) => {
+        if (value) {
+            params.set(key, String(value));
+        } else {
+            params.delete(key);
+        }
+      });
+      // Reset page to 1 on any filter change except pagination itself
+      if (!('page' in paramsToUpdate)) {
+          params.set('page', '1');
+      }
+
+      return params.toString();
+    },
+    [searchParams]
+  );
+
+  const handleFilterChange = (params: Record<string, string | number>) => {
+      router.push(`${pathname}?${createQueryString(params)}`);
+  };
 
   const handleAddLead = () => {
     setSelectedLeadForEdit(null);
@@ -460,7 +493,7 @@ export default function LeadsListPage() {
                         <DropdownMenuLabel>Quick Filters</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {['Assigned today', 'Followed today', 'Not followed today', 'Unattended', 'No stage', 'Show all'].map(item => (
-                        <DropdownMenuItem key={item} onSelect={() => {setQuickFilter(item); setUserFilter('all'); setSourceFilter('all');}}>
+                        <DropdownMenuItem key={item} onSelect={() => handleFilterChange({ quickFilter: item, user: 'all', source: 'all' })}>
                             {item}
                         </DropdownMenuItem>
                         ))}
@@ -469,7 +502,7 @@ export default function LeadsListPage() {
                             <DropdownMenuSubTrigger>Assigned To</DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={userFilter} onValueChange={(value) => {setUserFilter(value); setQuickFilter('Show all'); setSourceFilter('all');}}>
+                                <DropdownMenuRadioGroup value={userFilter} onValueChange={(value) => handleFilterChange({ user: value, quickFilter: 'Show all', source: 'all' })}>
                                     <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
                                     {users.map(user => (
                                         <DropdownMenuRadioItem key={user.id} value={user.name}>{user.name}</DropdownMenuRadioItem>
@@ -482,7 +515,7 @@ export default function LeadsListPage() {
                             <DropdownMenuSubTrigger>Source</DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={sourceFilter} onValueChange={(value) => {setSourceFilter(value); setQuickFilter('Show all'); setUserFilter('all');}}>
+                                <DropdownMenuRadioGroup value={sourceFilter} onValueChange={(value) => handleFilterChange({ source: value, quickFilter: 'Show all', user: 'all' })}>
                                     <DropdownMenuRadioItem value="all">All Sources</DropdownMenuRadioItem>
                                     {sources.map(source => (
                                         <DropdownMenuRadioItem key={source.id} value={source.name}>{source.name}</DropdownMenuRadioItem>
@@ -550,10 +583,7 @@ export default function LeadsListPage() {
                             <DropdownMenuSubContent>
                                 <DropdownMenuRadioGroup 
                                   value={String(pageSize)} 
-                                  onValueChange={(value) => {
-                                    setPageSize(Number(value));
-                                    setCurrentPage(1);
-                                }}>
+                                  onValueChange={(value) => handleFilterChange({ pageSize: Number(value) })}>
                                     {[10, 20, 50, 100].map(size => (
                                         <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
                                     ))}
@@ -573,7 +603,7 @@ export default function LeadsListPage() {
               key={filter.value}
               variant={activeFilter === filter.value ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setActiveFilter(filter.value as LeadStatusType | 'all')}
+              onClick={() => handleFilterChange({ status: filter.value })}
               className={`py-1 px-3 h-auto text-xs rounded-full ${activeFilter === filter.value ? 'border-b-2 border-primary font-semibold' : 'text-muted-foreground'}`}
             >
               {filter.label}
@@ -596,6 +626,7 @@ export default function LeadsListPage() {
         selectedIds={selectedLeadIds}
         setSelectedIds={setSelectedLeadIds}
         allFilteredIds={allFilteredLeads.map(l => l.id)}
+        currentPage={currentPage}
       />
 
        <div className="flex items-center justify-between pt-4">
@@ -609,7 +640,7 @@ export default function LeadsListPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            onClick={() => handleFilterChange({ page: currentPage - 1 })}
             disabled={currentPage === 1}
           >
             Previous
@@ -617,7 +648,7 @@ export default function LeadsListPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() => handleFilterChange({ page: currentPage + 1 })}
             disabled={currentPage >= totalPages}
           >
             Next
@@ -669,12 +700,12 @@ export default function LeadsListPage() {
               <Input 
                 id="search-input"
                 placeholder="e.g. John Doe, john@example.com, 987..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                defaultValue={searchTerm}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => {handleFilterChange({ search: '' }); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
               <AlertDialogAction onClick={() => setIsSearchOpen(false)}>Apply</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, ChangeEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -81,6 +81,7 @@ export default function DroppedLeadDetailsPage() {
   const isMobile = useIsMobile();
   const params = useParams();
   const droppedId = typeof params.droppedId === 'string' ? params.droppedId : null;
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [droppedLead, setDroppedLead] = useState<DroppedLead | null | undefined>(undefined);
   const [leadSources, setLeadSources] = useState<CustomSetting[]>([]);
@@ -117,7 +118,7 @@ export default function DroppedLeadDetailsPage() {
     if(currentIndex === -1) return;
     const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
     if(navigationIds[nextIndex]) {
-        router.push(`/dropped-leads/${navigationIds[nextIndex]}`);
+      router.push(`/dropped-leads/${navigationIds[nextIndex]}?${searchParams.toString()}`);
     }
   };
 
@@ -250,6 +251,8 @@ export default function DroppedLeadDetailsPage() {
     );
   };
 
+const backToListUrl = `/dropped-leads-list?${searchParams.toString()}`;
+
   if (droppedLead === undefined) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
@@ -283,13 +286,13 @@ export default function DroppedLeadDetailsPage() {
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{droppedLead.name}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.push('/dropped-leads-list')}>
+          <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl)}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
                 <ChevronsLeft className="h-4 w-4 mr-1" /> Prev
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
+            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex < 0 || currentIndex >= navigationIds.length - 1}>
                 Next <ChevronsRight className="h-4 w-4 ml-1" />
             </Button>
         </div>

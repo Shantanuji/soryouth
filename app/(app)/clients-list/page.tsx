@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useMemo, useEffect, useTransition } from 'react';
+import React, { useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { LeadsTable } from '@/app/(app)/leads/leads-table'; // Reusing this for consistent display
 import { CLIENT_TYPES } from '@/lib/constants';
@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const allColumns: Record<string, string> = {
     email: 'Email',
@@ -36,6 +37,10 @@ const allColumns: Record<string, string> = {
 };
 
 export default function ClientsListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [clients, setClients] = useState<Client[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<CustomSetting[]>([]);
@@ -45,17 +50,10 @@ export default function ClientsListPage() {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<Client | null>(null);
   const { toast } = useToast();
-  const [activeFilter, setActiveFilter] = useState<ClientStatusType | 'all'>('all');
-  const [quickFilter, setQuickFilter] = useState<string>('Show all');
-  const [userFilter, setUserFilter] = useState<string>('all');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<ClientSortConfig | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
 
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [isAssignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -65,6 +63,14 @@ export default function ClientsListPage() {
   const [updateStageTo, setUpdateStageTo] = useState<ClientStatusType | ''>('');
   const [updateTypeTo, setUpdateTypeTo] = useState<ClientType | ''>('');
 
+  // Read state from URL
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const activeFilter = searchParams.get('status') || 'all';
+  const quickFilter = searchParams.get('quickFilter') || 'Show all';
+  const userFilter = searchParams.get('user') || 'all';
+  const sourceFilter = searchParams.get('source') || 'all';
+  const searchTerm = searchParams.get('search') || '';
+  const pageSize = Number(searchParams.get('pageSize')) || 10;
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     email: true, phone: true, status: true, source: true, lastCommentText: false,
@@ -93,6 +99,30 @@ export default function ClientsListPage() {
     }
     fetchData();
   }, []);
+
+  const createQueryString = useCallback(
+    (paramsToUpdate: Record<string, string | number>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(paramsToUpdate).forEach(([key, value]) => {
+        if (value) {
+            params.set(key, String(value));
+        } else {
+            params.delete(key);
+        }
+      });
+      // Reset page to 1 on any filter change except pagination itself
+      if (!('page' in paramsToUpdate)) {
+          params.set('page', '1');
+      }
+
+      return params.toString();
+    },
+    [searchParams]
+  );
+  
+  const handleFilterChange = (params: Record<string, string | number>) => {
+      router.push(`${pathname}?${createQueryString(params)}`);
+  };
 
   const handleAddClient = () => {
     setSelectedClientForEdit(null);
@@ -312,7 +342,7 @@ export default function ClientsListPage() {
                     <DropdownMenuLabel>Quick Filters</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {['Assigned today', 'Followed today', 'Not followed today', 'Unattended', 'Show all'].map(item => (
-                      <DropdownMenuItem key={item} onSelect={() => {setQuickFilter(item); setUserFilter('all'); setSourceFilter('all');}}>
+                      <DropdownMenuItem key={item} onSelect={() => handleFilterChange({ quickFilter: item, user: 'all', source: 'all' })}>
                         {item}
                       </DropdownMenuItem>
                     ))}
@@ -321,7 +351,7 @@ export default function ClientsListPage() {
                         <DropdownMenuSubTrigger>Assigned To</DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                         <DropdownMenuSubContent>
-                            <DropdownMenuRadioGroup value={userFilter} onValueChange={(value) => {setUserFilter(value); setQuickFilter('Show all'); setSourceFilter('all');}}>
+                            <DropdownMenuRadioGroup value={userFilter} onValueChange={(value) => handleFilterChange({ user: value, quickFilter: 'Show all', source: 'all' })}>
                                 <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
                                 {users.map(user => (
                                     <DropdownMenuRadioItem key={user.id} value={user.name}>{user.name}</DropdownMenuRadioItem>
@@ -334,7 +364,7 @@ export default function ClientsListPage() {
                         <DropdownMenuSubTrigger>Source</DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                         <DropdownMenuSubContent>
-                             <DropdownMenuRadioGroup value={sourceFilter} onValueChange={(value) => {setSourceFilter(value); setQuickFilter('Show all'); setUserFilter('all');}}>
+                             <DropdownMenuRadioGroup value={sourceFilter} onValueChange={(value) => handleFilterChange({ source: value, quickFilter: 'Show all', user: 'all' })}>
                                 <DropdownMenuRadioItem value="all">All Sources</DropdownMenuRadioItem>
                                 {sources.map(source => (
                                     <DropdownMenuRadioItem key={source.id} value={source.name}>{source.name}</DropdownMenuRadioItem>
@@ -394,11 +424,11 @@ export default function ClientsListPage() {
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); setCurrentPage(1); }}>
-                                    {[10, 20, 50, 100].map(size => (
-                                        <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
-                                    ))}
-                                </DropdownMenuRadioGroup>
+                              <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => handleFilterChange({ pageSize: Number(value) })}>
+                                  {[10, 20, 50, 100].map(size => (
+                                      <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
+                                  ))}
+                              </DropdownMenuRadioGroup>
                             </DropdownMenuSubContent>
                         </DropdownMenuPortal>
                     </DropdownMenuSub>
@@ -414,7 +444,7 @@ export default function ClientsListPage() {
               key={filter.value}
               variant={activeFilter === filter.value ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setActiveFilter(filter.value)}
+              onClick={() => handleFilterChange({ status: filter.value })}
               className={`py-1 px-3 h-auto text-xs rounded-full ${activeFilter === filter.value ? 'border-b-2 border-primary font-semibold' : 'text-muted-foreground'}`}
             >
               {filter.label}
@@ -437,6 +467,7 @@ export default function ClientsListPage() {
         selectedIds={selectedClientIds}
         setSelectedIds={setSelectedClientIds}
         allFilteredIds={allFilteredClients.map(c => c.id)}
+        currentPage={currentPage}
       />
 
        <div className="flex items-center justify-between pt-4">
@@ -444,10 +475,10 @@ export default function ClientsListPage() {
           Showing {paginatedClients.length} of {allFilteredClients.length} clients.
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+          <Button variant="outline" size="sm" onClick={() => handleFilterChange({ page: currentPage - 1 })} disabled={currentPage === 1}>
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage >= totalPages}>
+          <Button variant="outline" size="sm" onClick={() => handleFilterChange({ page: currentPage + 1 })} disabled={currentPage >= totalPages}>
             Next
           </Button>
         </div>
@@ -488,12 +519,12 @@ export default function ClientsListPage() {
               <Input 
                 id="search-input"
                 placeholder="e.g. Green Valley Society, john@example.com, 987..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                defaultValue={searchTerm}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => {handleFilterChange({ search: '' }); setIsSearchOpen(false);}}>Clear & Close</AlertDialogCancel>
               <AlertDialogAction onClick={() => setIsSearchOpen(false)}>Apply</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
