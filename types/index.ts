@@ -430,6 +430,7 @@ export interface Deal {
   pipeline: DealPipelineType;
   stage: DealStage;
   dealValue: number;
+  kilowatt?: number | null;
   assignedTo?: string | null;
   poWoDate: string; // ISO string
   createdAt: string;

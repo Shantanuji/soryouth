@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
     
     try {
-        const { from, to, createdById, assignedToId, pipeline, stage, minValue, maxValue } = await request.json();
+        const { from, to, createdById, assignedToId, pipeline, stage, minValue, maxValue, minKilowatt, maxKilowatt } = await request.json();
         
         if (!from || !to) {
             return NextResponse.json({ error: 'Date range is required.' }, { status: 400 });
@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
         ]);
         
         const dateInterval = { start: startOfDay(parseISO(from)), end: endOfDay(parseISO(to)) };
-        const min = parseFloat(minValue);
-        const max = parseFloat(maxValue);
+        const minVal = parseFloat(minValue);
+        const maxVal = parseFloat(maxValue);
+        const minKw = parseFloat(minKilowatt);
+        const maxKw = parseFloat(maxKilowatt);
 
         const reportData = allDeals.filter(deal => {
             const dateMatches = isWithinInterval(parseISO(deal.poWoDate), dateInterval);
@@ -35,9 +37,10 @@ export async function POST(request: NextRequest) {
             const assignedToMatches = assignedToId === 'all' || deal.assignedTo === users.find(u => u.id === assignedToId)?.name;
             const pipelineMatches = pipeline === 'all' || deal.pipeline === pipeline;
             const stageMatches = stage === 'all' || deal.stage === stage;
-            const valueMatches = (isNaN(min) || deal.dealValue >= min) && (isNaN(max) || deal.dealValue <= max);
-            
-            return dateMatches && createdByMatches && assignedToMatches && pipelineMatches && stageMatches && valueMatches;
+            const valueMatches = (isNaN(minVal) || deal.dealValue >= minVal) && (isNaN(maxVal) || deal.dealValue <= maxVal);
+            const kilowattMatches = (isNaN(minKw) || (deal.kilowatt ?? 0) >= minKw) && (isNaN(maxKw) || (deal.kilowatt ?? 0) <= maxKw);
+
+            return dateMatches && createdByMatches && assignedToMatches && pipelineMatches && stageMatches && valueMatches && kilowattMatches;
         });
 
         const workbook = new ExcelJS.Workbook();
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
             { header: 'Pipeline', key: 'pipeline', width: 20 },
             { header: 'Stage', key: 'stage', width: 20 },
             { header: 'PO/WO Date', key: 'poWoDate', width: 20 },
+            { header: 'Capacity (kW)', key: 'kilowatt', width: 15 },
             { header: 'Deal Value (₹)', key: 'dealValue', width: 20 },
             { header: 'Created By', key: 'createdBy', width: 20 },
             { header: 'Assigned To', key: 'assignedTo', width: 20 },
@@ -65,10 +69,11 @@ export async function POST(request: NextRequest) {
                 pipeline: deal.pipeline,
                 stage: deal.stage,
                 poWoDate: format(parseISO(deal.poWoDate), 'dd-MM-yyyy'),
+                kilowatt: deal.kilowatt ?? '-',
+                dealFor: deal.dealFor || 'N/A',
                 dealValue: deal.dealValue,
                 createdBy: deal.createdBy || 'N/A',
                 assignedTo: deal.assignedTo || 'N/A',
-                dealFor: deal.dealFor || 'N/A',
                 createdAt: format(parseISO(deal.createdAt), 'dd-MM-yyyy p'),
             });
         });

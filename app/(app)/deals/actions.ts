@@ -15,6 +15,7 @@ function mapPrismaDeal(deal: any): Deal {
     return {
         ...deal,
         dealValue: Number(deal.dealValue),
+        kilowatt: deal.kilowatt ? Number(deal.kilowatt) : 0,
         poWoDate: deal.poWoDate.toISOString(),
         createdAt: deal.createdAt.toISOString(),
         createdBy: deal.createdBy?.name,
@@ -131,6 +132,7 @@ export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | nu
                 source: data.source,
                 stage: data.stage || DEAL_PIPELINES['Solar PV Plant'][0],
                 dealValue: data.dealValue || 0,
+                kilowatt: data.kilowatt || 0,
                 poWoDate: data.poWoDate ? parseISO(data.poWoDate as string) : new Date(),
                 amcDurationInMonths: data.amcDurationInMonths,
                 amcEffectiveDate: (data.pipeline === 'AMC' && data.stage === 'Active') ? new Date() : null,

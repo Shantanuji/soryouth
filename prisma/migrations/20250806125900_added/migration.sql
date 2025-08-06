@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Deal" ADD COLUMN     "kilowatt" DOUBLE PRECISION NOT NULL DEFAULT 0;
