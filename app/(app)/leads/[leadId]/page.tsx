@@ -104,6 +104,7 @@ export default function LeadDetailsPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const leadId = typeof params.leadId === 'string' ? params.leadId : null;
+  const page = searchParams.get('page');
   const { toast } = useToast();
   const [lead, setLead] = useState<Lead | null | undefined>(undefined);
   const [users, setUsers] = useState<User[]>([]);
@@ -146,14 +147,14 @@ export default function LeadDetailsPage() {
 
   useEffect(() => {
     try {
-        const storedIds = sessionStorage.getItem('navigation_ids');
-        if (storedIds) {
-            const ids = JSON.parse(storedIds);
-            setNavigationIds(ids);
-            if (leadId) {
-                setCurrentIndex(ids.indexOf(leadId));
-            }
+      const storedIds = sessionStorage.getItem('navigation_ids');
+      if (storedIds) {
+        const ids = JSON.parse(storedIds);
+        setNavigationIds(ids);
+        if (leadId) {
+            setCurrentIndex(ids.indexOf(leadId));
         }
+      }
     } catch (e) {
         console.error("Failed to parse navigation IDs from sessionStorage", e);
     }
@@ -163,7 +164,7 @@ export default function LeadDetailsPage() {
     if(currentIndex === -1) return;
     const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
     if(navigationIds[nextIndex]) {
-        router.push(`/leads/${navigationIds[nextIndex]}`);
+      router.push(`/leads/${navigationIds[nextIndex]}?page=${page || 1}`);
     }
   };
 
@@ -504,6 +505,8 @@ export default function LeadDetailsPage() {
     );
   };
 
+  const backToListUrl = page ? `/leads-list?page=${page}` : '/leads-list';
+
   if (lead === undefined) {
     return (
         <div className="flex flex-1 items-center justify-center h-full">
@@ -521,7 +524,7 @@ export default function LeadDetailsPage() {
             <p className="text-muted-foreground mb-6">
                 The lead you are looking for does not exist or could not be loaded.
             </p>
-            <Button onClick={() => router.push('/leads-list')}>
+            <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl)}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Back to Leads List
             </Button>
         </div>
@@ -591,14 +594,14 @@ export default function LeadDetailsPage() {
                     </Form>
                 </AlertDialogContent>
             </AlertDialog>
-          <Button variant="outline" size="sm" onClick={() => router.push('/leads-list')}>
+          <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl)}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back To List
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
                 <ChevronsLeft className="h-4 w-4 mr-1" /> Prev
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
-                Next <ChevronsRight className="h-4 w-4 ml-1" />
+            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex < 0 || currentIndex >= navigationIds.length - 1}>
+              Next <ChevronsRight className="h-4 w-4 ml-1" />
             </Button>
         </div>
       </div>

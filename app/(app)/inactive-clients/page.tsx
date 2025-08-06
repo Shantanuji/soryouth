@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const allColumns: Record<string, string> = {
     email: 'Email',
@@ -31,6 +32,10 @@ const allColumns: Record<string, string> = {
 };
 
 export default function InactiveClientsListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [clients, setClients] = useState<Client[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<CustomSetting[]>([]);
@@ -42,7 +47,7 @@ export default function InactiveClientsListPage() {
   const [isPending, startTransition] = useTransition();
 
   const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = Number(searchParams.get('page')) || 1;
 
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [isAssignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -75,6 +80,12 @@ export default function InactiveClientsListPage() {
     }
     fetchClients();
   }, []);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(newPage));
+    router.push(`${pathname}?${params.toString()}`);
+  };
   
   const handleBulkUpdate = (action: 'assign' | 'status') => {
     startTransition(async () => {
@@ -228,7 +239,7 @@ export default function InactiveClientsListPage() {
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); setCurrentPage(1); }}>
+                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); handlePageChange(1); }}>
                                     {[10, 20, 50, 100].map(size => (
                                         <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
                                     ))}
@@ -246,11 +257,12 @@ export default function InactiveClientsListPage() {
         items={paginatedClients}
         viewType="client" // Uses the client view, links to /clients/[id] which handles both active/inactive
         sortConfig={sortConfig}
-        requestSort={requestSort}
+        requestSort={requestSort as (key: keyof Client) => void}
         columnVisibility={columnVisibility}
         selectedIds={selectedClientIds}
         setSelectedIds={setSelectedClientIds}
         allFilteredIds={allFilteredClients.map(c => c.id)}
+        currentPage={currentPage}
       />
 
        <div className="flex items-center justify-between pt-4">
@@ -258,10 +270,10 @@ export default function InactiveClientsListPage() {
           Showing {paginatedClients.length} of {allFilteredClients.length} inactive clients.
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage >= totalPages}>
+          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
             Next
           </Button>
         </div>

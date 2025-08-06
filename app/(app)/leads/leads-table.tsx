@@ -50,6 +50,7 @@ interface LeadsTableProps<T extends Item> {
   selectedIds: string[];
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
   allFilteredIds: string[];
+  currentPage?: number;
 }
 
 const formatDate = (dateString?: string | null) => {
@@ -65,10 +66,11 @@ const formatDate = (dateString?: string | null) => {
   }
 };
 
-export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, sortConfig, requestSort, columnVisibility, selectedIds, setSelectedIds, allFilteredIds }: LeadsTableProps<T>) {
+export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, sortConfig, requestSort, columnVisibility, selectedIds, setSelectedIds, allFilteredIds, currentPage = 1}: LeadsTableProps<T>) {
 
   const handleRowClick = () => {
-    sessionStorage.setItem('navigation_ids', JSON.stringify(allFilteredIds));
+    const itemIdsOnCurrentPage = items.map(item => item.id);
+    sessionStorage.setItem('navigation_ids', JSON.stringify(itemIdsOnCurrentPage));
   };
 
   const getSourceBadgeVariant = (source?: string | null) => {
@@ -112,9 +114,10 @@ export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, 
   );
 
   const renderRow = (item: T, index: number) => {
-    const href = viewType === 'client' ? `/clients/${item.id}` :
+    const baseHref = viewType === 'client' ? `/clients/${item.id}` :
                  viewType === 'dropped' ? `/dropped-leads/${item.id}` :
                  `/leads/${item.id}`;
+    const href = `${baseHref}?page=${currentPage}`;
     
     return (
      <TableRow key={item.id} className="hover:bg-muted/20" data-state={selectedIds.includes(item.id) ? 'selected' : undefined}>

@@ -599,7 +599,7 @@ export default function ClientDetailsPage() {
           <Button variant="outline" size="sm" onClick={() => navigateTo('prev')} disabled={currentIndex <= 0}>
                 <ChevronsLeft className="h-4 w-4 mr-1" /> Prev
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex === -1 || currentIndex >= navigationIds.length - 1}>
+             <Button variant="outline" size="sm" onClick={() => navigateTo('next')} disabled={currentIndex < 0 || currentIndex >= navigationIds.length - 1}>
                 Next <ChevronsRight className="h-4 w-4 ml-1" />
             </Button>
         </div>

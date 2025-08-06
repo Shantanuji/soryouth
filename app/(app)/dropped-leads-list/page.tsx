@@ -16,6 +16,7 @@ import { getUsers } from '@/app/(app)/users/actions';
 import { getLeadSources } from '@/app/(app)/settings/actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const allColumns: Record<string, string> = {
     email: 'Email',
@@ -30,6 +31,10 @@ const allColumns: Record<string, string> = {
 
 
 export default function DroppedLeadsListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [droppedLeads, setDroppedLeads] = useState<DroppedLead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [sources, setSources] = useState<CustomSetting[]>([]);
@@ -47,7 +52,7 @@ export default function DroppedLeadsListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = Number(searchParams.get('page')) || 1;
   
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     email: true, phone: true, status: true, dropReason: true, lastCommentText: false,
@@ -73,6 +78,12 @@ export default function DroppedLeadsListPage() {
     }
     fetchData();
   }, []);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(newPage));
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   const handleBulkReactivate = () => {
     startTransition(async () => {
@@ -278,7 +289,7 @@ export default function DroppedLeadsListPage() {
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); setCurrentPage(1); }}>
+                                <DropdownMenuRadioGroup value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); handlePageChange(1); }}>
                                     {[10, 20, 50, 100].map(size => (
                                         <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
                                     ))}
@@ -319,16 +330,17 @@ export default function DroppedLeadsListPage() {
         selectedIds={selectedLeadIds}
         setSelectedIds={setSelectedLeadIds}
         allFilteredIds={allFilteredLeads.map(l => l.id)}
+        currentPage={currentPage}
       />
       <div className="flex items-center justify-between pt-4">
         <div className="text-sm text-muted-foreground">
           Showing {paginatedLeads.length} of {allFilteredLeads.length} dropped leads.
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage >= totalPages}>
+          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
             Next
           </Button>
         </div>

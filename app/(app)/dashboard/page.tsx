@@ -144,7 +144,7 @@ export default function DashboardOverviewPage() {
         setDashboardData({
             totalLeads: activeLeads.length,
             totalClients: activeClients.length + inactiveClients.length,
-            dealsWon: activeClients.length, // This might need clarification if "Deals Won" means something else
+            dealsWon: allDeals.length, // This might need clarification if "Deals Won" means something else
             leadsDropped: droppedLeads.length,
             leadsByUser,
             dealsByUser,
@@ -384,7 +384,7 @@ export default function DashboardOverviewPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <IndianRupee className="h-5 w-5 text-primary" />
-              Yearly Sales (Value) - Total: ₹{dashboardData.totalSalesValue.toLocaleString('en-IN')}
+              Yearly Sales (Value) - Total: Rs. {dashboardData.totalSalesValue.toLocaleString('en-IN')}
             </CardTitle>
             <CardDescription>Total sales value over the financial year (Apr-Mar).</CardDescription>
           </CardHeader>
@@ -394,7 +394,7 @@ export default function DashboardOverviewPage() {
                   <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickFormatter={(value) => `₹${Number(value) / 1000}k`} />
+                    <YAxis tickFormatter={(value) => `Rs ${Number(value) / 1000}k`} />
                     <Tooltip content={<ChartTooltipContent indicator="line" />} />
                     <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                   </LineChart>

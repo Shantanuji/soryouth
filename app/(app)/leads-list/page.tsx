@@ -26,6 +26,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormMessage, FormField, FormItem } from '@/components/ui/form';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+
 
 const allColumns: Record<string, string> = {
     email: 'Email',
@@ -121,6 +123,10 @@ function BulkImportDialog({ isOpen, onClose, onImportSuccess }: { isOpen: boolea
 }
 
 export default function LeadsListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<CustomSetting[]>([]);
@@ -141,7 +147,7 @@ export default function LeadsListPage() {
   const [isPending, startTransition] = useTransition();
 
   const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = Number(searchParams.get('page')) || 1;
 
   // State for bulk actions
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -193,6 +199,12 @@ export default function LeadsListPage() {
     }
     fetchData();
   }, []);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(newPage));
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   const handleAddLead = () => {
     setSelectedLeadForEdit(null);
@@ -552,7 +564,7 @@ export default function LeadsListPage() {
                                   value={String(pageSize)} 
                                   onValueChange={(value) => {
                                     setPageSize(Number(value));
-                                    setCurrentPage(1);
+                                    handlePageChange(1);
                                 }}>
                                     {[10, 20, 50, 100].map(size => (
                                         <DropdownMenuRadioItem key={size} value={String(size)}>{size}</DropdownMenuRadioItem>
@@ -596,6 +608,7 @@ export default function LeadsListPage() {
         selectedIds={selectedLeadIds}
         setSelectedIds={setSelectedLeadIds}
         allFilteredIds={allFilteredLeads.map(l => l.id)}
+        currentPage={currentPage}
       />
 
        <div className="flex items-center justify-between pt-4">
@@ -609,7 +622,7 @@ export default function LeadsListPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
           >
             Previous
@@ -617,7 +630,7 @@ export default function LeadsListPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
           >
             Next
