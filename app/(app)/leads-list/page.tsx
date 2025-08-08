@@ -459,7 +459,7 @@ export default function LeadsListPage() {
         description="Manage all active leads in the pipeline."
         icon={ListChecks}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {selectedLeadIds.length > 0 ? (
                  <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground whitespace-nowrap">{selectedLeadIds.length} selected</span>

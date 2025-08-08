@@ -171,7 +171,7 @@ export default function SurveyListPage() {
         description="Manage all site surveys."
         icon={ListChecks}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {selectedIds.length > 0 ? (
                 <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                   <AlertDialogTrigger asChild>

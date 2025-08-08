@@ -112,7 +112,7 @@ export default function FollowUpReportPage() {
     <>
       <PageHeader title="Follow-up report" icon={ListChecks} />
 
-      <Card>
+      <Card className='items-center'>
         <CardHeader>
           <div className="flex flex-wrap gap-4 items-center justify-between">
               <div className="flex flex-wrap gap-2 items-center">

@@ -5,7 +5,7 @@ export function AppLogoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
+      viewBox="0 0 20 20"
       {...props} // className will be passed for sizing
     >
       {/* Blue part: forms left side of an abstract 'A' or mountain peak */}

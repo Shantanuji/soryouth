@@ -144,14 +144,14 @@ export default function DealsReportPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex flex-wrap gap-4 items-center justify-center">
               <div className="flex flex-wrap gap-2 items-center">
                  <Popover>
                     <PopoverTrigger asChild>
                     <Button
                         id="date"
                         variant={"outline"}
-                        className={cn("w-[260px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
+                        className={cn("w-[240px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
                     >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange?.from ? ( dateRange.to ? (<> {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")} </>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
@@ -225,7 +225,7 @@ export default function DealsReportPage() {
             {isLoading ? (
                 <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
             ) : (
-                <Card className="shadow-inner">
+                <Card className="shadow-inner w-96">
                     <CardHeader className="flex flex-row justify-between items-center">
                         <div>
                             <CardTitle>Soryouth Renewable Energy Private Limited</CardTitle>
