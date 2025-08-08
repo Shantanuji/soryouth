@@ -143,14 +143,14 @@ export default function ClientsListPage() {
       } else { // New client
         const newClientData = { ...data, status: data.status || statuses[0]?.name || 'Fresher' };
         result = await createClient(newClientData as CreateClientData);
-        if (result) {
-          setClients(prev => [result!, ...prev]);
-          toast({ title: "Client Added", description: `${result.name} has been added.` });
-        } else {
-          toast({ title: "Error", description: "Failed to create client.", variant: "destructive" });
+        if ('error' in result) {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        } else if (result) {
+            await refreshData();
+            toast({ title: "Client Added", description: `${result.name} has been added to leads.` });
         }
       }
-      if (result) {
+      if (result && !('error' in result)) {
         setIsFormOpen(false);
         setSelectedClientForEdit(null);
       }

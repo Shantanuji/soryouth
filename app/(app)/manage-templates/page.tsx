@@ -142,7 +142,7 @@ export default function ManageTemplatesPage() {
         }
       />
       <Tabs defaultValue="proposal">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-auto grid-cols-3">
           <TabsTrigger value="proposal"><FileText className="mr-2 h-4 w-4" />Proposal Templates ({proposalTemplates.length})</TabsTrigger>
           <TabsTrigger value="document"><Files className="mr-2 h-4 w-4" />Document Templates ({documentTemplates.length})</TabsTrigger>
           <TabsTrigger value="financial"><Banknote className="mr-2 h-4 w-4" />Financial Templates ({financialTemplates.length})</TabsTrigger>

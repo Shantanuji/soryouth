@@ -37,7 +37,7 @@ import { CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES } from '@/lib/constants';
 const getClientSchema = (statuses: string[], sources: string[]) => z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }).optional().or(z.literal('')),
-  phone: z.string().min(10, { message: 'Phone number must be at least 10 digits.' }).optional().or(z.literal('')),
+  phone: z.string().min(10, { message: 'Phone number must be at least 10 digits.' }).max(10, {message: 'Phone number cannot exceed 10 digits'}).optional().or(z.literal('')),
   status: z.string().refine(val => statuses.includes(val), { message: "Please select a valid stage." }),
   source: z.string().optional().refine(val => !val || sources.includes(val), { message: "Please select a valid source." }),
   assignedTo: z.string().optional(),

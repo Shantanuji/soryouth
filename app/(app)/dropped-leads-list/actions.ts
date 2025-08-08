@@ -276,7 +276,10 @@ export async function reactivateLead(droppedLeadId: string): Promise<{ success: 
 
         return { success: true, newLeadId: newLead.id };
 
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
+        return { success: false, message: 'Reactivation failed: A contact with this phone number already exists in the active leads or clients.' };
+        }
         console.error(`Failed to reactivate lead ${droppedLeadId}:`, error);
         return { success: false, message: 'An unexpected error occurred during reactivation.' };
     }

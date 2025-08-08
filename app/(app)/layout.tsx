@@ -37,14 +37,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
            <UserNav />
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="flex flex-col">
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
+      <SidebarInset className="flex flex-col h-screen overflow-hidden">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4 flex-shrink-0">
           <SidebarTrigger className="lg:hidden" />
           <div className="flex-1">
              <UniversalSearch />
           </div>
         </header>
-        <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:px-6 sm:py-0 md:gap-8">
           {children}
         </main>
         <Toaster />

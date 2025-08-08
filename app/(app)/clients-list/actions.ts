@@ -141,11 +141,10 @@ export async function getClientById(id: string): Promise<Client | null> {
   }
 }
 
-export async function createClient(data: CreateClientData): Promise<Client | null> {
+export async function createClient(data: CreateClientData): Promise<Client | { error: string }> {
     const session = await verifySession();
     if (!session?.userId) {
-        console.error("Authentication error: No user session found.");
-        return null;
+        return { error: "Authentication error: No user session found." };
     }
 
     try {
@@ -175,10 +174,16 @@ export async function createClient(data: CreateClientData): Promise<Client | nul
         revalidatePath('/clients-list');
         revalidatePath('/deals'); // Revalidate deals page as new clients can be selected
         const newClientWithRelations = await getClientById(newClient.id);
+        if (!newClientWithRelations) {
+            return { error: "Failed to retrieve the created client." };
+        }
         return newClientWithRelations;
-    } catch (error) {
-        console.error("Failed to create client:", error);
-        return null;
+    } catch (error: any) {
+      if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
+        return { error: 'A contact with this phone number already exists.' };
+      }
+      console.error("Failed to create client:", error);
+      return { error: 'An unexpected database error occurred.' };
     }
 }
 
@@ -217,7 +222,12 @@ export async function updateClient(id: string, data: Partial<Omit<Client, 'id' |
         revalidatePath('/inactive-clients');
         revalidatePath(`/clients/${id}`);
         return mapPrismaClientToClientType(updatedClientFromDb);
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
+          // This should return a value that the caller can use to show a toast message.
+          // For now, returning null indicates failure. The UI will show a generic error.
+          return null;
+        }
         console.error("Failed to update client:", error);
         return null;
     }

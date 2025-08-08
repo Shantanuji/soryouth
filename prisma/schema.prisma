@@ -63,7 +63,7 @@ model Lead {
   id        String  @id @default(cuid())
   name      String
   email     String?
-  phone     String?
+  phone     String? @unique
   status    String // Corresponds to LeadStatusType
   source    String? // Corresponds to LeadSourceOptionType
   
@@ -102,10 +102,10 @@ model Lead {
 }
 
 model DroppedLead {
-  id                 String     @id @default(cuid())
+  id                 String   @id @default(cuid())
   name               String
   email              String?
-  phone              String?
+  phone              String?  @unique
   status             String     // Will always be 'Lost'
   source             String?
   
@@ -137,10 +137,10 @@ model DroppedLead {
 }
 
 model Client {
-  id                 String    @id @default(cuid())
+  id                 String   @id @default(cuid())
   name               String
   email              String?
-  phone              String?
+  phone              String?  @unique
   status             String
   source             String? // Corresponds to ClientSourceOptionType
   priority           String?

@@ -245,14 +245,14 @@ export default function LeadsListPage() {
         }
       } else { // New lead
         result = await createLead(leadData as CreateLeadData);
-        if (result) {
+        if ('error' in result) {
+          toast({ title: "Error", description: result.error, variant: "destructive" });
+        } else if (result) {
           await refreshData();
           toast({ title: "Lead Added", description: `${result.name} has been added to leads.` });
-        } else {
-          toast({ title: "Error", description: "Failed to create lead.", variant: "destructive" });
         }
       }
-      if (result) {
+      if (result && !('error' in result)) {
         setIsFormOpen(false);
         setSelectedLeadForEdit(null);
       }
