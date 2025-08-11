@@ -255,7 +255,7 @@ export async function getAllDeals(): Promise<Deal[]> {
         const deals = await prisma.deal.findMany({
             where: whereClause,
             orderBy: { createdAt: 'desc' },
-            include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true }
+            include: { assignedTo: true, client: true, createdBy: true }
         });
         return deals.map(mapPrismaDeal);
     } catch (error) {
