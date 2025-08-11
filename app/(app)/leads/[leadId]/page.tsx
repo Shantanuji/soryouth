@@ -541,10 +541,10 @@ export default function LeadDetailsPage() {
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{lead.name}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
             <AlertDialog open={isDropDialogOpen} onOpenChange={setIsDropDialogOpen}>
                 <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" disabled={isDropping}><Trash2 className="mr-2 h-4 w-4" /> Drop lead</Button>
+                    <Button variant="destructive" size="sm" disabled={isDropping}><Trash2 className="mr-2 h-4 w-4" /> Drop</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                     <Form {...dropForm}>

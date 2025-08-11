@@ -143,14 +143,14 @@ export default function ClientsListPage() {
       } else { // New client
         const newClientData = { ...data, status: data.status || statuses[0]?.name || 'Fresher' };
         result = await createClient(newClientData as CreateClientData);
-        if (result) {
-          setClients(prev => [result!, ...prev]);
-          toast({ title: "Client Added", description: `${result.name} has been added.` });
-        } else {
-          toast({ title: "Error", description: "Failed to create client.", variant: "destructive" });
+        if ('error' in result) {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        } else if (result) {
+            await refreshData();
+            toast({ title: "Client Added", description: `${result.name} has been added to leads.` });
         }
       }
-      if (result) {
+      if (result && !('error' in result)) {
         setIsFormOpen(false);
         setSelectedClientForEdit(null);
       }
@@ -313,7 +313,7 @@ export default function ClientsListPage() {
         description="Manage all your existing clients."
         icon={Briefcase}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {selectedClientIds.length > 0 ? (
                  <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground whitespace-nowrap">{selectedClientIds.length} selected</span>

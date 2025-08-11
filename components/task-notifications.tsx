@@ -260,7 +260,7 @@ export function TaskNotifications() {
           <span className="sr-only">Open task notifications</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96" align="end">
+      <PopoverContent className="w-auto" align="start">
         <div className="p-4">
           <h3 className="text-lg font-medium">Your Tasks & Notifications</h3>
           <p className="text-sm text-muted-foreground">

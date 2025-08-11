@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
   FormControl,
@@ -31,8 +32,8 @@ import {
 } from '@/components/ui/select';
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import { DEAL_PIPELINES, ALL_DEAL_STAGES, type DealPipelineType, type DealStage } from '@/lib/constants';
-import type { User, Client, CreateClientData, CustomSetting, LeadSourceOptionType, Lead } from '@/types';
-import { IndianRupee, Calendar as CalendarIcon, ChevronsUpDown, Check, PlusCircle } from 'lucide-react';
+import type { User, Client, CreateClientData, CustomSetting, LeadSourceOptionType, Lead, Deal } from '@/types';
+import { IndianRupee, Calendar as CalendarIcon, ChevronsUpDown, Check, PlusCircle, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -44,6 +45,7 @@ import { getClientStatuses, getLeadSources } from '@/app/(app)/settings/actions'
 import { useToast } from '@/hooks/use-toast';
 
 const getDealSchema = (sources: string[]) => z.object({
+  id: z.string().optional(),
   clientId: z.string().optional(),
   clientName: z.string().min(2, { message: "Client name must be at least 2 characters." }),
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -58,6 +60,8 @@ const getDealSchema = (sources: string[]) => z.object({
   assignedTo: z.string().optional(),
   poWoDate: z.date({ required_error: "A PO/WO date is required." }),
   amcDurationInMonths: z.coerce.number().int().min(0).optional(),
+  amcDealValue: z.coerce.number().min(0).optional(),
+  notes: z.string().optional(),
 });
 
 export type DealFormValues = z.infer<ReturnType<typeof getDealSchema>>;
@@ -68,7 +72,7 @@ interface DealFormProps {
   onSubmit: (data: DealFormValues) => void;
   users: User[];
   clients: Client[];
-  deal?: Partial<DealFormValues & { id?: string }>;
+  deal?: Partial<DealFormValues> | null;
   pipeline?: DealPipelineType;
   initialStage?: DealStage;
 }
@@ -95,13 +99,15 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
       phone: '',
       pipeline: pipeline || 'Solar PV Plant',
       dealFor: '',
-      source: undefined ,
+      source: undefined,
       stage: initialStage || (pipeline ? DEAL_PIPELINES[pipeline][0] : DEAL_PIPELINES['Solar PV Plant'][0]),
       dealValue: 0,
       kilowatt: 0,
       assignedTo: undefined,
       poWoDate: new Date(),
       amcDurationInMonths: 0,
+      amcDealValue: 0,
+      notes: '',
     },
   });
 
@@ -130,45 +136,58 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
   
   const handleClientFormSubmit = async (data: CreateClientData | Client) => {
     startClientCreation(async () => {
-      const newClient = await createClient(data as CreateClientData);
-      if (newClient) {
+      const newClientData = { ...data, status: data.status || 'Fresher' };
+      const newClient = await createClient(newClientData as CreateClientData);
+      if (newClient && !('error' in newClient)) {
         toast({ title: "Client Created", description: `${newClient.name} has been added.` });
         clients.push(newClient); 
         handleClientSelect(newClient);
         setClientFormOpen(false);
       } else {
-        toast({ title: "Error", description: "Failed to create client.", variant: "destructive" });
+        toast({ title: "Error", description: (newClient as {error: string}).error || "Failed to create client.", variant: "destructive" });
       }
     });
   };
 
   useEffect(() => {
     if (isOpen) {
-      if (deal?.clientId && clients.length) {
-        const client = clients.find(c => c.id === deal.clientId);
-        if (client) handleClientSelect(client);
+      if (deal?.id) {
+          if (clients.length && deal.clientId) {
+            const client = clients.find(c => c.id === deal.clientId);
+            if (client) handleClientSelect(client);
+          }
+          
+          form.reset({
+            ...deal,
+            poWoDate: deal.poWoDate ? new Date(deal.poWoDate) : new Date(),
+            amcDealValue: deal.amcDealValue || 0,
+          });
+
+      } else {
+          form.reset({
+            clientName: '',
+            contactPerson: '',
+            email: '',
+            phone: '',
+            pipeline: pipeline || 'Solar PV Plant',
+            dealFor: '',
+            source: undefined,
+            stage: initialStage || (pipeline ? DEAL_PIPELINES[pipeline][0] : DEAL_PIPELINES['Solar PV Plant'][0]),
+            dealValue: 0,
+            kilowatt: 0,
+            assignedTo: undefined,
+            poWoDate: new Date(),
+            amcDurationInMonths: 0,
+            amcDealValue: 0,
+            notes: '',
+          });
       }
-      form.reset({
-        clientName: deal?.clientName || '',
-        clientId: deal?.clientId || undefined,
-        contactPerson: deal?.contactPerson || '',
-        email: deal?.email || '',
-        phone: deal?.phone || '',
-        pipeline: pipeline || 'Solar PV Plant',
-        dealFor: deal?.dealFor || '',
-        source: deal?.source || undefined,
-        stage: initialStage || deal?.stage || (pipeline ? DEAL_PIPELINES[pipeline][0] : DEAL_PIPELINES['Solar PV Plant'][0]),
-        dealValue: deal?.dealValue || 0,
-        kilowatt: deal?.kilowatt || 0,
-        assignedTo: deal?.assignedTo || undefined,
-        poWoDate: deal?.poWoDate ? (deal.poWoDate instanceof Date ? deal.poWoDate : new Date(deal.poWoDate)) : new Date(),
-        amcDurationInMonths: deal?.amcDurationInMonths || 0,
-      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, deal, clients, form, pipeline, initialStage]);
 
   const watchedPipeline = form.watch('pipeline');
+  const watchedAmcDuration = form.watch('amcDurationInMonths');
   const stagesForSelectedPipeline = useMemo(() => {
     return DEAL_PIPELINES[watchedPipeline] || [];
   }, [watchedPipeline]);
@@ -182,7 +201,7 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
-          <DialogTitle>{deal?.clientName ? 'Edit Deal' : 'Add New Deal'}</DialogTitle>
+          <DialogTitle>{deal?.id ? 'Edit Deal' : 'Add New Deal'}</DialogTitle>
           <DialogDescription>Enter the details for the deal.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -287,41 +306,55 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
                     </FormItem>
                 )} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="dealValue" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Deal Value (₹)</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input type="number" placeholder="0.00" className="pl-8" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField
-                control={form.control}
-                name="kilowatt"
-                render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Kilowatt (kW)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="0" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            {watchedPipeline === 'AMC' && (
-                <FormField control={form.control} name="amcDurationInMonths" render={({ field }) => (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="dealValue" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>AMC Duration (in months)</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g., 12" {...field} /></FormControl>
+                        <FormLabel>Deal Value (₹)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input type="number" placeholder="0.00" className="pl-8" {...field} />
+                            </div>
+                        </FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
+                <FormField
+                  control={form.control}
+                  name="kilowatt"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Kilowatt (kW)</FormLabel>
+                      <FormControl>
+                          <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                />
+            </div>
+            {watchedPipeline === 'Solar PV Plant' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md">
+                    <FormField control={form.control} name="amcDurationInMonths" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>AMC Duration (in months)</FormLabel>
+                            <FormControl><Input type="number" placeholder="e.g., 12" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="amcDealValue" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>AMC Deal Value (₹)</FormLabel>
+                             <FormControl>
+                                <div className="relative">
+                                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input type="number" placeholder="0.00" className="pl-8" {...field} value={field.value || 0} disabled={!watchedAmcDuration || watchedAmcDuration <= 0}/>
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
             )}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField control={form.control} name="assignedTo" render={({ field }) => (
@@ -354,9 +387,16 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
                     </FormItem>
                  )} />
             </div>
+            <FormField control={form.control} name="notes" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl><Textarea placeholder="Add any relevant notes for this deal..." {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit">Add Deal</Button>
+              <Button type="submit">{deal?.id ? 'Save Changes' : 'Add Deal'}</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -373,4 +413,3 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
     </>
   );
 }
-

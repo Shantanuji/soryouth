@@ -201,7 +201,7 @@ export default function DroppedLeadsListPage() {
         description="View leads that have been marked as lost."
         icon={UserX}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {selectedLeadIds.length > 0 ? (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

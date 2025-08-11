@@ -190,7 +190,7 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
         description="View all customers with proposals. Each card summarizes all proposals for that customer."
         icon={FileText}
         actions={
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-1 items-center">
             <div className="relative hidden md:block">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -203,8 +203,8 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
             </div>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                        <ArrowUpDown className="h-4 w-4" />
+                    <Button variant="outline" >
+                        <ArrowUpDown className="mr-2 h-4 w-4" /> Sort
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

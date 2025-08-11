@@ -18,12 +18,12 @@ export function Logo({ className, iconOnly = false }: LogoProps) {
     <Button
       variant="ghost"
       className={cn(
-        "flex h-auto w-full items-center justify-start p-0 text-left hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
+        "flex h-auto w-auto items-center justify-start p-0 text-left hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
         className
       )}
       onClick={toggleSidebar}
     >
-      <AppLogoIcon className="h-11 w-11 shrink-0" />
+      <AppLogoIcon className="h-auto w-auto " />
       {!iconOnly && (
         <span className="ml-2 truncate text-xl font-semibold font-headline text-primary-foreground group-data-[sidebar=sidebar]/sidebar-wrapper:text-sidebar-foreground group-data-[collapsible=icon]:hidden">
           {APP_NAME}

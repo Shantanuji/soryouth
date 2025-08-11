@@ -29,7 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${ptSans.variable}`}>
-      <head />
+      <head>
+        <meta name="viewport" content="width=auto, initial-scale=1.0" />
+      </head>
       <body className="font-body antialiased">
         {children}
         <Toaster />

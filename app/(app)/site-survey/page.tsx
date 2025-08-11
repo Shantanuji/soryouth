@@ -281,7 +281,7 @@ export default function SiteSurveyPage() {
         description="Fill in the details for the site survey."
         icon={ClipboardEdit}
       />
-      <Card className="lg:col-span-2">
+      <Card className="lg:col-span-2 ">
         <CardHeader>
           <CardTitle>Survey Details</CardTitle>
           <CardDescription>Select an existing customer or fill in the details for a new one.</CardDescription>
@@ -291,7 +291,7 @@ export default function SiteSurveyPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-2">
                     <FormLabel>Select Existing Customer</FormLabel>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex flex-wrap gap-2 items-center">
                         <div className="flex-grow">
                             {isDataLoading ? <Loader2 className="animate-spin" /> : <CustomerCombobox customers={allCustomers} onSelect={handleCustomerSelect} />}
                         </div>

@@ -285,7 +285,7 @@ const backToListUrl = `/dropped-leads-list?${searchParams.toString()}`;
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{droppedLead.name}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl)}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>

@@ -129,8 +129,7 @@ export default function ManageTemplatesPage() {
         actions={
           <div className="flex gap-2">
              <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
-              <Settings className="mr-2 h-4 w-4" />
-              Manage Document Types
+              <Settings className="mr-2 h-4 w-4" /> Manage Document Types
             </Button>
             <Button asChild>
               <Link href="/manage-templates/new">
@@ -142,10 +141,22 @@ export default function ManageTemplatesPage() {
         }
       />
       <Tabs defaultValue="proposal">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="proposal"><FileText className="mr-2 h-4 w-4" />Proposal Templates ({proposalTemplates.length})</TabsTrigger>
-          <TabsTrigger value="document"><Files className="mr-2 h-4 w-4" />Document Templates ({documentTemplates.length})</TabsTrigger>
-          <TabsTrigger value="financial"><Banknote className="mr-2 h-4 w-4" />Financial Templates ({financialTemplates.length})</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-10">
+          <TabsTrigger value="proposal" className="flex-wrap h-auto py-2 sm:py-1.5 sm:h-10">
+            <FileText className="mr-2 h-4 w-4" />
+            <span className="truncate">Proposal Templates</span>
+            <span className="ml-1">({proposalTemplates.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="document" className="flex-wrap h-auto py-2 sm:py-1.5 sm:h-10">
+            <Files className="mr-2 h-4 w-4" />
+            <span className="truncate">Document Templates</span>
+            <span className="ml-1">({documentTemplates.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="financial" className="flex-wrap h-auto py-2 sm:py-1.5 sm:h-10">
+            <Banknote className="mr-2 h-4 w-4" />
+            <span className="truncate">Financial Templates</span>
+            <span className="ml-1">({financialTemplates.length})</span>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="proposal" className="mt-6">
           {renderTemplateList(proposalTemplates)}

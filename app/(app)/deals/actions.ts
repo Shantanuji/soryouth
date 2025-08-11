@@ -15,17 +15,19 @@ function mapPrismaDeal(deal: any): Deal {
     return {
         ...deal,
         dealValue: Number(deal.dealValue),
-        kilowatt: deal.kilowatt ? Number(deal.kilowatt) : 0,
+        kilowatt: deal.kilowatt ? Number(deal.kilowatt) : undefined,
         poWoDate: deal.poWoDate.toISOString(),
         createdAt: deal.createdAt.toISOString(),
-        createdBy: deal.createdBy?.name,
         updatedAt: deal.updatedAt.toISOString(),
+        createdBy: deal.createdBy?.name,
         assignedTo: deal.assignedTo?.name,
         clientId: deal.clientId ?? undefined,
         clientName: deal.client?.name ?? deal.clientName,
         amcDurationInMonths: deal.amcDurationInMonths,
         amcEffectiveDate: deal.amcEffectiveDate ? deal.amcEffectiveDate.toISOString() : null,
         notes: deal.notes,
+        parentDealId: deal.parentDealId,
+        linkedAmcDeal: deal.linkedAmcDeal ? mapPrismaDeal(deal.linkedAmcDeal) : undefined,
     };
 }
 
@@ -46,9 +48,9 @@ function mapPrismaFollowUpToFollowUpType(prismaFollowUp: any): FollowUp {
     createdAt: prismaFollowUp.createdAt.toISOString(),
     followupOrTask: prismaFollowUp.followupOrTask,
     taskForUser: prismaFollowUp.taskForUser?.name ?? undefined,
+    taskStatus: prismaFollowUp.taskStatus ?? undefined,
     taskDate: prismaFollowUp.taskDate?.toISOString() ?? undefined,
     taskTime: prismaFollowUp.taskTime ?? undefined,
-    taskStatus: prismaFollowUp.taskStatus ?? 'Open',
   } as FollowUp;
 }
 
@@ -101,7 +103,7 @@ async function createAmcTasks(tx: Prisma.TransactionClient | PrismaClient, deal:
 }
 
 
-export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | null> {
+export async function createOrUpdateDeal(data: Partial<Deal & { amcDealValue?: number }>): Promise<Deal | null> {
     const session = await verifySession();
     if (!session?.userId) {
         console.error("Authentication error: No user session found.");
@@ -136,6 +138,7 @@ export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | nu
                 poWoDate: data.poWoDate ? parseISO(data.poWoDate as string) : new Date(),
                 amcDurationInMonths: data.amcDurationInMonths,
                 amcEffectiveDate: (data.pipeline === 'AMC' && data.stage === 'Active') ? new Date() : null,
+                notes: data.notes,
             };
 
             const relationalData = {
@@ -144,25 +147,68 @@ export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | nu
             };
 
             let resultDeal;
-            if (data.id) {
+            if (data.id) { // UPDATE
                 resultDeal = await tx.deal.update({
                     where: { id: data.id },
                     data: { ...dataToSave, ...relationalData, },
                     include: { client: true, assignedTo: true, createdBy: true }
                 });
-            } else {
+            } else { // CREATE
                  resultDeal = await tx.deal.create({
                     data: { ...dataToSave, createdBy: { connect: { id: session.userId! } }, ...relationalData, },
                     include: { client: true, assignedTo: true, createdBy: true }
                 });
             }
 
+            // --- AMC Deal Logic ---
+            const isSolarPvPlant = data.pipeline === 'Solar PV Plant';
+            const hasAmcData = data.amcDurationInMonths && data.amcDurationInMonths > 0;
+            
+            if(isSolarPvPlant) {
+                const existingAmcDeal = await tx.deal.findFirst({
+                    where: { parentDealId: resultDeal.id }
+                });
+
+                if (hasAmcData) {
+                    const amcData = {
+                        ...dataToSave, // Inherit most data
+                        pipeline: 'AMC' as DealPipelineType,
+                        stage: existingAmcDeal?.stage || 'New AMC',
+                        dealValue: data.amcDealValue || 0, // Use the specific AMC deal value
+                        amcDurationInMonths: data.amcDurationInMonths,
+                        amcEffectiveDate: existingAmcDeal?.amcEffectiveDate || null,
+                    };
+                    if (existingAmcDeal) { // Update existing AMC deal
+                        await tx.deal.update({
+                            where: { id: existingAmcDeal.id },
+                            data: {
+                                ...amcData,
+                                ...relationalData,
+                            },
+                        });
+                    } else { // Create new AMC deal
+                         await tx.deal.create({ data: { 
+                             ...amcData,
+                             ...relationalData, 
+                             parentDeal: { connect: { id: resultDeal.id } }, 
+                             createdBy: { connect: { id: session.userId! } } } 
+                        });
+                    }
+                } else if (existingAmcDeal) {
+                    // If AMC duration is set to 0, delete the linked AMC deal
+                    await tx.deal.delete({ where: { id: existingAmcDeal.id }});
+                }
+            }
+
+
             if (resultDeal.clientId) {
                 await updateTotalDealValueForClient(resultDeal.clientId, tx);
             }
             
             // Trigger AMC task creation if created as Active
-            await createAmcTasks(tx, resultDeal);
+            if(resultDeal.pipeline === 'AMC') {
+                 await createAmcTasks(tx, resultDeal);
+            }
 
             return resultDeal;
         });
@@ -173,7 +219,8 @@ export async function createOrUpdateDeal(data: Partial<Deal>): Promise<Deal | nu
         revalidatePath('/deals');
         revalidatePath('/dashboard');
 
-        return mapPrismaDeal(savedDeal);
+        const finalDeal = await getDealById(savedDeal.id);
+        return finalDeal;
     } catch (error) {
         console.error("Failed to create or update deal:", error);
         return null;
@@ -186,7 +233,7 @@ export async function getDealsForClient(clientId: string): Promise<Deal[]> {
         const deals = await prisma.deal.findMany({
             where: { clientId },
             orderBy: { createdAt: 'desc' },
-            include: { assignedTo: true, client: true, createdBy: true }
+            include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true }
         });
         return deals.map(mapPrismaDeal);
     } catch (error) {
@@ -208,7 +255,7 @@ export async function getAllDeals(): Promise<Deal[]> {
         const deals = await prisma.deal.findMany({
             where: whereClause,
             orderBy: { createdAt: 'desc' },
-            include: { assignedTo: true, client: true, createdBy: true }
+            include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true }
         });
         return deals.map(mapPrismaDeal);
     } catch (error) {
@@ -234,7 +281,7 @@ export async function updateDealStage(dealId: string, newStage: DealStage): Prom
                     // Set effective date only if it's the first time moving to Active
                     amcEffectiveDate: isBecomingActiveAmc && !dealToUpdate.amcEffectiveDate ? new Date() : dealToUpdate.amcEffectiveDate,
                  },
-                include: { assignedTo: true, client: true, createdBy: true }
+                include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true }
             });
             
             const dealWithDate = await tx.deal.findUnique({ where: {id: dealId}});
@@ -264,7 +311,6 @@ export async function updateDeal(id: string, data: Partial<Pick<Deal, 'assignedT
             if (user) {
                 prismaData.assignedToId = user.id;
             } else {
-                // Handle case where user is not found, maybe throw an error or return null
                 console.error(`User with name ${data.assignedTo} not found.`);
                 return null;
             }
@@ -273,7 +319,7 @@ export async function updateDeal(id: string, data: Partial<Pick<Deal, 'assignedT
         const updatedDeal = await prisma.deal.update({
             where: { id },
             data: prismaData,
-            include: { assignedTo: true, client: true, createdBy: true }
+            include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true }
         });
 
         revalidatePath(`/deals/${id}`);
@@ -292,7 +338,7 @@ export async function updateDealEffectiveDate(dealId: string, newDate: Date): Pr
             const deal = await tx.deal.update({
                 where: { id: dealId },
                 data: { amcEffectiveDate: newDate },
-                include: { assignedTo: true, client: true, createdBy: true },
+                include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true },
             });
 
             tasksCreatedCount = await createAmcTasks(tx, deal);
@@ -313,8 +359,11 @@ export async function getDealById(id: string): Promise<Deal | null> {
   try {
     const deal = await prisma.deal.findUnique({
       where: { id },
-      include: { assignedTo: true, client: true, createdBy: true }
+      include: { assignedTo: true, client: true, createdBy: true, linkedAmcDeal: true }
     });
+
+    if (!deal) return null;
+
     return deal ? mapPrismaDeal(deal) : null;
   } catch (error) {
     console.error(`Failed to fetch deal with id ${id}:`, error);
@@ -374,7 +423,6 @@ export async function addDealActivity(data: AddActivityData): Promise<FollowUp |
     });
 
     revalidatePath(`/deals/${data.dealId}`);
-    revalidatePath('/dashboard');
 
     return newActivity ? mapPrismaFollowUpToFollowUpType(newActivity) : null;
   } catch (error) {
@@ -393,18 +441,38 @@ export async function deleteDeal(id: string): Promise<{ success: boolean; error?
       return { success: false, error: 'Deal not found' };
     }
 
-    await prisma.deal.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+            // Check for and delete the linked AMC deal first
+            const linkedAmcDeal = await tx.deal.findFirst({
+                where: { parentDealId: id },
+            });
 
-    if (dealToDelete.clientId) {
-      // Recalculate total deal value for the client
-      await updateTotalDealValueForClient(dealToDelete.clientId, prisma);
-      revalidatePath(`/clients/${dealToDelete.clientId}`);
+            if (linkedAmcDeal) {
+                await tx.deal.delete({ where: { id: linkedAmcDeal.id } });
+            }
+
+            // Now, delete the main deal
+            await tx.deal.delete({ where: { id } });
+
+            // After deleting, recalculate the client's total deal value
+            if (dealToDelete.clientId) {
+                await updateTotalDealValueForClient(dealToDelete.clientId, tx);
+            }
+        });
+
+
+        if (dealToDelete.clientId) {
+            revalidatePath(`/clients/${dealToDelete.clientId}`);
+        }
+
+        revalidatePath('/deals');
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete deal:", error);
+        if ((error as any).code === 'P2003') {
+             return { success: false, error: 'Cannot delete this deal. Please ensure any child deals (like linked AMCs) are removed first.' };
+        }
+        return { success: false, error: 'An unexpected error occurred.' };
     }
-
-    revalidatePath('/deals');
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to delete deal:", error);
-    return { success: false, error: 'An unexpected error occurred.' };
-  }
 }

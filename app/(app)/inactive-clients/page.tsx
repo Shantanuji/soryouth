@@ -187,7 +187,7 @@ export default function InactiveClientsListPage() {
         description="Manage your inactive clients. These clients can be reactivated at any time."
         icon={Archive}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {selectedClientIds.length > 0 ? (
                  <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground whitespace-nowrap">{selectedClientIds.length} selected</span>
