@@ -182,7 +182,7 @@ export default function DealsPage() {
   return (
     <>
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between mb-4">
         <PageHeader
             title={`Deals (${totalDeals} - ${totalValue.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 })})`}
             icon={Handshake}

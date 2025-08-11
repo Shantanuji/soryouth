@@ -439,6 +439,8 @@ export interface Deal {
   amcDurationInMonths?: number | null;
   amcEffectiveDate?: string | null;
   notes?: string | null;
+  linkedAmcDeal?: Deal | null;
+  parentDealId?: string | null;
 }
 
 export type TaskNotification = {

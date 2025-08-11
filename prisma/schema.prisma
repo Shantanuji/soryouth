@@ -401,6 +401,7 @@ model Attendance {
 
 model Deal {
     id            String   @id @default(cuid())
+    
     clientName    String
     contactPerson String
     email         String?
@@ -426,6 +427,10 @@ model Deal {
     
     assignedToId String?
     assignedTo   User?    @relation("DealAssignedTo", fields: [assignedToId], references: [id])
+
+    parentDealId       String?    @unique // An AMC deal has one parent PV deal
+    parentDeal         Deal?      @relation("SolarToAmc", fields: [parentDealId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+    linkedAmcDeal      Deal?      @relation("SolarToAmc")
 
     followUps     FollowUp[]
     tickets       Ticket[]

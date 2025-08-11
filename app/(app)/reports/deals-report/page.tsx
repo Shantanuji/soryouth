@@ -225,7 +225,7 @@ export default function DealsReportPage() {
             {isLoading ? (
                 <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
             ) : (
-                <Card className="shadow-inner w-96">
+                <Card className="shadow-inner w-auto">
                     <CardHeader className="flex flex-row justify-between items-center">
                         <div>
                             <CardTitle>Soryouth Renewable Energy Private Limited</CardTitle>

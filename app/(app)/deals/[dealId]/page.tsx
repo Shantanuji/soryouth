@@ -15,9 +15,9 @@ import { Label } from "@/components/ui/label";
 import { DEAL_PIPELINES, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES } from '@/lib/constants';
 import type { Deal, User, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, DealStage, Client } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, CheckCircle, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Loader2, Save, Send, Video, Building, IndianRupee, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, CheckCircle, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Loader2, Save, Send, Video, Building, IndianRupee, Calendar as CalendarIcon, Edit, Link2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { getDealById, addDealActivity, updateDeal, getActivitiesForDeal, updateDealStage, updateDealEffectiveDate } from '@/app/(app)/deals/actions';
+import { getDealById, addDealActivity, updateDeal, getActivitiesForDeal, updateDealStage, updateDealEffectiveDate, createOrUpdateDeal, } from '@/app/(app)/deals/actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { sendCallNotification } from '@/lib/fcm';
 import { useSession } from '@/hooks/use-sessions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { DealForm, type DealFormValues } from '../deal-form';
 
 const ActivityIcon = ({ type, className }: { type: string, className?: string }) => {
   const defaultClassName = "h-4 w-4";
@@ -60,6 +61,7 @@ export default function DealDetailsPage() {
   
   const [activities, setActivities] = useState<FollowUp[]>([]);
   const [isActivitiesLoading, setActivitiesLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   const [activityComment, setActivityComment] = useState('');
   const [activityType, setActivityType] = useState<FollowUpType>(FOLLOW_UP_TYPES[0]);
@@ -73,46 +75,73 @@ export default function DealDetailsPage() {
   
   const [effectiveAmcDate, setEffectiveAmcDate] = useState<Date | undefined>();
 
-  useEffect(() => {
-    if (dealId) {
-      const fetchDetails = async () => {
-        setDeal(undefined);
-        try {
-           const [fetchedDeal, fetchedUsers, fetchedActivities] = await Promise.all([
-            getDealById(dealId),
-            getUsers(),
-            getActivitiesForDeal(dealId),
-          ]);
+  const dealForForm = useMemo(() => {
+    if (!deal) return undefined;
+    return {
+      id: deal.id,
+      clientId: deal.clientId ?? undefined,
+      clientName: deal.clientName,
+      contactPerson: deal.contactPerson,
+      email: deal.email ?? '',
+      phone: deal.phone ?? '',
+      pipeline: deal.pipeline,
+      dealFor: deal.dealFor ?? undefined,
+      source: deal.source ?? undefined,
+      stage: deal.stage,
+      dealValue: deal.dealValue ?? 0,
+      kilowatt: deal.kilowatt ?? undefined,
+      assignedTo: deal.assignedTo ?? undefined,
+      poWoDate: deal.poWoDate && isValid(parseISO(deal.poWoDate)) ? parseISO(deal.poWoDate) : new Date(),
+      amcDealValue: deal.linkedAmcDeal?.dealValue || 0,
+      amcDurationInMonths: deal.amcDurationInMonths ?? undefined,
+      notes: deal.notes ?? '',
+    };
+  }, [deal]);
 
-          setDeal(fetchedDeal);
+  const fetchDetails = async () => {
+    if(!dealId) return;
+    setDeal(undefined);
+    try {
+      const fetchedDeal = await getDealById(dealId);
+      setDeal(fetchedDeal);
+
+      if (fetchedDeal) {
+          const [fetchedUsers, fetchedActivities] = await Promise.all([
+            getUsers(),
+            getActivitiesForDeal(fetchedDeal.id),
+          ]);
           setUsers(fetchedUsers);
           setActivities(fetchedActivities);
-          
           if(fetchedDeal?.amcEffectiveDate) {
-              setEffectiveAmcDate(parseISO(fetchedDeal.amcEffectiveDate));
+            setEffectiveAmcDate(parseISO(fetchedDeal.amcEffectiveDate));
           }
-
           if (fetchedUsers.length > 0) {
             setTaskForUser(fetchedUsers[0].name);
           }
-        } catch (error) {
-          console.error("Failed to fetch deal details:", error);
+      } else {
           setDeal(null);
-          toast({
-            title: "Error",
-            description: "Could not load deal details.",
-            variant: "destructive",
-          });
-        } finally {
-            setActivitiesLoading(false);
-        }
-      };
-      
+      }
+    } catch (error) {
+      console.error("Failed to fetch deal details:", error);
+      setDeal(null);
+      toast({
+        title: "Error",
+        description: "Could not load deal details.",
+        variant: "destructive",
+      });
+    } finally {
+        setActivitiesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (dealId) {
       fetchDetails();
     } else {
       setDeal(null);
     }
-  }, [dealId, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealId]);
 
 
   const handleSaveActivity = () => {
@@ -133,7 +162,7 @@ export default function DealDetailsPage() {
         ...(isTask && {
           taskForUser,
           taskDate,
-          taskTime
+          taskTime,
         }),
       };
 
@@ -266,6 +295,27 @@ export default function DealDetailsPage() {
     });
   };
 
+  const handleDealSubmit = (data: DealFormValues) => {
+    if (!dealId) return;
+    startFormTransition(async () => {
+      const result = await createOrUpdateDeal({
+        ...data,
+        id: dealId,
+        poWoDate: format(data.poWoDate, 'yyyy-MM-dd'),
+      });
+      if (result) {
+        toast({
+          title: "Deal Updated",
+          description: `Deal for ${result.clientName} has been updated.`,
+        });
+        await fetchDetails();
+        setIsFormOpen(false);
+      } else {
+        toast({ title: "Error", description: "Could not update deal.", variant: "destructive" });
+      }
+    });
+  };
+
   const CallButton = () => {
     if (!deal?.phone) {
       return (
@@ -327,9 +377,12 @@ export default function DealDetailsPage() {
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{dealTitle}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.back()}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsFormOpen(true)}>
+              <Edit className="h-4 w-4 mr-1" /> Edit Deal
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.back()}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Back
+            </Button>
         </div>
       </div>
 
@@ -384,7 +437,29 @@ export default function DealDetailsPage() {
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageCircle className="h-5 w-5" /></Button>
-              </CardContent>
+               </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-md">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {deal.linkedAmcDeal && (
+                        <Button asChild className="w-full" size="sm">
+                            <Link href={`/deals/${deal.linkedAmcDeal.id}`}>
+                                <Link2 className="mr-2 h-4 w-4" /> View Linked AMC Deal
+                            </Link>
+                        </Button>
+                    )}
+                    {deal.parentDealId && (
+                         <Button asChild className="w-full" size="sm">
+                            <Link href={`/deals/${deal.parentDealId}`}>
+                                <Link2 className="mr-2 h-4 w-4" /> View Parent Deal
+                            </Link>
+                        </Button>
+                    )}
+                </CardContent>
             </Card>
             
             {deal.pipeline === 'AMC' && (
@@ -482,13 +557,13 @@ export default function DealDetailsPage() {
                             </Badge>
                             {activity.followupOrTask === 'Task' ? (
                                activity.taskStatus === 'Closed' ? (
-                                    <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
-                                        <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
-                                    </Badge>
+                                  <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
+                                      <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
+                                  </Badge>
                                 ) : (
-                                    <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
-                                        Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
-                                    </Badge>
+                                  <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
+                                      Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
+                                  </Badge>
                                 )
                             ) : (
                               <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
@@ -541,6 +616,16 @@ export default function DealDetailsPage() {
         </div>
       </div>
     </div>
+    {isFormOpen && dealForForm && (
+      <DealForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleDealSubmit}
+        users={users}
+        clients={[]}
+        deal={dealForForm as any}
+      />
+    )}
     </>
   );
 }

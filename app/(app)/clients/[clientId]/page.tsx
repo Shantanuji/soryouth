@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES, DEAL_PIPELINES } from '@/lib/constants';
 import type { Client, User, UserOptionType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateClientData, ClientStatusType, ClientPriorityType, Proposal, CustomSetting, SiteSurvey, DocumentType, Deal, DealPipelineType, DealStage, ClientType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getClientById, updateClient, addClientActivity, getActivitiesForClient, convertClientToLead } from '@/app/(app)/clients-list/actions';
 import { getProposalsForClient, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -38,6 +38,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { sendCallNotification } from '@/lib/fcm';
 import { useSession } from '@/hooks/use-sessions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import Link from 'next/link';
 
 const ActivityIcon = ({ type, className }: { type: string, className?: string }) => {
   const defaultClassName = "h-4 w-4";
@@ -598,7 +599,7 @@ export default function ClientDetailsPage() {
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">{client.name}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl())}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Back to List
           </Button>
@@ -975,17 +976,44 @@ export default function ClientDetailsPage() {
                 </CardContent>
             </Card>
              <Card>
-                <CardHeader>
-                    <CardTitle className="text-md">Add New Deal</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-md">Deals History ({deals.length})</CardTitle>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsDealFormOpen(true)}>
+                        <PlusCircle className="h-4 w-4 text-muted-foreground" />
+                    </Button>
                 </CardHeader>
                 <CardContent>
-                    <Button
-                        variant="outline"
-                        className="w-full h-20 border-dashed"
-                        onClick={() => setIsDealFormOpen(true)}
-                    >
-                        <PlusCircle className="h-8 w-8 text-muted-foreground" />
-                    </Button>
+                    {deals.length > 0 ? (
+                        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            {deals.map(deal => (
+                                <Link key={deal.id} href={`/deals/${deal.id}`} className="block">
+                                    <div className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50">
+                                        <div className="flex items-center gap-3">
+                                            <Handshake className="h-5 w-5 text-muted-foreground" />
+                                            <div>
+                                                <p className="font-semibold text-sm">{deal.pipeline} - {deal.dealFor || deal.stage}</p>
+                                                <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-semibold text-sm flex items-center"><IndianRupee className="h-4 w-4 mr-0.5" />{deal.dealValue.toLocaleString('en-IN')}</p>
+                                            <p className="text-xs text-muted-foreground">{format(parseISO(deal.poWoDate), 'dd MMM yyyy')}</p>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : (
+                         <div className="text-center p-2">
+                            <Button
+                                variant="outline"
+                                className="w-full h-16 border-dashed"
+                                onClick={() => setIsDealFormOpen(true)}
+                            >
+                                <PlusCircle className="h-6 w-6 text-muted-foreground" />
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
              <Card>
