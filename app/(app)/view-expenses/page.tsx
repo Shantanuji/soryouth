@@ -36,6 +36,13 @@ export default function ViewExpensesPage() {
     fetchExpenses();
   }, []);
 
+  const calculateTotals = (expenses: Expense[]) => {
+    return expenses.reduce((acc, expense) => {
+        acc[expense.status] = (acc[expense.status] || 0) + expense.amount;
+        return acc;
+    }, {} as Record<ExpenseStatus, number>);
+  };
+
   const handleUpdateStatus = (expenseId: string, status: 'Approved' | 'Rejected') => {
     startUpdateTransition(async () => {
         const result = await updateExpenseStatus(expenseId, status);
@@ -83,13 +90,22 @@ export default function ViewExpensesPage() {
             </Card>
         ) : (
             <Accordion type="multiple" className="w-full space-y-4">
-            {Object.values(groupedExpenses).map(({ user, expenses }) => (
+            {Object.values(groupedExpenses).map(({ user, expenses }) => {
+                const totals = calculateTotals(expenses);
+                return (
                 <AccordionItem value={user.id} key={user.id} className="border rounded-lg bg-card">
                     <AccordionTrigger className="p-4 hover:no-underline">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-grow">
                             <Avatar><AvatarImage src={`https://placehold.co/40x40.png?text=${user.name.charAt(0)}`} data-ai-hint="user avatar" /><AvatarFallback>{user.name.charAt(0)}</AvatarFallback></Avatar>
                             <span className="font-semibold text-lg">{user.name}</span>
-                            <Badge variant="outline">{expenses.length} expense(s) - Rs. </Badge>
+                            <Badge variant="outline">{expenses.length} expense(s) </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                            {Object.entries(totals).map(([status, total]) => (
+                                <Badge key={status} variant={getStatusBadgeVariant(status as ExpenseStatus)} className="text-xs py-1 px-2">
+                                    {status}: <IndianRupee className="h-2.5 w-2.5 ml-1 mr-0.5" />{total.toLocaleString('en-IN')}
+                                </Badge>
+                            ))}
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-0">
@@ -138,7 +154,7 @@ export default function ViewExpensesPage() {
                         </div>
                     </AccordionContent>
                 </AccordionItem>
-            ))}
+            )})}
             </Accordion>
         )}
       </div>
