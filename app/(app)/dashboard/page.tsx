@@ -83,6 +83,8 @@ export default function DashboardOverviewPage() {
         
         const userNames = users.map(u => u.name);
 
+        const dealsWithValue = allDeals.filter(deal => deal.dealValue > 0);
+
         const leadsByUser = userNames.map((user, index) => ({
             name: user,
             value: activeLeads.filter(lead => lead.assignedTo === user).length,
@@ -91,7 +93,7 @@ export default function DashboardOverviewPage() {
 
         const dealsByUser = userNames.map((user, index) => ({
             name: user,
-            value: allDeals.filter(deal => deal.createdBy === user).length,
+            value: dealsWithValue.filter(deal => deal.createdBy === user).length,
             fill: COLORS[index % COLORS.length],
         })).filter(item => item.value > 0);
         
