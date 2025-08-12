@@ -89,7 +89,7 @@ export default function ViewExpensesPage() {
                         <div className="flex items-center gap-3">
                             <Avatar><AvatarImage src={`https://placehold.co/40x40.png?text=${user.name.charAt(0)}`} data-ai-hint="user avatar" /><AvatarFallback>{user.name.charAt(0)}</AvatarFallback></Avatar>
                             <span className="font-semibold text-lg">{user.name}</span>
-                            <Badge variant="outline">{expenses.length} expense(s)</Badge>
+                            <Badge variant="outline">{expenses.length} expense(s) - Rs. </Badge>
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-0">

@@ -36,8 +36,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: 'Login successful', user: userWithoutPassword });
 
-  } catch (error) {
-    console.error('Mobile Login Error:', error);
-    return NextResponse.json({ message: 'Server error' }, { status: 500 });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return NextResponse.json({ message: 'Device ID already exists. Please log out first !' }, { status: 500 });
+    } else {
+      console.error('Mobile Login Error:', error);
+      return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    }
+    
   }
 }

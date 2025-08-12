@@ -38,10 +38,6 @@ export async function sendCallNotification(deviceId: string, phoneNumber: string
   }
 
   const message = {
-    notification: {
-      title: 'Incoming Call from Soryouth CRM',
-      body: `Tap to call ${callerName} at ${phoneNumber}`,
-    },
     data: {
       action: 'DIAL',
       phoneNumber: phoneNumber,
