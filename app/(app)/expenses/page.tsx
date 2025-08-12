@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -70,6 +70,13 @@ export default function ExpensesPage() {
     fetchExpenses();
   }, []);
 
+  const expenseTotals = useMemo(() => {
+    return submittedExpenses.reduce((acc, expense) => {
+      acc[expense.status] = (acc[expense.status] || 0) + expense.amount;
+      return acc;
+    }, {} as Record<ExpenseStatus, number>);
+  }, [submittedExpenses]);
+
   const onSubmit = (values: ExpenseFormValues) => {
     startSubmitTransition(async () => {
         try {
@@ -132,6 +139,15 @@ export default function ExpensesPage() {
         title="Manage Expenses"
         description="Submit new expenses and view the status of your submissions."
         icon={Receipt}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(expenseTotals).map(([status, total]) => (
+              <Badge key={status} variant={getStatusBadgeVariant(status as ExpenseStatus)} className="text-sm py-1 px-3">
+                {status}: <IndianRupee className="h-3 w-3 ml-1.5 mr-0.5" />{total.toLocaleString('en-IN')}
+              </Badge>
+            ))}
+          </div>
+        }
       />
 
       <div className="grid lg:grid-cols-3 gap-8">
