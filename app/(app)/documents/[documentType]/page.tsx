@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { DOCUMENT_TYPES_CONFIG } from '@/lib/constants';
-import { Loader2, ArrowLeft, FileText, Trash2, Eye, Edit, ShieldCheck, Clock } from 'lucide-react';
+import { Loader2, ArrowLeft, FileText, Trash2, Eye, Edit, ShieldCheck, Clock, Search } from 'lucide-react';
 import { getGeneratedDocuments, deleteGeneratedDocument, getFinancialDocuments, deleteFinancialDocument } from '../actions';
 import type { GeneratedDocument, FinancialDocument, CustomSetting, FinancialDocumentStatus } from '@/types';
 import { format } from 'date-fns';
@@ -19,6 +19,7 @@ import { getDocumentTypes, getFinancialDocumentTypes } from '@/app/(app)/setting
 import { DocumentCreationDialog } from '../document-creation-dialog';
 import { Badge } from '@/components/ui/badge';
 import { useSession } from '@/hooks/use-sessions';
+import { Input } from '@/components/ui/input';
 
 type AnyDocument = (GeneratedDocument & { docCategory?: 'standard' }) | (FinancialDocument & { docCategory?: 'financial' });
 
@@ -39,6 +40,7 @@ export default function GeneratedDocumentsPage() {
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [documentToEdit, setDocumentToEdit] = useState<AnyDocument | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const refreshDocuments = async () => {
         if (!documentType) return;
@@ -115,6 +117,15 @@ export default function GeneratedDocumentsPage() {
         }
     };
 
+    const filteredDocuments = useMemo(() => {
+        if (!searchTerm) {
+            return documents;
+        }
+        return documents.filter(doc => 
+            doc.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [documents, searchTerm]);
+
     if (isLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -152,22 +163,34 @@ export default function GeneratedDocumentsPage() {
                 description={`Manage all generated ${documentType!.toLowerCase()} documents.`}
                 icon={FileText}
                 actions={
-                    <Button onClick={() => router.push('/documents')} variant="outline">
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Document Types
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                           <Input
+                             type="search"
+                             placeholder="Search by client name..."
+                             className="pl-8 sm:w-[200px] lg:w-[250px]"
+                             value={searchTerm}
+                             onChange={(e) => setSearchTerm(e.target.value)}
+                           />
+                        </div>
+                        <Button onClick={() => router.push('/documents')} variant="outline">
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                        </Button>
+                    </div>
                 }
             />
-            {documents.length === 0 ? (
+            {filteredDocuments.length === 0 ? (
                 <Card className="mt-6">
                     <CardContent className="pt-6 text-center text-muted-foreground">
                         <FileText className="mx-auto h-12 w-12 mb-4" />
                         <h3 className="text-xl font-semibold mb-2">No Documents Found</h3>
-                        <p>No documents of this type have been generated yet.</p>
+                        <p>{searchTerm ? `No documents match your search for "${searchTerm}".` : "No documents of this type have been generated yet."}</p>
                     </CardContent>
                 </Card>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {documents.map((doc) => {
+                    {filteredDocuments.map((doc) => {
                         const isFinancial = doc.docCategory === 'financial';
                         const isApproved = isFinancial && (doc as FinancialDocument).status === 'Approved';
                         const isPending = isFinancial && (doc as FinancialDocument).status === 'Pending';

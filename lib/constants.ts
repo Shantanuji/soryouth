@@ -64,7 +64,7 @@ export const TOOLS_NAV_ITEMS: NavItem[] = [
   { href: '/documents', label: 'Documents', icon: Files },
 ];
 
-export const DEAL_STAGES_SOLAR = ['Deal Done', 'Procurement', 'Installation', 'Commissioning', 'Handover'] as const;
+export const DEAL_STAGES_SOLAR = ['Deal Done', 'Procurement', 'Installation', 'Commissioning', 'Handover', 'Completed'] as const;
 export const DEAL_STAGES_AMC = ['New AMC', 'Quoted', 'Agreement', 'Active', 'Expired'] as const;
 
 export const ALL_DEAL_STAGES = [...DEAL_STAGES_SOLAR, ...DEAL_STAGES_AMC] as const;
