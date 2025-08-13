@@ -33,7 +33,9 @@ export default function DealsPage() {
   const [isPending, startTransition] = useTransition();
 
   const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
+  const [dealToComplete, setDealToComplete] = useState<Deal | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isCompleteConfirmOpen, setIsCompleteConfirmOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -120,6 +122,27 @@ export default function DealsPage() {
     });
   };
 
+  const confirmCompleteDeal = () => {
+    if (!dealToComplete) return;
+    const originalStage = dealToComplete.stage;
+    const dealId = dealToComplete.id;
+
+    // No optimistic update here as it's a final state
+    
+    startTransition(async () => {
+        const updatedDealResult = await updateDealStage(dealId, 'Completed');
+        if (updatedDealResult.success && updatedDealResult.deal) {
+           toast({ title: "Deal Completed", description: `${updatedDealResult.deal.clientName} moved to Completed.` });
+           await refreshData();
+        } else {
+          toast({ title: "Error", description: updatedDealResult.error || "Could not complete deal.", variant: "destructive" });
+          // No revert needed as we didn't do an optimistic update
+        }
+    });
+    setDealToComplete(null);
+    setIsCompleteConfirmOpen(false);
+  };
+
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -134,6 +157,12 @@ export default function DealsPage() {
     if (destination.droppableId === 'delete-zone') {
       setDealToDelete(dealToMove);
       setIsAlertOpen(true);
+      return;
+    }
+
+    if (destination.droppableId === 'Completed') {
+      setDealToComplete(dealToMove);
+      setIsCompleteConfirmOpen(true);
       return;
     }
     
@@ -251,6 +280,24 @@ export default function DealsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+       <AlertDialog open={isCompleteConfirmOpen} onOpenChange={setIsCompleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete Deal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to move the deal for "{dealToComplete?.clientName}" to the "Completed" stage? This is a final step.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDealToComplete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCompleteDeal} disabled={isPending}>
+              {isPending ? 'Completing...' : 'Yes, Complete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
        {isSearchOpen && (
         <AlertDialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
           <AlertDialogContent>
