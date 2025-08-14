@@ -39,9 +39,6 @@ interface UserReportRow {
   dealsWon: number;
   dealsLost: number;
   followUps: number;
-  calls: number;
-  callDuration: string;
-  reminders: number;
 }
 
 interface DayReportStats {
@@ -50,9 +47,9 @@ interface DayReportStats {
   proposalsCreated: number;
   dealsWon: number;
   dealsLost: number;
+  tasks: number;
   followUps: number;
   calls: number;
-  reminders: number;
   chartData: { date: string; created: number; dropped: number }[];
   droppedLeadsDetails: DroppedLead[];
   wonDealsDetails: Client[];
@@ -91,6 +88,7 @@ export default function DayReportPage() {
     });
 
     const callsMade = pageFilteredFollowUps.filter(f => f.type === 'Call').length;
+    const tasksMade = pageFilteredFollowUps.filter(f => f.followupOrTask === 'Followup').length
 
     const pageFilteredLeads = allLeads.filter(lead => userMatches(lead) && dateMatches(lead.createdAt));
     const pageFilteredDroppedLeads = allDroppedLeads.filter(lead => userMatches(lead) && dateMatches(lead.droppedAt));
@@ -136,26 +134,27 @@ export default function DayReportPage() {
     const chartDataFinal = Object.entries(dailyChartData).map(([date, counts]) => ({ date, ...counts })).sort((a, b) => new Date(a.date + ' ' + new Date().getFullYear()).getTime() - new Date(b.date + ' ' + new Date().getFullYear()).getTime());
 
     const userWiseSummaryData: UserReportRow[] = allUsers.map(user => {
-        const userLeads = allLeads.filter(lead => lead.assignedTo === user.name);
-        const userDroppedLeads = allDroppedLeads.filter(lead => lead.assignedTo === user.name);
-        const userClients = allClients.filter(client => client.assignedTo === user.name);
+        const userAssignedLeads = allLeads.filter(lead => lead.assignedTo === user.name);
+        const userCreatedLeads = allLeads.filter(lead => lead.createdBy === user.name) && allDroppedLeads.filter(lead => lead.createdBy === user.name);
+
+        const userDroppedLeads = allDroppedLeads.filter(lead => lead.createdBy === user.name);
+        const userAssignedClients = allClients.filter(client => client.assignedTo === user.name);
         const userFollowUps = allFollowUps.filter(fu => fu.createdBy === user.name);
         
-        const userLeadsCreatedInRange = userLeads.filter(lead => dateMatches(lead.createdAt)).length;
+        const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
         const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
-        const userDealsWonInRange = userClients.filter(client => dateMatches(client.updatedAt)).length;
+        const userDealsWonInRange = userAssignedClients.filter(client => dateMatches(client.updatedAt)).length;
         
         const userProposalsCreatedInRange = allProposals.filter(proposal => {
-            const customerIsLead = userLeads.some(l => l.id === proposal.leadId);
-            const customerIsClient = userClients.some(c => c.id === proposal.clientId);
+            const customerIsLead = userAssignedLeads.some(l => l.id === proposal.leadId) ;
+            const customerIsClient = userAssignedClients.some(c => c.id === proposal.clientId);
             return (customerIsLead || customerIsClient) && dateMatches(proposal.createdAt);
         }).length;
 
-        const userFollowUpsInRange = userLeads.filter(lead => 
-            lead.nextFollowUpDate && dateMatches(lead.nextFollowUpDate)
+        const userFollowUpsInRange = userFollowUps.filter(followup => 
+          followup.createdAt && dateMatches(followup.createdAt)
         ).length;
 
-        const userCallsInRange = userFollowUps.filter(fu => fu.type === 'Call' && dateMatches(fu.createdAt)).length;
 
         return {
             userId: user.id,
@@ -167,9 +166,6 @@ export default function DayReportPage() {
             dealsWon: userDealsWonInRange,
             dealsLost: userLeadsDroppedInRange,
             followUps: userFollowUpsInRange,
-            calls: userCallsInRange,
-            callDuration: "0h 0m",
-            reminders: 0,
         };
     });
     
@@ -180,8 +176,8 @@ export default function DayReportPage() {
       dealsWon,
       dealsLost: leadsDropped,
       followUps,
+      tasks: tasksMade,
       calls: callsMade, 
-      reminders: 0, 
       chartData: chartDataFinal,
       droppedLeadsDetails: pageFilteredDroppedLeads.slice(0, 5),
       wonDealsDetails: pageFilteredWonDeals.slice(0, 5),
@@ -222,7 +218,7 @@ export default function DayReportPage() {
     { title: 'Leads Dropped', value: reportStats.leadsDropped, icon: UserX, trend: 'neutral' },
     { title: 'Proposals Created', value: reportStats.proposalsCreated, icon: FileText, trend: 'neutral' },
     { title: 'Deals Won', value: reportStats.dealsWon, icon: Award, trend: 'positive' },
-    { title: 'Follow-ups Scheduled', value: reportStats.followUps, icon: BellRing, trend: 'neutral' },
+    { title: 'Follow-ups Scheduled', value: reportStats.tasks, icon: BellRing, trend: 'neutral' },
     { title: 'Calls Made', value: reportStats.calls, icon: Phone, trend: 'neutral' },
   ] : [];
 
@@ -405,11 +401,7 @@ export default function DayReportPage() {
                     <TableHead className="text-center">Leads Dropped</TableHead>
                     <TableHead className="text-center">Proposals Created</TableHead>
                     <TableHead className="text-center">Deals Won</TableHead>
-                    <TableHead className="text-center">Deals Lost</TableHead>
                     <TableHead className="text-center">Follow-ups</TableHead>
-                    <TableHead className="text-center">Calls</TableHead>
-                    <TableHead className="text-center">Call Duration</TableHead>
-                    <TableHead className="text-center">Reminders</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -437,19 +429,7 @@ export default function DayReportPage() {
                         {userStat.dealsWon > 0 ? <Badge variant="default">{userStat.dealsWon}</Badge> : userStat.dealsWon}
                       </TableCell>
                       <TableCell className="text-center">
-                         {userStat.dealsLost > 0 ? <Badge variant="destructive">{userStat.dealsLost}</Badge> : userStat.dealsLost}
-                      </TableCell>
-                      <TableCell className="text-center">
                         {userStat.followUps > 0 ? <Badge variant="default">{userStat.followUps}</Badge> : userStat.followUps}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {userStat.calls > 0 ? <Badge variant="default">{userStat.calls}</Badge> : userStat.calls}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {userStat.callDuration !== "0h 0m" ? <Badge variant="default">{userStat.callDuration}</Badge> : userStat.callDuration}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {userStat.reminders > 0 ? <Badge variant="default">{userStat.reminders}</Badge> : userStat.reminders}
                       </TableCell>
                     </TableRow>
                   )) : (
