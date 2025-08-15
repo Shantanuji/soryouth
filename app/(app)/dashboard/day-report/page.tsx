@@ -134,39 +134,38 @@ export default function DayReportPage() {
     const chartDataFinal = Object.entries(dailyChartData).map(([date, counts]) => ({ date, ...counts })).sort((a, b) => new Date(a.date + ' ' + new Date().getFullYear()).getTime() - new Date(b.date + ' ' + new Date().getFullYear()).getTime());
 
     const userWiseSummaryData: UserReportRow[] = allUsers.map(user => {
-        const userAssignedLeads = allLeads.filter(lead => lead.assignedTo === user.name);
-        const userCreatedLeads = allLeads.filter(lead => lead.createdBy === user.name) && allDroppedLeads.filter(lead => lead.createdBy === user.name);
+      const userAssignedLeads = allLeads.filter(lead => lead.assignedTo === user.name);
+      const userCreatedLeads = allLeads.filter(lead => lead.createdBy === user.name) ;
 
-        const userDroppedLeads = allDroppedLeads.filter(lead => lead.createdBy === user.name);
-        const userAssignedClients = allClients.filter(client => client.assignedTo === user.name);
-        const userFollowUps = allFollowUps.filter(fu => fu.createdBy === user.name);
-        
-        const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
-        const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
-        const userDealsWonInRange = userAssignedClients.filter(client => dateMatches(client.updatedAt)).length;
-        
-        const userProposalsCreatedInRange = allProposals.filter(proposal => {
-            const customerIsLead = userAssignedLeads.some(l => l.id === proposal.leadId) ;
-            const customerIsClient = userAssignedClients.some(c => c.id === proposal.clientId);
-            return (customerIsLead || customerIsClient) && dateMatches(proposal.createdAt);
-        }).length;
+      const userDroppedLeads = allDroppedLeads.filter(lead => lead.createdBy === user.name);
+      const userAssignedClients = allClients.filter(client => client.assignedTo === user.name);
+      const userFollowUps = allFollowUps.filter(fu => fu.createdBy === user.name);
+      const userProposals = allProposals.filter(p => p.createdBy === user.name);
+      
+      const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
+      const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
+      const userDealsWonInRange = userAssignedClients.filter(client => dateMatches(client.updatedAt)).length;
+      
+      const userProposalsCreatedInRange = userProposals.filter(proposal => (
+          dateMatches(proposal.createdAt)
+      )).length;
 
-        const userFollowUpsInRange = userFollowUps.filter(followup => 
-          followup.createdAt && dateMatches(followup.createdAt)
-        ).length;
+      const userFollowUpsInRange = userFollowUps.filter(followup => 
+        followup.createdAt && dateMatches(followup.createdAt)
+      ).length;
 
 
-        return {
-            userId: user.id,
-            userName: user.name,
-            avatarUrl: `https://placehold.co/32x32.png?text=${user.name.charAt(0)}`,
-            leadsCreated: userLeadsCreatedInRange,
-            leadsDropped: userLeadsDroppedInRange,
-            dealsCreated: userProposalsCreatedInRange,
-            dealsWon: userDealsWonInRange,
-            dealsLost: userLeadsDroppedInRange,
-            followUps: userFollowUpsInRange,
-        };
+      return {
+          userId: user.id,
+          userName: user.name,
+          avatarUrl: `https://placehold.co/32x32.png?text=${user.name.charAt(0)}`,
+          leadsCreated: userLeadsCreatedInRange,
+          leadsDropped: userLeadsDroppedInRange,
+          dealsCreated: userProposalsCreatedInRange,
+          dealsWon: userDealsWonInRange,
+          dealsLost: userLeadsDroppedInRange,
+          followUps: userFollowUpsInRange,
+      };
     });
     
     setReportStats({

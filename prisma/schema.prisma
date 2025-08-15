@@ -34,6 +34,7 @@ model User {
 
 
   // Relations
+  proposalsCreated     Proposal[]        @relation("ProposalCreatedBy")
   createdLeads         Lead[]        @relation("CreatedLeads")
   assignedLeads        Lead[]        @relation("AssignedLeads")
   createdDroppedLeads  DroppedLead[] @relation("CreatedDroppedLeads")
@@ -274,6 +275,8 @@ model Proposal {
   leadId             String?
   droppedLead        DroppedLead? @relation(fields: [droppedLeadId], references: [id])
   droppedLeadId      String?  
+  createdBy          User?    @relation("ProposalCreatedBy", fields: [createdById], references: [id])
+  createdById        String?
 
   template   Template? @relation(fields: [templateId], references: [id])
   templateId String?

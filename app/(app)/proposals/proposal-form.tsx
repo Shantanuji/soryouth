@@ -73,6 +73,7 @@ export const proposalSchema = z.object({
   laKitQty: z.coerce.number().optional(),
   acdbDcdbQty: z.coerce.number().optional(),
   earthingKitQty: z.coerce.number().optional(),
+  createdBy: z.string().optional(),
   
 }).refine(data => !(data.clientId && data.leadId), {
     message: "A proposal can be linked to either a Client or a Lead, but not both.",
@@ -182,12 +183,13 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("clientType", lead.clientType || 'Other');
     form.setValue("contactPerson", lead.name);
     form.setValue("location", lead.address || "");
+    form.setValue("capacity", lead.kilowatt || 0)
   };
   
-  const handleLeadFormSubmit = async (data: CreateLeadData | Lead) => {
+  const handleLeadFormSubmit = async (data: CreateLeadData | Lead ) => {
     startGenerationTransition(async () => {
         const result = await createLead(data as CreateLeadData);
-        if (result) {
+        if (result && 'id' in result && 'name' in result) {
             const updatedLeads = await getLeads();
             setLocalLeads(updatedLeads);
             handleLeadSelect(result); // Auto-select the new lead
@@ -228,6 +230,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           clientId: proposal.clientId || undefined,
           leadId: proposal.leadId || undefined,
           templateId: proposal.templateId,
+          createdBy: proposal.createdBy || undefined,
         };
         form.reset(formValues);
         setSelectedClientId(proposal.clientId || null);
