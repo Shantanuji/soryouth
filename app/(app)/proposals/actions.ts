@@ -6,6 +6,7 @@ import type { Proposal } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { parseISO } from 'date-fns';
 import { deleteFileFromS3 } from '@/lib/s3';
+import { verifySession } from '@/lib/auth';
 
 // Helper to map Prisma proposal to frontend Proposal type
 function mapPrismaProposalToProposalType(prismaProposal: any): Proposal {
@@ -29,12 +30,21 @@ function mapPrismaProposalToProposalType(prismaProposal: any): Proposal {
     generationPerDay: prismaProposal.generationPerDay ? Number(prismaProposal.generationPerDay) : undefined,
     generationPerYear: prismaProposal.generationPerYear ? Number(prismaProposal.generationPerYear) : undefined,
     savingsPerYear: prismaProposal.savingsPerYear ? Number(prismaProposal.savingsPerYear) : undefined,
+    laKitQty: prismaProposal.laKitQty,
+    acdbDcdbQty: prismaProposal.acdbDcdbQty,
+    earthingKitQty: prismaProposal.earthingKitQty,
     droppedLeadId: prismaProposal.droppedLeadId ?? undefined,
+    createdBy: prismaProposal.createdBy?.name,
   };
 }
 
 export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<Proposal | null> {
-    const { id, createdAt, updatedAt, ...proposalData } = data;
+    const session = await verifySession();
+    if (!session?.userId) {
+        console.error("Authentication error: No user session found.");
+        return null;
+    }
+    const { id, createdAt, updatedAt,createdBy, ...proposalData } = data;
 
     const dataToSave = {
       ...proposalData,
@@ -57,6 +67,7 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
             savedProposal = await prisma.proposal.update({
                 where: { id },
                 data: dataToSave,
+                include: { createdBy: true },
             });
 
             // After successful update, delete old files if they exist and are different
@@ -80,8 +91,10 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
             }
         } else {
             // Create new proposal
+            const createData = { ...dataToSave, createdById: session.userId };
             savedProposal = await prisma.proposal.create({
-                data: dataToSave as any, // Cast to any to satisfy Prisma's create type which expects all fields
+                data: createData as any, // Cast to any to satisfy Prisma's create type which expects all fields
+                include: { createdBy: true },
             });
         }
 
@@ -145,6 +158,10 @@ export async function deleteProposal(proposalId: string): Promise<{ success: boo
 }
 
 export async function bulkCreateProposals(proposalsData: Partial<Proposal>[]): Promise<{ success: boolean; createdProposals: Proposal[]; message?: string }> {
+    const session = await verifySession();
+    if (!session?.userId) {
+        return { success: false, createdProposals: [], message: 'Unauthorized' };
+    }
     const createdProposals: Proposal[] = [];
     try {
       await prisma.$transaction(async (tx) => {
@@ -173,6 +190,7 @@ export async function bulkCreateProposals(proposalsData: Partial<Proposal>[]): P
                 pdfUrl: p.pdfUrl,
                 docxUrl: p.docxUrl,
                 templateId: p.templateId,
+                createdById: session.userId,
                 // Optional fields
                 requiredSpace: p.requiredSpace,
                 generationPerDay: p.generationPerDay,
@@ -194,6 +212,7 @@ export async function bulkCreateProposals(proposalsData: Partial<Proposal>[]): P
 
             const created = await tx.proposal.create({
                 data: dataToSave,
+                include: { createdBy: true },
             });
             createdProposals.push(mapPrismaProposalToProposalType(created));
         }
@@ -220,6 +239,7 @@ export async function getProposalsForLead(leadId: string): Promise<Proposal[]> {
         const proposals = await prisma.proposal.findMany({
             where: { leadId },
             orderBy: { createdAt: 'desc' },
+            include: { createdBy: true },
         });
         return proposals.map(mapPrismaProposalToProposalType);
     } catch (error) {
@@ -234,6 +254,7 @@ export async function getProposalsForClient(clientId: string): Promise<Proposal[
         const proposals = await prisma.proposal.findMany({
             where: { clientId },
             orderBy: { createdAt: 'desc' },
+            include: { createdBy: true },
         });
         return proposals.map(mapPrismaProposalToProposalType);
     } catch (error) {
@@ -246,6 +267,7 @@ export async function getAllProposals(): Promise<Proposal[]> {
     try {
         const proposals = await prisma.proposal.findMany({
             orderBy: { createdAt: 'desc' },
+            include: { createdBy: true },
         });
         return proposals.map(mapPrismaProposalToProposalType);
     } catch (error) {
