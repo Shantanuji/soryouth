@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES, DEAL_PIPELINES } from '@/lib/constants';
 import type { Client, User, UserOptionType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateClientData, ClientStatusType, ClientPriorityType, Proposal, CustomSetting, SiteSurvey, DocumentType, Deal, DealPipelineType, DealStage, ClientType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, Lock, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getClientById, updateClient, addClientActivity, getActivitiesForClient, convertClientToLead } from '@/app/(app)/clients-list/actions';
 import { getProposalsForClient, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -233,6 +233,17 @@ export default function ClientDetailsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, toast]);
+
+  useEffect(() => {
+    if (session && client && session.viewPermission === 'ASSIGNED' && client.assignedTo !== session.name) {
+      setClient(null); // This will trigger the "Not Found" view
+      toast({
+        title: "Access Denied",
+        description: "You do not have permission to view this client.",
+        variant: "destructive",
+      });
+    }
+  }, [session, client, toast]);
 
   useEffect(() => {
     if (client) {
@@ -577,9 +588,9 @@ export default function ClientDetailsPage() {
     return (
         <div className="flex flex-col flex-1 items-center justify-center h-full p-8 text-center">
             <UserCircle2 className="h-16 w-16 mb-4 text-destructive" />
-            <h2 className="text-2xl font-semibold mb-2">Client Not Found</h2>
+            <h2 className="text-2xl font-semibold mb-2">Client Not Found or Access Denied</h2>
             <p className="text-muted-foreground mb-6">
-                The client you are looking for does not exist or could not be loaded.
+                The client you are looking for does not exist or you do not have permission to view it..
             </p>
             <Button onClick={() => router.push('/clients-list')}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Back to Clients List

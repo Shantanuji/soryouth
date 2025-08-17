@@ -16,12 +16,13 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Lead, Proposal, Client, DroppedLead, User, FollowUp } from '@/types';
+import type { Lead, Proposal, Client, DroppedLead, User, FollowUp, Deal } from '@/types';
 import { getLeads , getAllFollowUps} from '@/app/(app)/leads-list/actions';
 import { getDroppedLeads } from '@/app/(app)/dropped-leads-list/actions';
 import { getAllProposals } from '@/app/(app)/proposals/actions';
 import { getActiveClients } from '@/app/(app)/clients-list/actions';
 import { getUsers } from '@/app/(app)/users/actions';
+import { getAllDeals } from '../../deals/actions';
 
 
 const initialDateRange: DateRange = {
@@ -52,7 +53,7 @@ interface DayReportStats {
   calls: number;
   chartData: { date: string; created: number; dropped: number }[];
   droppedLeadsDetails: DroppedLead[];
-  wonDealsDetails: Client[];
+  wonDealsDetails: Deal[];
   userWiseSummary: UserReportRow[];
 }
 
@@ -65,6 +66,7 @@ export default function DayReportPage() {
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [allDroppedLeads, setAllDroppedLeads] = useState<DroppedLead[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
+  const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [allProposals, setAllProposals] = useState<Proposal[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allFollowUps, setAllFollowUps] = useState<FollowUp[]>([]);
@@ -92,7 +94,7 @@ export default function DayReportPage() {
 
     const pageFilteredLeads = allLeads.filter(lead => userMatches(lead) && dateMatches(lead.createdAt));
     const pageFilteredDroppedLeads = allDroppedLeads.filter(lead => userMatches(lead) && dateMatches(lead.droppedAt));
-    const pageFilteredWonDeals = allClients.filter(client => userMatches(client) && dateMatches(client.updatedAt));
+    const pageFilteredWonDeals = allDeals.filter(deal => userMatches(deal) && dateMatches(deal.poWoDate));
     const pageFilteredProposals = allProposals.filter(proposal => {
         const customer = allLeads.find(l => l.id === proposal.leadId) || allClients.find(c => c.id === proposal.clientId);
         return userMatches(customer || {}) && dateMatches(proposal.createdAt);
@@ -141,10 +143,11 @@ export default function DayReportPage() {
       const userAssignedClients = allClients.filter(client => client.assignedTo === user.name);
       const userFollowUps = allFollowUps.filter(fu => fu.createdBy === user.name);
       const userProposals = allProposals.filter(p => p.createdBy === user.name);
+      const userCreatedDeals = allDeals.filter(d => d.createdBy === user.name);
       
       const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
       const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
-      const userDealsWonInRange = userAssignedClients.filter(client => dateMatches(client.updatedAt)).length;
+      const userDealsWonInRange = userCreatedDeals.filter(deal => dateMatches(deal.poWoDate)).length;
       
       const userProposalsCreatedInRange = userProposals.filter(proposal => (
           dateMatches(proposal.createdAt)
@@ -187,16 +190,18 @@ export default function DayReportPage() {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const [leads, droppedLeads, clients, proposals, users, followUps] = await Promise.all([
+      const [leads, droppedLeads, clients,deals, proposals, users, followUps] = await Promise.all([
         getLeads(),
         getDroppedLeads(),
         getActiveClients(),
+        getAllDeals(),
         getAllProposals(),
         getUsers(),
         getAllFollowUps(),
       ]);
       setAllLeads(leads);
       setAllDroppedLeads(droppedLeads);
+      setAllDeals(deals);
       setAllClients(clients);
       setAllProposals(proposals);
       setAllUsers(users);
@@ -370,12 +375,12 @@ export default function DayReportPage() {
               <CardContent>
                  {reportStats.wonDealsDetails.length > 0 ? (
                   <ul className="space-y-3">
-                    {reportStats.wonDealsDetails.map(client => (
-                      <li key={client.id} className="text-sm p-2 border rounded-md bg-muted/30">
-                        <p className="font-medium">{client.name} <span className="text-xs text-muted-foreground">({client.phone || 'N/A'})</span></p>
-                        <p>Won on: {format(parseISO(client.updatedAt), 'dd MMM, yyyy')}</p>
-                        <p>Kilowatt: {client.kilowatt || 'N/A'} kW</p>
-                         <p className="text-xs text-muted-foreground">Assigned to: {client.assignedTo || 'N/A'}</p>
+                    {reportStats.wonDealsDetails.map(deal => (
+                      <li key={deal.id} className="text-sm p-2 border rounded-md bg-muted/30">
+                        <p className="font-medium">{deal.clientName} <span className="text-xs text-muted-foreground">({deal.phone || 'N/A'})</span></p>
+                        <p>Won on: {format(parseISO(deal.createdAt), 'dd MMM, yyyy')}</p>
+                        <p>Kilowatt: {deal.kilowatt || 'N/A'} kW</p>
+                         <p className="text-xs text-muted-foreground">Assigned to: {deal.assignedTo || 'N/A'}</p>
                       </li>
                     ))}
                   </ul>
