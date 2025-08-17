@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { LEAD_PRIORITY_OPTIONS, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_TYPES, DROP_REASON_OPTIONS } from '@/lib/constants';
 import type { Lead, User, LeadStatusType, LeadPriorityType, ClientType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateLeadData, DropReasonType, Proposal, CustomSetting, SiteSurvey, LeadSourceOptionType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead } from '@/app/(app)/leads-list/actions';
 import { getProposalsForLead, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -229,6 +229,17 @@ export default function LeadDetailsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, toast]);
+
+  useEffect(() => {
+    if (session && lead && session.viewPermission === 'ASSIGNED' && lead.assignedTo !== session.name) {
+      setLead(null); // This will trigger the "Not Found" view
+      toast({
+        title: "Access Denied",
+        description: "You do not have permission to view this lead.",
+        variant: "destructive",
+      });
+    }
+  }, [session, lead, toast]);
 
   useEffect(() => {
     if (lead) {
@@ -519,9 +530,9 @@ export default function LeadDetailsPage() {
     return (
         <div className="flex flex-col flex-1 items-center justify-center h-full p-8 text-center">
             <UserCircle2 className="h-16 w-16 mb-4 text-destructive" />
-            <h2 className="text-2xl font-semibold mb-2">Lead Not Found</h2>
+            <h2 className="text-2xl font-semibold mb-2">Lead Not Found or Access Denied</h2>
             <p className="text-muted-foreground mb-6">
-                The lead you are looking for does not exist or could not be loaded.
+              The lead you are looking for does not exist or you do not have permission to view it.
             </p>
             <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl)}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Back to Leads List
