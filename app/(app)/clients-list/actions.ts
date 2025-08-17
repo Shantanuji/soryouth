@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { format, parseISO } from 'date-fns';
 import { verifySession } from '@/lib/auth';
 import type { Prisma } from '@prisma/client';
+import { deleteFileFromS3 } from '@/lib/s3';
 
 // Helper to map Prisma client to frontend Client type
 function mapPrismaClientToClientType(prismaClient: any): Client {
@@ -236,7 +237,49 @@ export async function updateClient(id: string, data: Partial<Omit<Client, 'id' |
 
 export async function deleteClient(id: string): Promise<{ success: boolean }> {
   try {
-    await prisma.client.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // 1. Find all proposals associated with the client
+      const client = await tx.client.findUnique({
+        where: { id },
+      });
+      if (!client) {
+          throw new Error("Lead not found");
+      }
+      const proposalsToDelete = await tx.proposal.findMany({
+        where: { clientId: id },
+        select: { pdfUrl: true, docxUrl: true },
+      });
+
+      // 2. Delete all proposal files from S3
+      const s3DeletePromises: Promise<any>[] = [];
+      proposalsToDelete.forEach(proposal => {
+        if (proposal.pdfUrl) {
+          const pdfKey = new URL(proposal.pdfUrl).pathname.substring(1);
+          s3DeletePromises.push(deleteFileFromS3(pdfKey).catch(e => console.error(`S3 Deletion Error for ${pdfKey}:`, e)));
+        }
+        if (proposal.docxUrl) {
+          const docxKey = new URL(proposal.docxUrl).pathname.substring(1);
+          s3DeletePromises.push(deleteFileFromS3(docxKey).catch(e => console.error(`S3 Deletion Error for ${docxKey}:`, e)));
+        }
+      });
+
+      if (client.electricityBillUrls && client.electricityBillUrls.length > 0) {
+            client.electricityBillUrls.forEach(url => {
+                try {
+                    const billKey = new URL(url).pathname.substring(1);
+                    s3DeletePromises.push(deleteFileFromS3(billKey).catch(e => console.error(`Failed to delete S3 object ${billKey}:`, e)));
+                } catch (e) {
+                    console.error(`Invalid electricity bill URL found: ${url}`, e);
+                }
+            });
+        }
+      await Promise.all(s3DeletePromises);
+
+      // 3. Delete the client record from the database.
+      // Prisma's onDelete: Cascade will handle deleting related records
+      // like proposals, follow-ups, etc., automatically.
+      await tx.client.delete({ where: { id } });
+    });
     revalidatePath('/clients-list');
     revalidatePath('/inactive-clients');
     return { success: true };

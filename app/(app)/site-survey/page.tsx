@@ -179,8 +179,8 @@ export default function SiteSurveyPage() {
     async function fetchData() {
         setIsDataLoading(true);
         const [fetchedLeads, fetchedClients, fetchedUsers, fetchedLeadStatuses, fetchedLeadSources] = await Promise.all([
-            getLeads(),
-            getActiveClients(),
+            getLeads({ignorePermissions: true}),
+            getActiveClients({ignorePermissions: true}),
             getUsers(),
             getLeadStatuses(),
             getLeadSources()
@@ -212,7 +212,7 @@ export default function SiteSurveyPage() {
     startSubmitTransition(async () => {
         const result = await createLead(data as CreateLeadData);
         if (result && !('error' in result)) {
-            const newLeads = await getLeads();
+            const newLeads = await getLeads({ ignorePermissions: true });
             setLeads(newLeads);
             handleCustomerSelect(result);
             toast({ title: "Lead Created", description: `Lead "${result.name}" has been created and selected.`});
