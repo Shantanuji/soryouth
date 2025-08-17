@@ -590,7 +590,7 @@ export default function ClientDetailsPage() {
             <UserCircle2 className="h-16 w-16 mb-4 text-destructive" />
             <h2 className="text-2xl font-semibold mb-2">Client Not Found or Access Denied</h2>
             <p className="text-muted-foreground mb-6">
-                The client you are looking for does not exist or you do not have permission to view it..
+                The client you are looking for does not exist or you do not have permission to view it
             </p>
             <Button onClick={() => router.push('/clients-list')}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Back to Clients List

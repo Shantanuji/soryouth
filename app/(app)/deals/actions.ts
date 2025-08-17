@@ -242,13 +242,13 @@ export async function getDealsForClient(clientId: string): Promise<Deal[]> {
     }
 }
 
-export async function getAllDeals(): Promise<Deal[]> {
+export async function getAllDeals({ ignorePermissions = false }: { ignorePermissions?: boolean }={}): Promise<Deal[]> {
      const session = await verifySession();
      if (!session?.userId) return [];
      
      try {
         const whereClause: Prisma.DealWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED') {
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
           whereClause.assignedToId = session.userId;
         }
 

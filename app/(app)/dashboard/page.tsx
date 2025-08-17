@@ -78,7 +78,7 @@ export default function DashboardOverviewPage() {
             getActiveClients({ ignorePermissions: true }),
             getInactiveClients({ ignorePermissions: true }),
             getUsers(),
-            getAllDeals(),
+            getAllDeals({ ignorePermissions: true }),
         ]);
         
         const userNames = users.map(u => u.name);
@@ -116,7 +116,7 @@ export default function DashboardOverviewPage() {
         let totalSalesValue = 0;
         let totalSalesCount = 0;
 
-        allDeals.forEach(deal => {
+        dealsWithValue.forEach(deal => {
             const dealDate = parseISO(deal.poWoDate);
             const dealYear = getYear(dealDate);
             const dealMonth = getMonth(dealDate);
@@ -146,7 +146,7 @@ export default function DashboardOverviewPage() {
         setDashboardData({
             totalLeads: activeLeads.length,
             totalClients: activeClients.length + inactiveClients.length,
-            dealsWon: allDeals.length, // This might need clarification if "Deals Won" means something else
+            dealsWon: dealsWithValue.length, // This might need clarification if "Deals Won" means something else
             leadsDropped: droppedLeads.length,
             leadsByUser,
             dealsByUser,

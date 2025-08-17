@@ -71,6 +71,8 @@ export default function DayReportPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allFollowUps, setAllFollowUps] = useState<FollowUp[]>([]);
 
+  const realValueDeals = allDeals.filter(deal => deal.dealValue > 0)
+
   const handleApplyFilters = useCallback(() => {
     const fromDate = dateRange?.from ? startOfDay(dateRange.from) : undefined;
     const toDate = dateRange?.to ? endOfDay(dateRange.to) : undefined;
@@ -94,7 +96,7 @@ export default function DayReportPage() {
 
     const pageFilteredLeads = allLeads.filter(lead => userMatches(lead) && dateMatches(lead.createdAt));
     const pageFilteredDroppedLeads = allDroppedLeads.filter(lead => userMatches(lead) && dateMatches(lead.droppedAt));
-    const pageFilteredWonDeals = allDeals.filter(deal => userMatches(deal) && dateMatches(deal.poWoDate));
+    const pageFilteredWonDeals = realValueDeals.filter(deal => userMatches(deal) && dateMatches(deal.poWoDate));
     const pageFilteredProposals = allProposals.filter(proposal => {
         const customer = allLeads.find(l => l.id === proposal.leadId) || allClients.find(c => c.id === proposal.clientId);
         return userMatches(customer || {}) && dateMatches(proposal.createdAt);
@@ -143,7 +145,7 @@ export default function DayReportPage() {
       const userAssignedClients = allClients.filter(client => client.assignedTo === user.name);
       const userFollowUps = allFollowUps.filter(fu => fu.createdBy === user.name);
       const userProposals = allProposals.filter(p => p.createdBy === user.name);
-      const userCreatedDeals = allDeals.filter(d => d.createdBy === user.name);
+      const userCreatedDeals = realValueDeals.filter(d => d.createdBy === user.name);
       
       const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
       const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
@@ -194,7 +196,7 @@ export default function DayReportPage() {
         getLeads(),
         getDroppedLeads(),
         getActiveClients(),
-        getAllDeals(),
+        getAllDeals({ignorePermissions: true}),
         getAllProposals(),
         getUsers(),
         getAllFollowUps(),
