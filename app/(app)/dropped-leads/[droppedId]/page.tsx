@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CLIENT_TYPES } from '@/lib/constants';
 import type { DroppedLead, FollowUp, SiteSurvey, Proposal, LeadSourceOptionType, ClientType, CustomSetting } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronsLeft, ChevronsRight,UserCircle2, Loader2, Send, Video, Building, Repeat, CalendarX2, Phone, MessageSquare, Mail, ClipboardEdit, Eye, UploadCloud, FileText, IndianRupee } from 'lucide-react';
+import { ChevronLeft, ChevronsLeft, ChevronsRight,UserCircle2, Loader2, Lock, Send, Video, Building, Repeat, CalendarX2, Phone, MessageSquare, Mail, ClipboardEdit, Eye, UploadCloud, FileText, IndianRupee } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getDroppedLeadById, getActivitiesForDroppedLead, reactivateLead, getSurveysForDroppedLead, getProposalsForDroppedLead, updateDroppedLead } from '@/app/(app)/dropped-leads-list/actions';
 import { getLeadSources } from '@/app/(app)/settings/actions';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProposalPreviewDialog } from '@/app/(app)/proposals/proposal-preview-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useSession } from '@/hooks/use-sessions';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -78,6 +79,7 @@ const SurveyDetailsCard = ({ survey }: { survey: SiteSurvey }) => {
 
 export default function DroppedLeadDetailsPage() {
   const router = useRouter();
+  const session = useSession();
   const isMobile = useIsMobile();
   const params = useParams();
   const droppedId = typeof params.droppedId === 'string' ? params.droppedId : null;
@@ -157,6 +159,17 @@ export default function DroppedLeadDetailsPage() {
       setDroppedLead(null);
     }
   }, [droppedId, toast]);
+
+  useEffect(() => {
+      if (session && droppedLead && session.viewPermission === 'ASSIGNED' && droppedLead.assignedTo !== session.name) {
+        setDroppedLead(null); // This will trigger the "Not Found" view
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to view this client.",
+          variant: "destructive",
+        });
+      }
+    }, [session, droppedLead, toast]);
   
   const handleBillUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -266,9 +279,9 @@ const backToListUrl = `/dropped-leads-list?${searchParams.toString()}`;
     return (
         <div className="flex flex-col flex-1 items-center justify-center h-full p-8 text-center">
             <UserCircle2 className="h-16 w-16 mb-4 text-destructive" />
-            <h2 className="text-2xl font-semibold mb-2">Dropped Lead Not Found</h2>
+            <h2 className="text-2xl font-semibold mb-2">Dropped Lead Not Found or Access Denied</h2>
             <p className="text-muted-foreground mb-6">
-                The dropped lead you are looking for does not exist or could not be loaded.
+                The dropped lead you are looking for does not exist or you do not have the permission to view it.
             </p>
             <Button onClick={() => router.push('/dropped-leads-list')}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Back to Dropped Leads List
