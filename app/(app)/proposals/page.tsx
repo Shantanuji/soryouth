@@ -60,7 +60,7 @@ export default function ProposalsListPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('newest');
 
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(16);
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchData = async () => {
@@ -241,7 +241,7 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
       ) : (
         <>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {customerProposalGroups.map(({ details, proposals: customerProposals, totalValue, lastProposalDate }) => {
+          {paginatedGroups.map(({ details, proposals: customerProposals, totalValue, lastProposalDate }) => {
             const customerType = 'dropReason' in details ? 'lead' : 'client';
             const link = `/proposals/${details.id}`;
 

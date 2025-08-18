@@ -330,6 +330,7 @@ export default function LeadDetailsPage() {
 
   const handleSaveActivity = () => {
     if (!lead) return;
+    if (!activityComment) return;
 
     startFormTransition(async () => {
       const isTask = taskDate && taskTime;

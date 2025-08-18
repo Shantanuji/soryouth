@@ -9,6 +9,7 @@ import { verifySession } from '@/lib/auth';
 import * as ExcelJS from 'exceljs';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
+import { deleteFileFromS3 } from '@/lib/s3';
 
 // Helper function to map Prisma lead to frontend Lead type
 function mapPrismaLeadToLeadType(prismaLead: any): Lead {
@@ -396,8 +397,52 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, 'id' | 'cr
 
 export async function deleteLead(id: string): Promise<{ success: boolean }> {
   try {
-    await prisma.lead.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      // 1. Find the lead to get associated proposal files
+      const lead = await tx.lead.findUnique({
+        where: { id },
+        include: {
+          proposals: {
+            select: { pdfUrl: true, docxUrl: true }
+          }
+        }
+      });
+
+      if (!lead) {
+          throw new Error("Lead not found");
+      }
+
+      // 2. Delete associated files from S3 - proposals
+      const s3DeletePromises: Promise<any>[] = [];
+      lead.proposals.forEach(proposal => {
+          if (proposal.pdfUrl) {
+              const pdfKey = new URL(proposal.pdfUrl).pathname.substring(1);
+              s3DeletePromises.push(deleteFileFromS3(pdfKey).catch(e => console.error(`Failed to delete S3 object ${pdfKey}:`, e)));
+          }
+          if (proposal.docxUrl) {
+              const docxKey = new URL(proposal.docxUrl).pathname.substring(1);
+              s3DeletePromises.push(deleteFileFromS3(docxKey).catch(e => console.error(`Failed to delete S3 object ${docxKey}:`, e)));
+          }
+      });
+      // - E-Bills
+      if (lead.electricityBillUrls && lead.electricityBillUrls.length > 0) {
+            lead.electricityBillUrls.forEach(url => {
+                try {
+                    const billKey = new URL(url).pathname.substring(1);
+                    s3DeletePromises.push(deleteFileFromS3(billKey).catch(e => console.error(`Failed to delete S3 object ${billKey}:`, e)));
+                } catch (e) {
+                    console.error(`Invalid electricity bill URL found: ${url}`, e);
+                }
+            });
+        }
+
+      await Promise.all(s3DeletePromises);
+
+      // 3. Delete the lead from the database.
+      // Prisma will cascade delete related records (proposals, followups, etc.)
+      await tx.lead.delete({
+          where: { id },
+      });
     });
     revalidatePath('/leads-list');
     return { success: true };

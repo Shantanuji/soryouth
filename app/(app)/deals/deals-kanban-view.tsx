@@ -35,7 +35,7 @@ export function DealsKanbanView({ stages, deals, onAddDeal }: DealsKanbanViewPro
                 ref={provided.innerRef}
                 className={`w-72 flex-shrink-0 transition-colors duration-200 ${snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-muted/50'}`}
               >
-                <Card className="bg-transparent h-full flex flex-col shadow-none">
+                <Card className="bg-transparent max-h-[80vh] min-h-[60vh] flex flex-col shadow-none">
                   <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-3">
                     <div className="flex flex-col">
                       <CardTitle className="text-base font-medium">{stage} ({stageDeals.length})</CardTitle>
@@ -48,7 +48,7 @@ export function DealsKanbanView({ stages, deals, onAddDeal }: DealsKanbanViewPro
                       <PlusCircle className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </CardHeader>
-                  <CardContent className="space-y-3 p-2 min-h-[60vh] flex-grow">
+                  <CardContent className="space-y-3 p-2 min-h-[60vh] max-h-[60vh] overflow-auto ">
                     {stageDeals.map((deal, index) => (
                       <Draggable key={deal.id} draggableId={deal.id} index={index}>
                         {(provided, snapshot) => (
