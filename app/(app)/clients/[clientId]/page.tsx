@@ -381,6 +381,7 @@ export default function ClientDetailsPage() {
 
   const handleSaveActivity = () => {
     if (!client) return;
+    if (!activityComment) return;
 
     startFormTransition(async () => {
       const isTask = taskDate && taskTime;
