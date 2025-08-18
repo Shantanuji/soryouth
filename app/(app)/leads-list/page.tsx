@@ -76,8 +76,10 @@ function BulkImportDialog({ isOpen, onClose, onImportSuccess }: { isOpen: boolea
         formData.append('file', file);
         
         const result = await importLeads(formData);
-        
-        if (result.success) {
+        if ('error' in result) {
+          toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
+        else if (result.success) {
             toast({
                 title: "Import Successful",
                 description: result.message,

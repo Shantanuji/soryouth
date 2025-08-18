@@ -793,7 +793,7 @@ const leadImportSchema = z.object({
   'Last Comment': z.string().optional().or(z.literal('')),
 });
 
-export async function importLeads(formData: FormData): Promise<{ success: boolean; message: string; createdCount: number, errorCount: number }> {
+export async function importLeads(formData: FormData): Promise<{ success: boolean; message: string; createdCount: number, errorCount: number } | { error: string }> {
     const session = await verifySession();
     if (!session?.userId) {
         return { success: false, message: 'Authentication required.', createdCount: 0, errorCount: 0 };
@@ -904,9 +904,12 @@ export async function importLeads(formData: FormData): Promise<{ success: boolea
         const message = `Import complete. ${createdCount} leads successfully imported. ${errorCount > 0 ? `${errorCount} rows had errors and were skipped.` : ''}`;
         return { success: true, message, createdCount: createdCount, errorCount };
 
-    } catch (error) {
-        console.error("Failed to import leads:", error);
-        return { success: false, message: 'An unexpected error occurred during import.', createdCount: 0, errorCount: 0 };
+    } catch (error: any) {
+      if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
+      return { error: 'A contact with uploaded phone number already exists. Kindly check for duplicate phone number.' };
+      }
+      console.error("Failed to import leads:", error);
+      return { success: false, message: 'An unexpected error occurred during import.', createdCount: 0, errorCount: 0 };
     }
 }
 
