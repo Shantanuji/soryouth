@@ -128,3 +128,30 @@ export async function updateExpenseStatus(expenseId: string, status: ExpenseStat
         return { success: false, error: 'An unexpected error occurred.' };
     }
 }
+
+export async function deleteExpensesByStatusForUser(userId: string, status: 'Approved' | 'Rejected'): Promise<{ success: boolean; count: number; error?: string }> {
+    const session = await verifySession();
+    if (!session?.userId || session.role !== 'Admin') {
+        return { success: false, count: 0, error: 'Authentication required.' };
+    }
+
+    if (status !== 'Approved' && status !== 'Rejected') {
+        return { success: false, count: 0, error: 'Invalid status provided for deletion.' };
+    }
+
+    try {
+        // Note: This does not currently delete associated receipts from S3.
+        // To implement that, you would first query for the expenses to get their URLs.
+        const { count } = await prisma.expense.deleteMany({
+            where: {
+                userId: userId,
+                status: status,
+            },
+        });
+        revalidatePath('/view-expenses');
+        return { success: true, count };
+    } catch (error) {
+        console.error(`Failed to delete expenses with status ${status} for user ${userId}:`, error);
+        return { success: false, count: 0, error: 'An unexpected error occurred.' };
+    }
+}
