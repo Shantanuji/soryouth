@@ -134,7 +134,10 @@ export default function ClientsListPage() {
       let result;
       if ('id' in data && data.id) { // Existing client
         result = await updateClient(data.id, data as Partial<CreateClientData>);
-        if (result) {
+        if ('error' in result) {
+          toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
+        else if (result !== null) {
           setClients(prev => prev.map(c => c.id === result!.id ? result! : c));
           toast({ title: "Client Updated", description: `${result.name}'s information has been updated.` });
         } else {

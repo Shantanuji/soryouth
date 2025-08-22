@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { format, parse, parseISO, startOfDay, endOfDay, isPast, isValid } from 'date-fns';
 import { verifySession } from '@/lib/auth';
 import * as ExcelJS from 'exceljs';
+import { LeadPriorityType, ClientType } from '@/types';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { deleteFileFromS3 } from '@/lib/s3';
@@ -255,6 +256,17 @@ export async function createLead(data: CreateLeadData): Promise<Lead | { error: 
   }
 
   try {
+    if (data.phone) {
+            const existingLead = await prisma.lead.findFirst({ where: { phone: data.phone } });
+            if (existingLead) return { error: 'A lead with this phone number already exists.' };
+
+            const existingClient = await prisma.client.findFirst({ where: { phone: data.phone } });
+            if (existingClient) return { error: 'A client with this phone number already exists.' };
+            
+            const existingDroppedLead = await prisma.droppedLead.findFirst({ where: { phone: data.phone } });
+            if (existingDroppedLead) return { error: 'A dropped lead with this phone number already exists. Please reactivate it instead.' };
+        }
+
     const newLead = await prisma.$transaction(async (tx) => {
       let assignedToId: string | null = null;
       if (data.assignedTo) {
@@ -340,8 +352,17 @@ export async function createLead(data: CreateLeadData): Promise<Lead | { error: 
   }
 }
 
-export async function updateLead(id: string, data: Partial<Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'followupCount'>>): Promise<Lead | null> {
+export async function updateLead(id: string, data: Partial<Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'followupCount'>>): Promise<Lead | null | {error: string}> {
   try {
+    if (data.phone) {
+        const existingLead = await prisma.lead.findFirst({ where: { phone: data.phone, id: { not: id } } });
+        if (existingLead) return { error: 'A LEAD with this phone number already exists. Please reactivate it instead.' };
+        const existingClient = await prisma.client.findFirst({ where: { phone: data.phone } });
+        if (existingClient) return { error: 'A CLIENT with this phone number already exists. Please reactivate it instead.' };
+        const existingDroppedLead = await prisma.droppedLead.findFirst({ where: { phone: data.phone } });
+        if (existingDroppedLead) return { error: 'A DROPPED LEAD with this phone number already exists. Please reactivate it instead.' };
+    }
+
     const prismaData: any = {};
     const fieldsToIgnore = ['id', 'createdAt', 'updatedAt', 'followupCount', 'createdBy', 'assignedTo'];
 
@@ -793,7 +814,13 @@ const leadImportSchema = z.object({
   'Last Comment': z.string().optional().or(z.literal('')),
 });
 
-export async function importLeads(formData: FormData): Promise<{ success: boolean; message: string; createdCount: number, errorCount: number } | { error: string }> {
+export async function importLeads(formData: FormData): Promise<{ 
+  success: boolean; 
+  message: string; 
+  createdCount: number, 
+  errorCount: number, 
+  skippedFile?: string ;
+} > {
     const session = await verifySession();
     if (!session?.userId) {
         return { success: false, message: 'Authentication required.', createdCount: 0, errorCount: 0 };
@@ -848,66 +875,65 @@ export async function importLeads(formData: FormData): Promise<{ success: boolea
         const leadsToCreate = [];
         let createdCount = 0;
         let errorCount = 0;
+        const skippedRows: any[] = [];
 
         for (const row of data) {
+          try {
             const validation = leadImportSchema.safeParse(row);
             if (!validation.success) {
                 errorCount++;
+                console.warn('Skipping row due to validation error:', validation.error);
+                skippedRows.push({ ...row, Error: validation.error.errors.map(e => e.message).join(', ') });
                 continue;
             }
-
-            const { data: validRow } = validation;
-            
-            await prisma.$transaction(async (tx) => {
-              let assignedToId: string | undefined = undefined;
-              if (validRow['Assigned To']) {
-                  assignedToId = userMap.get(validRow['Assigned To'].toLowerCase());
-              }
-
-            const newLead = await tx.lead.create({
-                  data: {
-                      name: validRow.Name,
-                      email: validRow.Email || null,
-                      phone: String(validRow.Phone || ''),
-                      status: validRow.Status || 'Fresher',
-                      source: validRow.Source || 'Other',
-                      kilowatt: validRow.Kilowatt || null,
-                      address: validRow.Address || null,
-                      priority: validRow.Priority || 'Average',
-                      clientType: validRow['Customer Type'] || 'Other',
-                      createdById: session.userId,
-                      assignedToId: assignedToId || null,
-                      lastCommentText: validRow['Last Comment'] || null,
-                      lastCommentDate: validRow['Last Comment'] ? new Date() : null,
-                  }
-              });
-
-              if(validRow['Last Comment']) {
-                await tx.followUp.create({
-                  data: {
-                    leadId: newLead.id,
-                    type: 'Call',
-                    date: new Date(),
-                    status: 'Answered',
-                    comment: validRow['Last Comment'],
-                    followupOrTask: 'Followup',
-                    createdById: session.userId!,
-                  }
+  
+              const { data: validRow } = validation;
+              
+              // Use a nested transaction to handle individual row errors
+              const result = await createLead({
+                    name: validRow.Name,
+                    email: validRow.Email || undefined,
+                    phone: String(validRow.Phone || ''),
+                    status: validRow.Status || 'Fresher',
+                    source: validRow.Source || 'Other',
+                    assignedTo: validRow['Assigned To'] || undefined,
+                    kilowatt: validRow.Kilowatt || undefined,
+                    address: validRow.Address || undefined,
+                    priority: validRow.Priority as LeadPriorityType || 'Average',
+                    clientType: validRow['Customer Type'] as ClientType || 'Other',
+                    lastCommentText: validRow['Last Comment'] || undefined,
                 });
-              }
+                
+                if ('error' in result) {
+                    errorCount++;
+                    skippedRows.push({ ...row, Error: result.error });
+                    continue;
+                }
               createdCount++;
-            });
+          } catch (error: any) {
+            errorCount++;
+            skippedRows.push({ ...row, Error: error.message || 'Unknown database error.' });
+          }
         }
+      let skippedFileBase64: string | undefined = undefined;
+      if (skippedRows.length > 0) {
+        const skippedWorkbook = new ExcelJS.Workbook();
+        const skippedSheet = skippedWorkbook.addWorksheet('Skipped_Rows');
+        const skippedHeaders = [...headers, 'Error'];
+        skippedSheet.columns = skippedHeaders.map(h => ({ header: h, key: h, width: 25 }));
+        skippedSheet.getRow(1).font = { bold: true };
+        skippedRows.forEach(row => skippedSheet.addRow(row));
         
-        revalidatePath('/leads-list');
+        const buffer = await skippedWorkbook.xlsx.writeBuffer();
+        skippedFileBase64 = Buffer.from(buffer).toString('base64');
+      }
+      
+      revalidatePath('/leads-list');
         
-        const message = `Import complete. ${createdCount} leads successfully imported. ${errorCount > 0 ? `${errorCount} rows had errors and were skipped.` : ''}`;
-        return { success: true, message, createdCount: createdCount, errorCount };
+      const message = `${createdCount} leads imported. ${errorCount} rows skipped.`;
+      return { success: true, message, createdCount, errorCount, skippedFile: skippedFileBase64 };
 
     } catch (error: any) {
-      if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
-      return { error: 'A contact with uploaded phone number already exists. Kindly check for duplicate phone number.' };
-      }
       console.error("Failed to import leads:", error);
       return { success: false, message: 'An unexpected error occurred during import.', createdCount: 0, errorCount: 0 };
     }

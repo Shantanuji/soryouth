@@ -149,6 +149,17 @@ export async function createClient(data: CreateClientData): Promise<Client | { e
     }
 
     try {
+      if (data.phone) {
+          const existingLead = await prisma.lead.findFirst({ where: { phone: data.phone } });
+          if (existingLead) return { error: 'A lead with this phone number already exists.' };
+
+          const existingClient = await prisma.client.findFirst({ where: { phone: data.phone } });
+          if (existingClient) return { error: 'A client with this phone number already exists.' };
+
+          const existingDroppedLead = await prisma.droppedLead.findFirst({ where: { phone: data.phone } });
+          if (existingDroppedLead) return { error: 'A dropped lead with this phone number already exists. Please reactivate it instead.' };
+        }
+
         let assignedToId: string | null = null;
         if (data.assignedTo) {
             const user = await prisma.user.findFirst({ where: { name: data.assignedTo }});
@@ -188,50 +199,59 @@ export async function createClient(data: CreateClientData): Promise<Client | { e
     }
 }
 
-export async function updateClient(id: string, data: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'followupCount'>>): Promise<Client | null> {
-    try {
-        const prismaData: any = {};
-        const fieldsToIgnore = ['id', 'createdAt', 'updatedAt', 'followupCount', 'lastCommentText', 'lastCommentDate', 'nextFollowUpDate', 'nextFollowUpTime', 'createdBy', 'assignedTo', 'totalDealValue'];
-        
-        for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-                if (fieldsToIgnore.includes(key)) {
-                    continue;
-                }
+export async function updateClient(id: string, data: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'followupCount'>>): Promise<Client | {error:string}> {
+  try {
+    if (data.phone) {
+      const existingLead = await prisma.lead.findFirst({ where: { phone: data.phone } });
+      if (existingLead) return { error: 'A LEAD with this phone number already exists.' };
+      const existingClient = await prisma.client.findFirst({ where: { phone: data.phone, id: { not: id } } });
+      if (existingClient) return { error: 'A CLIENT with this phone number already exists.' };
+      const existingDroppedLead = await prisma.droppedLead.findFirst({ where: { phone: data.phone } });
+      if (existingDroppedLead) return { error: 'A DROPPED LEAD with this phone number already exists. Please reactivate it instead.' };
+    }
 
-                const typedKey = key as keyof typeof data;
-                if (typedKey === 'kilowatt') {
-                    prismaData.kilowatt = data.kilowatt === undefined ? null : Number(data.kilowatt);
-                } else {
-                    prismaData[typedKey] = (data as any)[typedKey] ?? null;
-                }
+    const prismaData: any = {};
+    const fieldsToIgnore = ['id', 'createdAt', 'updatedAt', 'followupCount', 'lastCommentText', 'lastCommentDate', 'nextFollowUpDate', 'nextFollowUpTime', 'createdBy', 'assignedTo', 'totalDealValue'];
+    
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            if (fieldsToIgnore.includes(key)) {
+                continue;
+            }
+
+            const typedKey = key as keyof typeof data;
+            if (typedKey === 'kilowatt') {
+                prismaData.kilowatt = data.kilowatt === undefined ? null : Number(data.kilowatt);
+            } else {
+                prismaData[typedKey] = (data as any)[typedKey] ?? null;
             }
         }
-
-        if (data.assignedTo) {
-            const user = await prisma.user.findFirst({ where: { name: data.assignedTo }});
-            prismaData.assignedToId = user ? user.id : null;
-        }
-
-        const updatedClientFromDb = await prisma.client.update({
-            where: { id },
-            data: prismaData,
-            include: { createdBy: true, assignedTo: true }
-        });
-
-        revalidatePath('/clients-list');
-        revalidatePath('/inactive-clients');
-        revalidatePath(`/clients/${id}`);
-        return mapPrismaClientToClientType(updatedClientFromDb);
-    } catch (error: any) {
-        if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
-          // This should return a value that the caller can use to show a toast message.
-          // For now, returning null indicates failure. The UI will show a generic error.
-          return null;
-        }
-        console.error("Failed to update client:", error);
-        return null;
     }
+
+    if (data.assignedTo) {
+        const user = await prisma.user.findFirst({ where: { name: data.assignedTo }});
+        prismaData.assignedToId = user ? user.id : null;
+    }
+
+    const updatedClientFromDb = await prisma.client.update({
+        where: { id },
+        data: prismaData,
+        include: { createdBy: true, assignedTo: true }
+    });
+
+    revalidatePath('/clients-list');
+    revalidatePath('/inactive-clients');
+    revalidatePath(`/clients/${id}`);
+    return mapPrismaClientToClientType(updatedClientFromDb);
+  } catch (error: any) {
+    if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
+      // This should return a value that the caller can use to show a toast message.
+      // For now, returning null indicates failure. The UI will show a generic error.
+      return { error: 'A contact with this phone number already exists.' };
+    }
+    console.error("Failed to update client:", error);
+    return { error: 'An unexpected database error occurred.' };
+  }
 }
 
 

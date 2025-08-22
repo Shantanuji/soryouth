@@ -76,14 +76,30 @@ function BulkImportDialog({ isOpen, onClose, onImportSuccess }: { isOpen: boolea
         formData.append('file', file);
         
         const result = await importLeads(formData);
-        if ('error' in result) {
-          toast({ title: "Error", description: result.error, variant: "destructive" });
-        }
-        else if (result.success) {
+        if (result.success && result.createdCount !== 0) {
             toast({
-                title: "Import Successful",
+                title: "Import Complete",
                 description: result.message,
+                duration: 10000,
             });
+            // If there's a file with skipped rows, trigger download
+            if (result.skippedFile) {
+                const byteCharacters = atob(result.skippedFile);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'skipped_leads.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            }
             onImportSuccess();
             onClose();
         } else {
@@ -239,7 +255,11 @@ export default function LeadsListPage() {
       let result;
       if ('id' in leadData && leadData.id) { // Existing lead
         result = await updateLead(leadData.id, leadData as Partial<Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>>);
-        if (result) {
+        if (result == null) {
+          toast({title: "Error", description: "Failed to update lead.", variant: "destructive" })
+        } else if ('error' in result) {
+          toast({title: "Error", description: result.error, variant: "destructive" })
+        } else if (result) {
           await refreshData();
           toast({ title: "Lead Updated", description: `${result.name}'s information has been updated.` });
         } else {

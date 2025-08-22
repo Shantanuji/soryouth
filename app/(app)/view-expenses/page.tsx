@@ -7,14 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { IndianRupee, Eye, Loader2, CheckCircle, XCircle, ClipboardCheck } from 'lucide-react';
+import { IndianRupee, Eye, Loader2, CheckCircle, XCircle, ClipboardCheck, Trash2, MoreVertical } from 'lucide-react';
 import type { Expense, ExpenseStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { getAllExpensesGroupedByUser, updateExpenseStatus } from '@/app/(app)/expenses/actions';
+import { getAllExpensesGroupedByUser, updateExpenseStatus, deleteExpensesByStatusForUser } from '@/app/(app)/expenses/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProposalPreviewDialog } from '@/app/(app)/proposals/proposal-preview-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 type GroupedExpenses = Record<string, { user: { id: string; name: string }; expenses: Expense[] }>;
 
@@ -24,6 +26,9 @@ export default function ViewExpensesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [receiptToPreview, setReceiptToPreview] = useState<string | null>(null);
+
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<{ userId: string, status: 'Approved' | 'Rejected' } | null>(null);
 
   const fetchExpenses = async () => {
     setIsLoading(true);
@@ -52,6 +57,35 @@ export default function ViewExpensesPage() {
         } else {
             toast({ title: 'Error', description: result.error || 'Failed to update status.', variant: 'destructive' });
         }
+    });
+  };
+
+  const handleDeleteRequest = (userId: string, status: 'Approved' | 'Rejected') => {
+    setDeleteCandidate({ userId, status });
+    setIsAlertOpen(true);
+  };
+
+  const confirmDeletion = () => {
+    if (!deleteCandidate) return;
+
+    startUpdateTransition(async () => {
+        const { userId, status } = deleteCandidate;
+        const result = await deleteExpensesByStatusForUser(userId, status);
+        if(result.success) {
+            toast({
+                title: 'Expenses Deleted',
+                description: `${result.count} ${status.toLowerCase()} expense(s) have been deleted.`
+            });
+            fetchExpenses();
+        } else {
+            toast({
+                title: 'Error',
+                description: result.error || 'Failed to delete expenses.',
+                variant: 'destructive'
+            });
+        }
+        setIsAlertOpen(false);
+        setDeleteCandidate(null);
     });
   };
 
@@ -92,6 +126,8 @@ export default function ViewExpensesPage() {
             <Accordion type="multiple" className="w-full space-y-4">
             {Object.values(groupedExpenses).map(({ user, expenses }) => {
                 const totals = calculateTotals(expenses);
+                const approvedCount = expenses.filter(e => e.status === 'Approved').length;
+                const rejectedCount = expenses.filter(e => e.status === 'Rejected').length;
                 return (
                 <AccordionItem value={user.id} key={user.id} className="border rounded-lg bg-card">
                     <AccordionTrigger className="p-4 hover:no-underline">
@@ -109,6 +145,23 @@ export default function ViewExpensesPage() {
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-0">
+                        <div className="flex justify-end p-2 border-b">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" disabled={isUpdating}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Processed
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleDeleteRequest(user.id, 'Approved')} disabled={approvedCount === 0}>
+                                        Delete {approvedCount} Approved
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDeleteRequest(user.id, 'Rejected')} disabled={rejectedCount === 0} className="text-destructive focus:text-destructive">
+                                        Delete {rejectedCount} Rejected
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                         <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
@@ -166,6 +219,22 @@ export default function ViewExpensesPage() {
             docxUrl={null}
         />
       )}
+       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete all "{deleteCandidate?.status}" expenses for this user. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeleteCandidate(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDeletion} disabled={isUpdating}>
+                        {isUpdating ? "Deleting..." : "Yes, Delete"}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 }
