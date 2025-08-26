@@ -15,9 +15,10 @@ import { Label } from "@/components/ui/label";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES, DEAL_PIPELINES } from '@/lib/constants';
 import type { Client, User, UserOptionType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateClientData, ClientStatusType, ClientPriorityType, Proposal, CustomSetting, SiteSurvey, DocumentType, Deal, DealPipelineType, DealStage, ClientType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, Lock, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, Lock, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getClientById, updateClient, addClientActivity, getActivitiesForClient, convertClientToLead } from '@/app/(app)/clients-list/actions';
+import { deleteElectricityBill } from '../../leads-list/actions';
 import { getProposalsForClient, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
 import { getDealsForClient, createOrUpdateDeal } from '@/app/(app)/deals/actions';
 import { getSurveysForClient } from '@/app/(app)/site-survey/actions';
@@ -108,6 +109,8 @@ export default function ClientDetailsPage() {
   const [isConverting, startConversionTransition] = useTransition();
   const [isStatusChanging, startStatusChangeTransition] = useTransition();
   const [isUploadingBill, startBillUploadTransition] = useTransition();
+  const [isDeletingBill, startBillDeleteTransition] = useTransition();
+
   
   const [activities, setActivities] = useState<FollowUp[]>([]);
   const [isActivitiesLoading, setActivitiesLoading] = useState(true);
@@ -212,7 +215,7 @@ export default function ClientDetailsPage() {
             setActivityClientStage(fetchedClient.status as ClientStatusType);
           }
           if (fetchedUsers.length > 0) {
-            setTaskForUser(fetchedUsers[0].name);
+            setTaskForUser(fetchedClient?.assignedTo || fetchedUsers[0].name);
           }
         } catch (error) {
           console.error("Failed to fetch client details:", error);
@@ -251,6 +254,19 @@ export default function ClientDetailsPage() {
     }
   }, [client]);
 
+  const handleDeleteBill = (billUrl: string) => {
+    if (!clientId) return;
+    startBillDeleteTransition(async () => {
+      const result = await deleteElectricityBill(clientId, 'client', billUrl);
+      if (result.success) {
+        setClient(prev => prev ? ({ ...prev, electricityBills: prev.electricityBillUrls.filter(url => url !== billUrl) }) : null);
+        toast({ title: 'Success', description: 'Electricity bill has been deleted.' });
+      } else {
+        toast({ title: 'Error', description: result.error || 'Failed to delete bill.', variant: 'destructive' });
+      }
+    });
+  };
+
   const handleBillUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !client) return;
@@ -288,11 +304,11 @@ export default function ClientDetailsPage() {
             electricityBillUrls: [...(client.electricityBillUrls || []), ...newUrls] 
         });
         
-        if (updatedClient) {
+        if (updatedClient !== null && !('error' in updatedClient)) {
           setClient(updatedClient);
           toast({ title: "E-Bills Uploaded", description: `${newUrls.length} bill(s) have been successfully attached.` });
         } else {
-          throw new Error("Failed to save the bill URLs to the client.");
+          toast({title: "Failed to save the bill URLs to the client.", description: updatedClient.error || "Unknown Error", variant: 'destructive'});
         }
       } catch (error) {
         toast({ title: "Upload Failed", description: (error as Error).message, variant: "destructive" });
@@ -417,7 +433,7 @@ export default function ClientDetailsPage() {
         }
         setActivityComment('');
         if (users.length > 0) {
-            setTaskForUser(users[0].name);
+            setTaskForUser(updatedClient?.assignedTo || users[0].name);
         }
         setTaskDate('');
         setTaskTime('');
@@ -442,7 +458,7 @@ export default function ClientDetailsPage() {
 
     startUpdateTransition(async () => {
         const result = await updateClient(client.id, { [key]: value });
-        if (result) {
+        if (result !== null && !('error' in result)) {
             setClient(result);
             toast({
                 title: `${key.charAt(0).toUpperCase() + key.slice(1)} Updated`,
@@ -452,7 +468,7 @@ export default function ClientDetailsPage() {
             setClient(originalClient);
             toast({
                 title: "Update Failed",
-                description: `Could not update client ${key}.`,
+                description: `Could not update client ${key}, due to ${result.error || 'Unknown Error '}`,
                 variant: "destructive",
             });
         }
@@ -469,7 +485,7 @@ export default function ClientDetailsPage() {
     if (!client || !client.id) return;
     startFormTransition(async () => {
       const result = await updateClient(client.id, updatedClientData as Partial<CreateClientData>);
-      if (result) {
+      if (result !== null && !('error' in result)) {
         setClient(result);
         toast({ title: "Client Updated", description: `${result.name}'s information has been updated.` });
         setIsEditFormOpen(false);
@@ -503,7 +519,7 @@ export default function ClientDetailsPage() {
     if (!client || isStatusChanging) return;
     startStatusChangeTransition(async () => {
       const result = await updateClient(client.id, { status });
-      if (result) {
+      if (result !==null && !('error' in result)) {
         toast({
           title: `Client Status Updated`,
           description: `${client.name} has been marked as ${status}.`
@@ -1034,10 +1050,29 @@ export default function ClientDetailsPage() {
                     {client.electricityBillUrls && client.electricityBillUrls.length > 0 ? (
                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                             {client.electricityBillUrls.map((url, index) => (
-                                <Button key={url} variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => setBillToPreview(url)}>
-                                    <Eye className="mr-2 h-4 w-4" /> 
-                                    <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
-                                </Button>
+                                <div key={url} className="flex items-center gap-2">
+                                  <Button variant="outline" size="sm" className="flex-grow justify-start text-xs" onClick={() => setBillToPreview(url)}>
+                                      <Eye className="mr-2 h-4 w-4" /> 
+                                      <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="icon" className="h-8 w-8" disabled={isDeletingBill}>
+                                          <Trash2 className="h-4 w-4"/>
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete this bill?</AlertDialogTitle>
+                                            <AlertDialogDescription>This will permanently delete the uploaded bill file. This action cannot be undone.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteBill(url)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
                             ))}
                         </div>
                     ) : (

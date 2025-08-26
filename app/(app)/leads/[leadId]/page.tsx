@@ -17,7 +17,7 @@ import type { Lead, User, LeadStatusType, LeadPriorityType, ClientType, FollowUp
 import { format, parseISO, isValid } from 'date-fns';
 import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead } from '@/app/(app)/leads-list/actions';
+import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead, deleteElectricityBill } from '@/app/(app)/leads-list/actions';
 import { getProposalsForLead, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
 import { getSurveysForLead } from '@/app/(app)/site-survey/actions';
 import { getUsers } from '@/app/(app)/users/actions';
@@ -113,6 +113,7 @@ export default function LeadDetailsPage() {
   const [isUpdating, startUpdateTransition] = useTransition();
   const [isDropping, startDropTransition] = useTransition();
   const [isUploadingBill, startBillUploadTransition] = useTransition();
+  const [isDeletingBill, startBillDeleteTransition] = useTransition();
   
   const [activities, setActivities] = useState<FollowUp[]>([]);
   const [isActivitiesLoading, setActivitiesLoading] = useState(true);
@@ -201,7 +202,7 @@ export default function LeadDetailsPage() {
             setActivityPriority(fetchedLead.priority as LeadPriorityType || undefined);
           }
           if (fetchedUsers.length > 0) {
-            setTaskForUser(fetchedUsers[0].name);
+            setTaskForUser(fetchedLead?.assignedTo || fetchedUsers[0].name);
           }
         } catch (error) {
           console.error("Failed to fetch lead details:", error);
@@ -248,6 +249,19 @@ export default function LeadDetailsPage() {
     }
   }, [lead]);
 
+  const handleDeleteBill = (billUrl: string) => {
+    if (!leadId) return;
+    startBillDeleteTransition(async () => {
+      const result = await deleteElectricityBill(leadId, 'lead', billUrl);
+      if (result.success) {
+        setLead(prev => prev ? ({ ...prev, electricityBillUrls: prev.electricityBillUrls.filter(url => url !== billUrl) }) : null);
+        toast({ title: 'Success', description: 'Electricity bill has been deleted.' });
+      } else {
+        toast({ title: 'Error', description: result.error || 'Failed to delete bill.', variant: 'destructive' });
+      }
+    });
+  };
+
   const handleBillUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !lead) return;
@@ -284,12 +298,14 @@ export default function LeadDetailsPage() {
         const updatedLead = await updateLead(lead.id, { 
             electricityBillUrls: [...(lead.electricityBillUrls || []), ...newUrls] 
         });
-        
-        if (updatedLead) {
+        if (updatedLead == null) {
+          toast({title: "Failed to Upload Lead."});
+        } else if (! ('error' in updatedLead)) {
           setLead(updatedLead);
           toast({ title: "E-Bills Uploaded", description: `${newUrls.length} bill(s) have been successfully attached.` });
         } else {
-          throw new Error("Failed to save the bill URLs to the lead.");
+          toast({title: "Failed to update the Lead !", description: updatedLead.error, variant: 'destructive'
+          })
         }
       } catch (error) {
         toast({ title: "Upload Failed", description: (error as Error).message, variant: "destructive" });
@@ -367,7 +383,7 @@ export default function LeadDetailsPage() {
         }
         setActivityComment('');
         if (users.length > 0) {
-            setTaskForUser(users[0].name);
+            setTaskForUser(updatedLead?.assignedTo || users[0].name);
         }
         setTaskDate('');
         setTaskTime('');
@@ -391,7 +407,7 @@ export default function LeadDetailsPage() {
     if (!lead || !lead.id) return;
     startFormTransition(async () => {
       const result = await updateLead(lead.id, updatedLeadData as Partial<CreateLeadData>);
-      if (result) {
+      if (result !== null && !('error' in result)) {
         setLead(result);
         toast({ title: "Lead Updated", description: `${result.name}'s information has been updated.` });
         setIsEditFormOpen(false);
@@ -412,7 +428,8 @@ export default function LeadDetailsPage() {
 
     startUpdateTransition(async () => {
         const result = await updateLead(lead.id, { [key]: value });
-        if (result) {
+
+        if (result !== null && !('error' in result))  {
             setLead(result);
             toast({
                 title: `${key.charAt(0).toUpperCase() + key.slice(1)} Updated`,
@@ -944,10 +961,29 @@ export default function LeadDetailsPage() {
                     {lead.electricityBillUrls && lead.electricityBillUrls.length > 0 ? (
                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                             {lead.electricityBillUrls.map((url, index) => (
-                                <Button key={url} variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => setBillToPreview(url)}>
-                                    <Eye className="mr-2 h-4 w-4" /> 
-                                    <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
-                                </Button>
+                                <div key={url} className="flex items-center gap-2">
+                                  <Button variant="outline" size="sm" className="flex-grow justify-start text-xs" onClick={() => setBillToPreview(url)}>
+                                      <Eye className="mr-2 h-4 w-4" /> 
+                                      <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="icon" className="h-8 w-8" disabled={isDeletingBill}>
+                                          <Trash2 className="h-4 w-4"/>
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete this bill?</AlertDialogTitle>
+                                            <AlertDialogDescription>This will permanently delete the uploaded bill file. This action cannot be undone.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteBill(url)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
                             ))}
                         </div>
                     ) : (
