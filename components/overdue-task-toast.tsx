@@ -11,7 +11,7 @@ import type { TaskNotification } from '@/types';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 
-const NOTIFICATION_INTERVAL = 1 * 60 * 1000; // 3 minutes
+const NOTIFICATION_INTERVAL = 1 * 60 * 1000; // 1 minutes
 
 export function OverdueTaskToast() {
   const [overdueTask, setOverdueTask] = useState<TaskNotification | null>(null);

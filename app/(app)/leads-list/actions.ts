@@ -951,7 +951,6 @@ export async function getTasksForCurrentUser(): Promise<TaskNotification[]> {
         followupOrTask: 'Task',
         taskForUserId: session.userId,
         taskDate: {
-            gte: todayStart,
             lte: todayEnd,
         }
       },
@@ -1015,4 +1014,42 @@ export async function updateTaskStatus(taskId: string, status: 'Open' | 'Closed'
         console.error("Failed to update task status:", error);
         return { success: false, message: 'An unexpected error occurred.' };
     }
+}
+
+export async function deleteElectricityBill(
+  entityId: string,
+  entityType: 'lead' | 'client' | 'dropped',
+  billIdentifier: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    let billUrl: string;
+
+    if (entityType === 'lead' || entityType === 'dropped') {
+      billUrl = billIdentifier; // For leads/dropped, the identifier is the URL itself
+      const model = entityType === 'lead' ? prisma.lead : prisma.droppedLead;
+      const entity = await (model as any).findUnique({ where: { id: entityId }, select: { electricityBillUrls: true } });
+      if (!entity) throw new Error(`${entityType} not found.`);
+      
+      const updatedUrls = (entity.electricityBillUrls as string[]).filter(url => url !== billUrl);
+      await (model as any).update({ where: { id: entityId }, data: { electricityBillUrls: updatedUrls } });
+
+    } else { // client
+      billUrl = billIdentifier;
+      const entity = await prisma.client.findUnique({ where: { id: entityId }, select: { electricityBillUrls: true } });
+      if (!entity) throw new Error(`${entityType} not found.`);
+      
+      const updatedUrls = (entity.electricityBillUrls as string[]).filter(url => url !== billUrl);
+      await prisma.client.update({ where: { id: entityId }, data: { electricityBillUrls: updatedUrls } });
+    }
+    
+    // Delete file from S3
+    const s3Key = new URL(billUrl).pathname.substring(1);
+    await deleteFileFromS3(s3Key);
+
+    revalidatePath(`/${entityType === 'lead' ? 'leads' : entityType === 'client' ? 'clients' : 'dropped-leads'}/${entityId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete electricity bill:', error);
+    return { success: false, error: (error as Error).message };
+  }
 }
