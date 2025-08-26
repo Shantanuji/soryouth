@@ -1048,10 +1048,10 @@ export default function ClientDetailsPage() {
                 <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">E-Bills ({client.electricityBillUrls?.length || 0})</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                     {client.electricityBillUrls && client.electricityBillUrls.length > 0 ? (
-                       <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                       <div className="flex-wrap space-y-2 max-h-48 overflow-y-auto pr-1">
                             {client.electricityBillUrls.map((url, index) => (
                                 <div key={url} className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" className="flex-grow justify-start text-xs" onClick={() => setBillToPreview(url)}>
+                                  <Button variant="outline" size="sm" className="flex-grow max-w-56 justify-start text-xs" onClick={() => setBillToPreview(url)}>
                                       <Eye className="mr-2 h-4 w-4" /> 
                                       <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
                                   </Button>
