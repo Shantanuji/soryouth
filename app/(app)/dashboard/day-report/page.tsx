@@ -149,7 +149,7 @@ export default function DayReportPage() {
       
       const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
       const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
-      const userDealsWonInRange = userCreatedDeals.filter(deal => dateMatches(deal.createdAt)).length;
+      const userDealsWonInRange = userCreatedDeals.filter(deal => dateMatches(deal.poWoDate)).length;
       
       const userProposalsCreatedInRange = userProposals.filter(proposal => (
           dateMatches(proposal.createdAt)
