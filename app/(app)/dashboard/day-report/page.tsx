@@ -79,16 +79,16 @@ export default function DayReportPage() {
     const dateInterval = fromDate && toDate ? { start: fromDate, end: toDate } : null;
 
     const userMatches = (item: { assignedTo?: string | null; createdBy?: string | null }) => {
-        if (selectedUserFilter === 'all') return true;
-        // Check if assignedTo or createdBy matches. Adjust based on what 'user' filter should mean.
-        // For now, let's assume it checks against who the item is assigned to.
-        return item.assignedTo === selectedUserFilter;
+      if (selectedUserFilter === 'all') return true;
+      // Check if assignedTo or createdBy matches. Adjust based on what 'user' filter should mean.
+      // For now, let's assume it checks against who the item is assigned to.
+      return item.assignedTo === selectedUserFilter;
     };
     const dateMatches = (dateStr: string) => dateInterval ? isWithinInterval(parseISO(dateStr), dateInterval) : true;
     // Filter followups
-    const pageFilteredFollowUps = allFollowUps.filter(followUp => {
-        const userFollowUpMatches = selectedUserFilter === 'all' || followUp.createdBy === allUsers.find(u => u.name === selectedUserFilter)?.name;
-        return dateMatches(followUp.createdAt) && userFollowUpMatches;
+      const pageFilteredFollowUps = allFollowUps.filter(followUp => {
+      const userFollowUpMatches = selectedUserFilter === 'all' || followUp.createdBy === allUsers.find(u => u.name === selectedUserFilter)?.name;
+      return dateMatches(followUp.createdAt) && userFollowUpMatches;
     });
 
     const callsMade = pageFilteredFollowUps.filter(f => f.type === 'Call').length;

@@ -52,33 +52,67 @@ export async function createSiteSurvey(data: CreateSiteSurveyData): Promise<Site
       return { error: 'Selected surveyor not found.' };
     }
 
-    const newSurvey = await prisma.siteSurvey.create({
-      data: {
-        surveyNumber: `SRV-${Date.now()}`,
-        consumerName: data.consumerName,
-        date: parseISO(data.date),
-        consumerCategory: data.consumerCategoryOther || data.consumerCategory,
-        location: data.location,
-        numberOfMeters: data.numberOfMeters,
-        meterRating: data.meterRating,
-        meterPhase: data.meterPhase,
-        electricityAmount: data.electricityAmount,
-        consumerLoadType: data.consumerLoadType,
-        roofType: data.roofTypeOther || data.roofType,
-        buildingHeight: data.buildingHeight,
-        shadowFreeArea: data.shadowFreeArea,
-        discom: data.discomOther || data.discom,
-        sanctionedLoad: data.sanctionedLoad,
-        remark: data.remark,
-        electricityBillFiles: data.electricityBillFiles,
-        leadId: data.leadId,
-        clientId: data.clientId,
-        surveyorId: surveyor.id,
-      },
-      include: {
-        surveyor: true,
-      },
+    // Ensure leadId and clientId are null if not provided or empty
+    const leadId = data.leadId || null;
+    const clientId = data.clientId || null;
+
+    const dataToSave = {
+      surveyNumber: `SRV-${Date.now()}`,
+      consumerName: data.consumerName,
+      date: parseISO(data.date),
+      consumerCategory: data.consumerCategoryOther || data.consumerCategory,
+      location: data.location,
+      numberOfMeters: data.numberOfMeters,
+      meterRating: data.meterRating,
+      meterPhase: data.meterPhase,
+      electricityAmount: data.electricityAmount,
+      consumerLoadType: data.consumerLoadType,
+      roofType: data.roofTypeOther || data.roofType,
+      buildingHeight: data.buildingHeight,
+      shadowFreeArea: data.shadowFreeArea,
+      discom: data.discomOther || data.discom,
+      sanctionedLoad: data.sanctionedLoad,
+      remark: data.remark,
+      electricityBillFiles: data.electricityBillFiles,
+      leadId: data.leadId,
+      clientId: data.clientId,
+      surveyorId: surveyor.id,
+    };
+
+    const newSurvey = await prisma.$transaction(async (tx) => {
+        const createdSurvey = await tx.siteSurvey.create({
+          data: dataToSave,
+          include: {
+            surveyor: true,
+          },
+        });
+
+        if (data.electricityBillFiles.length > 0) {
+          if (leadId) {
+            const lead = await tx.lead.findUnique({ where: { id: leadId }, select: { electricityBillUrls: true } });
+            if (lead) {
+              const existingUrls = lead.electricityBillUrls as string[];
+              await tx.lead.update({
+                where: { id: leadId },
+                data: { electricityBillUrls: [...existingUrls, ...data.electricityBillFiles] },
+              });
+            }
+          } else if (clientId) {
+            const client = await tx.client.findUnique({ where: { id: clientId }, select: { electricityBillUrls: true } });
+            if (client) {
+              const existingUrls = client.electricityBillUrls as string[];
+              await tx.client.update({
+                where: { id: clientId },
+                data: { electricityBillUrls: [...existingUrls, ...data.electricityBillFiles] },
+              });
+            }
+          }
+        }
+        
+        return createdSurvey;
     });
+      
+    
 
   
 
