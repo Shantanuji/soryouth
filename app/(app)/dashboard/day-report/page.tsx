@@ -86,7 +86,7 @@ export default function DayReportPage() {
     };
     const dateMatches = (dateStr: string) => dateInterval ? isWithinInterval(parseISO(dateStr), dateInterval) : true;
     // Filter followups
-      const pageFilteredFollowUps = allFollowUps.filter(followUp => {
+    const pageFilteredFollowUps = allFollowUps.filter(followUp => {
       const userFollowUpMatches = selectedUserFilter === 'all' || followUp.createdBy === allUsers.find(u => u.name === selectedUserFilter)?.name;
       return dateMatches(followUp.createdAt) && userFollowUpMatches;
     });
@@ -149,7 +149,7 @@ export default function DayReportPage() {
       
       const userLeadsCreatedInRange = userCreatedLeads.filter(lead => dateMatches(lead.createdAt)).length;
       const userLeadsDroppedInRange = userDroppedLeads.filter(lead => dateMatches(lead.droppedAt)).length;
-      const userDealsWonInRange = userCreatedDeals.filter(deal => dateMatches(deal.poWoDate)).length;
+      const userDealsWonInRange = userCreatedDeals.filter(deal => dateMatches(deal.createdAt)).length;
       
       const userProposalsCreatedInRange = userProposals.filter(proposal => (
           dateMatches(proposal.createdAt)
