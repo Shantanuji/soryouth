@@ -193,9 +193,9 @@ export default function DayReportPage() {
     const fetchData = async () => {
       setIsLoading(true);
       const [leads, droppedLeads, clients,deals, proposals, users, followUps] = await Promise.all([
-        getLeads(),
-        getDroppedLeads(),
-        getActiveClients(),
+        getLeads({ignorePermissions: true}),
+        getDroppedLeads({ignorePermissions: true}),
+        getActiveClients({ignorePermissions: true}),
         getAllDeals({ignorePermissions: true}),
         getAllProposals(),
         getUsers(),
