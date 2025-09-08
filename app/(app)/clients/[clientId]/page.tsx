@@ -397,7 +397,8 @@ export default function ClientDetailsPage() {
 
   const handleSaveActivity = () => {
     if (!client) return;
-    if (!activityComment) return;
+    if (!activityComment) 
+      return toast({title: "Couldn't Save Activity !", description: "Please Enter the Comment First.", variant: "destructive"});
 
     startFormTransition(async () => {
       const isTask = taskDate && taskTime;
