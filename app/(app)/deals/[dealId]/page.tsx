@@ -116,7 +116,7 @@ export default function DealDetailsPage() {
             setEffectiveAmcDate(parseISO(fetchedDeal.amcEffectiveDate));
           }
           if (fetchedUsers.length > 0) {
-            setTaskForUser(fetchedUsers[0].name);
+            setTaskForUser(fetchedDeal?.assignedTo || fetchedUsers[0].name);
           }
       } else {
           setDeal(null);
@@ -146,6 +146,8 @@ export default function DealDetailsPage() {
 
   const handleSaveActivity = () => {
     if (!deal) return;
+    if (!activityComment) 
+      return toast({title: "Couldn't Save Activity !", description: "Please Enter the Comment First.", variant: "destructive"});
 
     startFormTransition(async () => {
       const isTask = taskDate && taskTime;
@@ -175,8 +177,13 @@ export default function DealDetailsPage() {
         });
         setActivities(prev => [newActivity, ...prev]);
         setActivityComment('');
+        const updatedDeal = await getDealById(deal.id);
+        if (updatedDeal) {
+          setDeal(updatedDeal);
+        }
+
         if (users.length > 0) {
-            setTaskForUser(users[0].name);
+            setTaskForUser(updatedDeal?.assignedTo || users[0].name);
         }
         setTaskDate('');
         setTaskTime('');

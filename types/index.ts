@@ -125,6 +125,7 @@ export interface Proposal {
   templateId?: string;
   name: string;
   clientType: ClientType;
+  createdBy: string;
   contactPerson: string;
   location: string;
   phone?: string | null;

@@ -282,8 +282,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     const capacity = parseFloat(String(watchedCapacity)) || 0;
     const ratePerWatt = parseFloat(String(watchedRatePerWatt)) || 0;
     const baseAmount = ratePerWatt * capacity * 1000;
-    const cgstAmount = baseAmount * 0.069;
-    const sgstAmount = baseAmount * 0.069;
+    const cgstAmount = baseAmount * 0.045;
+    const sgstAmount = baseAmount * 0.045;
     const finalAmount = baseAmount + cgstAmount + sgstAmount;
     return { baseAmount, cgstAmount, sgstAmount, finalAmount };
   }, [watchedCapacity, watchedRatePerWatt]);
@@ -478,8 +478,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
               <FormField name="ratePerWatt" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Rate per Watt (₹)</FormLabel><FormControl><Input type="number" placeholder="e.g., 40" {...field} step="0.01" /></FormControl><FormMessage /></FormItem> )}/>
               <div className="space-y-2 p-3 border rounded-md bg-muted/50">
                   <div className="flex justify-between items-center"><FormLabel>Base Amount</FormLabel><span className="font-semibold flex items-center"><IndianRupee className="h-4 w-4 mr-0.5"/>{calculatedValues.baseAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-center"><FormLabel>CGST (6.9%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.cgstAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-center"><FormLabel>SGST (6.9%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>CGST (4.5%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.cgstAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>SGST (4.5%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
                   <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{calculatedValues.finalAmount.toFixed(2)}</span></div>
               </div>
               <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem className="mt-4"><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Auto-calculated" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} readOnly className={'bg-muted cursor-not-allowed text-muted-foreground'} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated based on client type and capacity. Set to 0 for Non-DCR.</p><FormMessage /></FormItem> )}/>
