@@ -294,7 +294,13 @@ export default function LeadsListPage() {
   };
   
   const statusFilters = useMemo((): StatusFilterItem[] => {
-    const activeLeads = leads;
+    let activeLeads = leads;
+    if (userFilter !== 'all') {
+        activeLeads = leads.filter(lead => lead.assignedTo === userFilter);
+    }
+    if (sourceFilter !== 'all'){
+      activeLeads = activeLeads.filter(lead => lead.source === sourceFilter);
+    }
     const counts: Record<string, number> = {};
     
     statuses.forEach(status => counts[status.name] = 0);
@@ -312,7 +318,7 @@ export default function LeadsListPage() {
     });
 
     return filters;
-  }, [leads, statuses]);
+  }, [leads, statuses, userFilter, sourceFilter]);
 
   const allFilteredLeads = useMemo(() => {
     let leadsToDisplay = [...leads];
