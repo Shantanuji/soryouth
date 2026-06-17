@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['var(--font-pt-sans)', 'sans-serif'],
-        headline: ['var(--font-pt-sans)', 'sans-serif'],
+        body: ['var(--font-hanken-grotesk)', 'sans-serif'],
+        headline: ['var(--font-hanken-grotesk)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

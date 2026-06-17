@@ -5,78 +5,78 @@
 
 @layer base {
   :root {
-    --background: 205 60% 96%; /* Very Light Blue */
-    --foreground: 205 30% 15%; /* Very Dark Blue */
+    --background: 213 22% 95%; /* Dhonu light body-bg (#eef2f7 / #f9f9f9) */
+    --foreground: 240 10% 20%; /* Dhonu dark body-color (#4c4c5c) */
     --card: 0 0% 100%; /* White */
-    --card-foreground: 205 30% 15%;
+    --card-foreground: 240 10% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 205 30% 15%;
-    --primary: 205 88% 53%; /* Soryouth Blue */
+    --popover-foreground: 240 10% 20%;
+    --primary: 213 47% 47%; /* Dhonu Primary Blue #3F72AF */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 145 55% 60%; /* Soryouth Green */
-    --secondary-foreground: 145 55% 20%; /* Darker Green for text on secondary */
-    --muted: 205 50% 92%; /* Lighter blue-gray */
-    --muted-foreground: 205 30% 45%; /* Medium blue-gray for muted text */
-    --accent: 28 95% 55%; /* Soryouth Orange */
-    --accent-foreground: 28 100% 15%; /* Dark brown for text on accent */
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 228 53% 64%; /* Dhonu Secondary Indigo #7286D3 */
+    --secondary-foreground: 0 0% 100%; /* White */
+    --muted: 213 22% 90%; /* Light background grey */
+    --muted-foreground: 240 10% 50%; /* Medium grey text */
+    --accent: 35 100% 72%; /* Dhonu Warning Orange #FFC26F */
+    --accent-foreground: 240 10% 20%;
+    --destructive: 341 97% 65%; /* Dhonu Danger Pink #FC5185 */
     --destructive-foreground: 0 0% 98%;
-    --border: 205 40% 80%; /* Softer blue for borders */
-    --input: 205 40% 90%; /* Light blue for input backgrounds or borders */
-    --ring: 205 88% 53%; /* Primary blue for focus rings */
-    --chart-1: 205 88% 53%; /* Soryouth Blue */
-    --chart-2: 28 95% 55%; /* Soryouth Orange */
-    --chart-3: 145 55% 60%; /* Soryouth Green */
-    --chart-4: 205 70% 70%; /* Lighter Blue */
-    --chart-5: 28 70% 70%; /* Lighter Orange */
+    --border: 213 22% 85%; /* Soft borders */
+    --input: 213 22% 90%;
+    --ring: 213 47% 47%;
+    --chart-1: 213 47% 47%; /* Dhonu Primary Blue */
+    --chart-2: 35 100% 72%; /* Dhonu Warning Orange */
+    --chart-3: 118 26% 51%; /* Dhonu Success Green */
+    --chart-4: 228 53% 64%; /* Dhonu Secondary Indigo */
+    --chart-5: 183 54% 52%; /* Dhonu Info Teal */
     --radius: 0.5rem;
 
-    /* Sidebar specific colors */
-    --sidebar-background: 205 40% 20%; /* Darker blue for sidebar */
-    --sidebar-foreground: 205 60% 90%; /* Light text for dark sidebar */
-    --sidebar-primary: 205 88% 53%;
+    /* Sidebar specific colors matching Dhonu layout-sidebar-dark */
+    --sidebar-background: 214 18% 23%; /* #313a46 */
+    --sidebar-foreground: 211 20% 85%; /* Light gray */
+    --sidebar-primary: 213 47% 47%; /* #3F72AF */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 205 88% 63%; /* Lighter blue for hover/accent on sidebar */
+    --sidebar-accent: 213 47% 57%; /* Hover accent */
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 205 40% 30%;
-    --sidebar-ring: 205 88% 53%;
+    --sidebar-border: 214 18% 30%;
+    --sidebar-ring: 213 47% 47%;
   }
 
   .dark {
-    --background: 205 30% 10%; /* Very dark blue */
-    --foreground: 205 60% 92%; /* Very light blue for text */
-    --card: 205 30% 15%;
-    --card-foreground: 205 60% 92%;
-    --popover: 205 30% 12%;
-    --popover-foreground: 205 60% 92%;
-    --primary: 205 88% 63%; /* Brighter Soryouth Blue */
-    --primary-foreground: 205 30% 10%; /* Dark text on primary for contrast */
-    --secondary: 145 55% 50%; /* Slightly darker Soryouth Green */
-    --secondary-foreground: 145 55% 90%; /* Light green text */
-    --muted: 205 30% 22%;
-    --muted-foreground: 205 50% 65%;
-    --accent: 28 95% 60%; /* Brighter Soryouth Orange */
-    --accent-foreground: 28 100% 10%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 231 13% 10%; /* #17181e */
+    --foreground: 211 20% 72%; /* #aab8c5 */
+    --card: 233 13% 14%; /* #1e1f27 */
+    --card-foreground: 211 20% 72%;
+    --popover: 233 13% 14%;
+    --popover-foreground: 211 20% 72%;
+    --primary: 213 47% 47%; /* Dhonu Primary Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 228 53% 64%; /* Dhonu Secondary Indigo */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 235 12% 17%; /* #272832 */
+    --muted-foreground: 211 20% 55%;
+    --accent: 35 100% 72%; /* Dhonu Warning Orange */
+    --accent-foreground: 231 13% 10%;
+    --destructive: 341 97% 65%; /* Dhonu Danger Pink */
     --destructive-foreground: 0 0% 98%;
-    --border: 205 30% 30%;
-    --input: 205 30% 25%;
-    --ring: 205 88% 63%;
-    --chart-1: 205 88% 63%;
-    --chart-2: 28 95% 60%;
-    --chart-3: 145 55% 50%;
-    --chart-4: 205 70% 50%;
-    --chart-5: 28 70% 60%;
+    --border: 235 12% 20%;
+    --input: 235 12% 20%;
+    --ring: 213 47% 47%;
+    --chart-1: 213 47% 47%;
+    --chart-2: 35 100% 72%;
+    --chart-3: 118 26% 51%;
+    --chart-4: 228 53% 64%;
+    --chart-5: 183 54% 52%;
 
     /* Dark Sidebar specific colors */
-    --sidebar-background: 205 30% 8%; /* Even darker blue */
-    --sidebar-foreground: 205 70% 85%;
-    --sidebar-primary: 205 88% 63%;
-    --sidebar-primary-foreground: 205 30% 10%;
-    --sidebar-accent: 205 88% 53%; /* Adjusted Soryouth Blue accent for dark sidebar hover */
+    --sidebar-background: 231 13% 8%; /* Even darker #14151a */
+    --sidebar-foreground: 211 20% 80%;
+    --sidebar-primary: 213 47% 47%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 47% 57%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 205 30% 20%;
-    --sidebar-ring: 205 88% 63%;
+    --sidebar-border: 231 13% 15%;
+    --sidebar-ring: 213 47% 47%;
   }
 }
 

@@ -39,16 +39,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col h-screen overflow-hidden">
-        <header className="sticky top-0 z-10 flex h-14 justify- gap-4 border-b-2 border-blue-400  bg-background px-4 sm:static sm:h-auto sm:border-10 sm:bg-transparent sm:px-6 py-4 flex-shrink-0">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-4 sm:px-6 py-4 flex-shrink-0">
           <SidebarTrigger className="lg:hidden" />
-          <div className="flex-1">
+          <div className="flex-1 max-w-xl">
              <UniversalSearch />
           </div>
           <div className="hidden lg:block">
-            <AppLogoIcon className="h-10 w-12 " />
+            <AppLogoIcon className="h-10 w-12" />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 sm:px-6 sm:py-0 md:gap-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:px-6 sm:py-6 md:gap-8">
           {children}
         </main>
         <Toaster />

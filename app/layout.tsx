@@ -1,6 +1,5 @@
-
 import './globals.css';
-import { Inter, PT_Sans } from 'next/font/google';
+import { Inter, Hanken_Grotesk } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -10,11 +9,10 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-const ptSans = PT_Sans({
+const hankenGrotesk = Hanken_Grotesk({
   subsets: ['latin'],
-  weight: ['400', '700'],
   display: 'swap',
-  variable: '--font-pt-sans',
+  variable: '--font-hanken-grotesk',
 });
 
 export const metadata = {
@@ -28,7 +26,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${ptSans.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${hankenGrotesk.variable}`}>
       <head>
         <meta name="viewport" content="width=auto, initial-scale=1.0" />
       </head>
