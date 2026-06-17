@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ClipboardPaste, PlusCircle, Edit, Trash2, FileText, Settings, Banknote, Files } from 'lucide-react';
+import { ClipboardPaste, PlusCircle, Edit, Trash2, FileText, Settings, Banknote, Files, Loader2 } from 'lucide-react';
 import type { Template, CustomSetting } from '@/types';
 import { getTemplates, deleteTemplate } from './actions';
 import { getDocumentTypes, getFinancialDocumentTypes } from '@/app/(app)/settings/actions';
@@ -65,36 +65,48 @@ export default function ManageTemplatesPage() {
 
   const renderTemplateList = (templateList: Template[]) => {
     if (isLoading) {
-      return <p>Loading templates...</p>;
+      return (
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="ml-2 text-sm text-muted-foreground">Loading templates...</p>
+        </div>
+      );
     }
     if (templateList.length === 0) {
-      return <p className="text-sm text-muted-foreground py-4">No templates found for this category.</p>;
+      return <p className="text-xs text-muted-foreground py-6 text-center bg-card border border-border/50 rounded-xl shadow-sm">No templates found for this category.</p>;
     }
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {templateList.map(template => (
-          <Card key={template.id} className="flex flex-col">
-             <CardHeader className="flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle>{template.name}</CardTitle>
-                <CardDescription>
+          <Card key={template.id} className="flex flex-col border border-border/80 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all duration-200">
+             <CardHeader className="flex flex-row items-start gap-3 pb-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="flex-grow space-y-0.5">
+                <CardTitle className="text-sm font-bold text-foreground line-clamp-1">{template.name}</CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
                   Last updated: {format(new Date(template.updatedAt), 'dd MMM, yyyy')}
                 </CardDescription>
               </div>
-              <Badge variant="outline">{template.type}</Badge>
             </CardHeader>
-            <CardContent className="flex-grow" />
-            <CardFooter className="flex justify-end gap-2">
-              <Button asChild variant="secondary" size="sm">
+            <CardContent className="flex-grow pt-0 pb-3">
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-[11px] text-muted-foreground font-medium">Type:</span>
+                <Badge variant="softInfo" className="text-[10px] py-0 px-2 font-semibold capitalize">{template.type}</Badge>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2 bg-muted/15 border-t border-border/40 p-3">
+              <Button asChild variant="outline" size="sm" className="h-8 text-xs font-semibold hover:bg-muted">
                 <Link href={`/manage-templates/${template.id}`}>
-                  <Edit className="mr-2 h-4 w-4" />
+                  <Edit className="mr-1.5 h-3.5 w-3.5" />
                   Edit
                 </Link>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="mr-2 h-4 w-4" />
+                  <Button variant="destructive" size="sm" className="h-8 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white border-transparent">
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                     Delete
                   </Button>
                 </AlertDialogTrigger>
@@ -107,7 +119,7 @@ export default function ManageTemplatesPage() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(template.id)} disabled={isDeleting}>
+                    <AlertDialogAction onClick={() => handleDelete(template.id)} disabled={isDeleting} className="bg-rose-600 hover:bg-rose-700 text-white">
                       {isDeleting ? 'Deleting...' : 'Yes, Delete'}
                     </AlertDialogAction>
                   </AlertDialogFooter>

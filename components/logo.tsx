@@ -23,9 +23,9 @@ export function Logo({ className, iconOnly = false }: LogoProps) {
       )}
       onClick={toggleSidebar}
     >
-      <AppLogoIcon className="h-auto w-auto " />
+      <AppLogoIcon className="h-6 w-6 text-primary" />
       {!iconOnly && (
-        <span className="ml-2 truncate text-xl font-semibold font-headline text-primary-foreground group-data-[sidebar=sidebar]/sidebar-wrapper:text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+        <span className="ml-2 truncate text-lg font-extrabold tracking-wider uppercase text-primary group-data-[collapsible=icon]:hidden">
           {APP_NAME}
         </span>
       )}

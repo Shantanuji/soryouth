@@ -4,7 +4,7 @@
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { SunMedium, Moon, Settings, LogOut, UserCircle } from 'lucide-react';
+import { SunMedium, Moon, Settings, LogOut, UserCircle, ChevronDown } from 'lucide-react';
 import { TOOLS_NAV_ITEMS } from '@/lib/constants';
 import Link from 'next/link';
 import { logout } from '@/app/(auth)/actions';
@@ -58,15 +58,16 @@ export function UserNavClient({ user }: { user: User }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+        <Button variant="ghost" className="flex items-center gap-2 px-2.5 py-1.5 h-auto hover:bg-muted/50 rounded-lg">
           <Avatar className="h-8 w-8">
             <AvatarImage src={`https://placehold.co/40x40.png?text=${user.name.charAt(0)}`} data-ai-hint="user avatar" alt={user.name} />
             <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <span className="truncate group-data-[collapsible=icon]:hidden">{user.name}</span>
+          <span className="hidden md:inline font-bold text-xs text-foreground/85">{user.name}</span>
+          <ChevronDown className="hidden md:inline h-3.5 w-3.5 opacity-60 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" className="w-56 mb-2 ml-2">
+      <DropdownMenuContent side="bottom" align="end" className="w-56 mt-2 mr-2">
         <DropdownMenuLabel>
             <div className="font-semibold">{user.name}</div>
             <div className="text-xs text-muted-foreground font-normal">{user.email}</div>

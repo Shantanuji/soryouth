@@ -228,108 +228,175 @@ export default function DashboardOverviewPage() {
             <p className="ml-4 text-lg text-muted-foreground">Loading Dashboard Data...</p>
         </div>
     );
-  }
-
-  const topStats = [
-    { title: 'Active Leads', value: dashboardData.totalLeads.toString(), icon: UsersRound, dataAiHint: "total leads count" },
-    { title: 'Total Clients', value: dashboardData.totalClients.toString(), icon: Briefcase, dataAiHint: "total clients count" },
-    { title: 'Deals Won', value: dashboardData.dealsWon.toString(), icon: Award, dataAiHint: "deals won count" },
-    { title: 'Leads Dropped', value: dashboardData.leadsDropped.toString(), icon: UserX, dataAiHint: "leads dropped count" },
+  }  const topStats = [
+    { title: 'Active Leads', value: dashboardData.totalLeads.toString(), icon: UsersRound, bgClass: "bg-primary/10 text-primary", iconColor: "text-primary" },
+    { title: 'Total Clients', value: dashboardData.totalClients.toString(), icon: Briefcase, bgClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", iconColor: "text-emerald-600 dark:text-emerald-400" },
+    { title: 'Deals Won', value: dashboardData.dealsWon.toString(), icon: Award, bgClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400", iconColor: "text-amber-600 dark:text-amber-400" },
+    { title: 'Leads Dropped', value: dashboardData.leadsDropped.toString(), icon: UserX, bgClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400", iconColor: "text-rose-600 dark:text-rose-400" },
   ];
 
   return (
     <>
+      <div className="mb-6 flex flex-col gap-1 w-full">
+        <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-1">
+          <div>
+            <h1 className="text-base font-extrabold text-foreground tracking-tight">Welcome</h1>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground/80 uppercase tracking-wider">
+            <span>Soryouth</span>
+            <span>&gt;</span>
+            <span>Dashboard</span>
+            <span>&gt;</span>
+            <span className="text-foreground/85">Welcome</span>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Welcome to Soryouth Overview.</p>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        {topStats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        {topStats.map((stat) => {
+          let borderClass = "border-l-primary";
+          let percentageChange = "▲ 5.42%";
+          if (stat.title.includes('Clients')) {
+            borderClass = "border-l-emerald-500";
+            percentageChange = "▲ 8.76%";
+          } else if (stat.title.includes('Won')) {
+            borderClass = "border-l-amber-500";
+            percentageChange = "▲ 12.5%";
+          } else if (stat.title.includes('Dropped')) {
+            borderClass = "border-l-rose-500";
+            percentageChange = "▼ 0.00%";
+          }
+
+          return (
+            <Card key={stat.title} className={`overflow-hidden border-0 border-l-[3.5px] ${borderClass} bg-card shadow-sm rounded-xl p-4 hover:shadow-md transition-all duration-200`}>
+              <div className="flex flex-col justify-between h-full">
+                <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">{stat.title}</span>
+                <div className="flex items-center gap-3.5 mt-2.5">
+                  <div className={`h-11 w-11 rounded-full flex items-center justify-center ${stat.bgClass} flex-shrink-0`}>
+                    <stat.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</h3>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-3 flex items-center gap-1.5 font-medium">
+                  <span className={`${stat.title.includes('Dropped') ? 'text-rose-500' : 'text-emerald-500'} font-extrabold`}>
+                    {percentageChange}
+                  </span>
+                  <span>Since last month</span>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 mb-8">
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
               <Clock className="h-5 w-5 text-primary" />
               Attendance
             </CardTitle>
-            <CardDescription>Track your work hours</CardDescription>
+            <CardDescription className="text-xs">Track your work hours</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-3">
+          <CardContent className="flex flex-col items-center space-y-4 pt-2">
              {isPunchedIn ? (
-                <Alert variant="default" className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-center">
-                    <AlertTitle className="text-green-800 dark:text-green-300">You are Punched In</AlertTitle>
-                    <AlertDescription className="text-green-700 dark:text-green-400">
+                <div className="w-full rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
+                    <h5 className="font-bold text-sm text-emerald-600 dark:text-emerald-400">You are Punched In</h5>
+                    <p className="text-xs text-emerald-500/90 mt-1">
                         Punched in at: <span className="font-semibold">{punchInTime}</span>
-                    </AlertDescription>
-                </Alert>
+                    </p>
+                </div>
              ) : (
-                 <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-center">
-                    <AlertCircle className="h-4 w-4 !left-1/2 -translate-x-1/2 !top-2"/>
-                    <AlertTitle className="text-red-800 dark:text-red-300 pt-4">You are Punched Out</AlertTitle>
-                </Alert>
+                <div className="w-full rounded-lg bg-rose-500/10 border border-rose-500/20 p-4 text-center">
+                    <h5 className="font-bold text-sm text-rose-600 dark:text-rose-400">You are Punched Out</h5>
+                    <p className="text-xs text-rose-500/90 mt-1">Punch in to start tracking work hours</p>
+                </div>
              )}
-            <Button onClick={handlePunchInOut} className="w-full" disabled={isProcessing}>
+            <Button onClick={handlePunchInOut} className="w-full font-semibold" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                 {isPunchedIn ? 'Punch Out' : 'Punch In'}
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
               <BarChart3 className="h-5 w-5 text-primary" />
               Deals Won Leaderboard
             </CardTitle>
-            <CardDescription>Top performers by number of deals closed.</CardDescription>
+            <CardDescription className="text-xs">Top performers by number of deals closed.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             {topSalesPerformers.length > 0 ? (
-                <ul className="space-y-2 text-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <th className="py-2 pb-1" style={{ width: '10%' }}>#</th>
+                      <th className="py-2 pb-1">Name</th>
+                      <th className="py-2 pb-1 text-right">Deals Won</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 text-xs">
                     {topSalesPerformers.map((user, index) => (
-                         <li key={user.name} className="flex justify-between"><span>{index + 1}. {user.name}</span> <span className="font-semibold">{user.value} Deals</span></li>
+                      <tr key={user.name} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2">{index + 1}</td>
+                        <td className="py-2 font-medium">{user.name}</td>
+                        <td className="py-2 text-right font-semibold text-primary">{user.value} Deals</td>
+                      </tr>
                     ))}
-                </ul>
-            ) : <p className="text-sm text-muted-foreground">No deal data available.</p>}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="text-xs text-muted-foreground">No deal data available.</p>}
           </CardContent>
         </Card>
         
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
               <TrendingUp className="h-5 w-5 text-primary" />
                Lead Assignment Leaderboard
             </CardTitle>
-            <CardDescription>Top users by number of assigned active leads.</CardDescription>
+            <CardDescription className="text-xs">Top users by number of assigned active leads.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
              {topLeadHandlers.length > 0 ? (
-                <ul className="space-y-2 text-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <th className="py-2 pb-1" style={{ width: '10%' }}>#</th>
+                      <th className="py-2 pb-1">Name</th>
+                      <th className="py-2 pb-1 text-right">Leads</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 text-xs">
                     {topLeadHandlers.map((user, index) => (
-                        <li key={user.name} className="flex justify-between"><span>{index + 1}. {user.name}</span> <span className="font-semibold">{user.value} Leads</span></li>
+                      <tr key={user.name} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2">{index + 1}</td>
+                        <td className="py-2 font-medium">{user.name}</td>
+                        <td className="py-2 text-right font-semibold text-primary">{user.value} Leads</td>
+                      </tr>
                     ))}
-                </ul>
-             ) : <p className="text-sm text-muted-foreground">No lead assignment data available.</p>}
+                  </tbody>
+                </table>
+              </div>
+             ) : <p className="text-xs text-muted-foreground">No lead assignment data available.</p>}
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mb-8">
-        <Card>
+        <Card className="border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
               <PieChartIcon className="h-5 w-5 text-primary" />
               Deals by User
             </CardTitle>
-            <CardDescription>Distribution of deals closed by each user.</CardDescription>
+            <CardDescription className="text-xs">Distribution of deals closed by each user.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             {dashboardData.dealsByUser.length > 0 ? (
@@ -347,17 +414,17 @@ export default function DashboardOverviewPage() {
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">No deal data to display.</div>
+              <div className="flex items-center justify-center h-full text-xs text-muted-foreground">No deal data to display.</div>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
               <Users className="h-5 w-5 text-primary" />
               Active Leads by User
             </CardTitle>
-            <CardDescription>Distribution of active leads assigned to each user.</CardDescription>
+            <CardDescription className="text-xs">Distribution of active leads assigned to each user.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
              {dashboardData.leadsByUser.length > 0 ? (
@@ -375,24 +442,24 @@ export default function DashboardOverviewPage() {
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-               <div className="flex items-center justify-center h-full text-muted-foreground">No lead assignment data to display.</div>
+               <div className="flex items-center justify-center h-full text-xs text-muted-foreground">No lead assignment data to display.</div>
             )}
           </CardContent>
         </Card>
       </div>
       
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card>
+        <Card className="border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
               <IndianRupee className="h-5 w-5 text-primary" />
               Yearly Sales (Value) - Total: Rs. {dashboardData.totalSalesValue.toLocaleString('en-IN')}
             </CardTitle>
-            <CardDescription>Total sales value over the financial year (Apr-Mar).</CardDescription>
+            <CardDescription className="text-xs">Total sales value over the financial year (Apr-Mar).</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
              <ChartContainer config={chartConfig} className="w-full h-full">
-                 <ResponsiveContainer>
+                  <ResponsiveContainer>
                   <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
@@ -404,17 +471,17 @@ export default function DashboardOverviewPage() {
             </ChartContainer>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
              <LineChartIcon className="h-5 w-5 text-primary" />
               Yearly Sales (Count) - Total: {dashboardData.totalSalesCount}
             </CardTitle>
-            <CardDescription>Total number of deals closed over the financial year (Apr-Mar).</CardDescription>
+            <CardDescription className="text-xs">Total number of deals closed over the financial year (Apr-Mar).</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
              <ChartContainer config={chartConfig} className="w-full h-full">
-                 <ResponsiveContainer>
+                  <ResponsiveContainer>
                   <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />

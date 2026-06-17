@@ -31,14 +31,14 @@
     --chart-5: 183 54% 52%; /* Dhonu Info Teal */
     --radius: 0.5rem;
 
-    /* Sidebar specific colors matching Dhonu layout-sidebar-dark */
-    --sidebar-background: 214 18% 23%; /* #313a46 */
-    --sidebar-foreground: 211 20% 85%; /* Light gray */
-    --sidebar-primary: 213 47% 47%; /* #3F72AF */
+    /* Sidebar specific colors matching Dhonu light sidebar */
+    --sidebar-background: 0 0% 100%; /* White #ffffff */
+    --sidebar-foreground: 240 10% 25%; /* Dark gray text #3f3f46 */
+    --sidebar-primary: 213 47% 47%; /* Dhonu Blue */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 213 47% 57%; /* Hover accent */
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 214 18% 30%;
+    --sidebar-accent: 210 16% 96%; /* Soft gray hover bg #f5f6f8 */
+    --sidebar-accent-foreground: 213 47% 47%; /* Hover/active blue text */
+    --sidebar-border: 210 16% 93%; /* #eef2f7 */
     --sidebar-ring: 213 47% 47%;
   }
 

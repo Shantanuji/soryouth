@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ClipboardCheck, Loader2, PlusCircle, AlertTriangle, Trash2, MoreVertical } from 'lucide-react';
+import { ClipboardCheck, Loader2, PlusCircle, AlertTriangle, Trash2, MoreVertical, Clock } from 'lucide-react';
 import type { GeneralTask, GeneralTaskStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, isPast } from 'date-fns';
@@ -72,10 +72,19 @@ export default function TasksPage() {
 
   const getStatusBadgeVariant = (status: GeneralTaskStatus) => {
     switch (status) {
-      case 'Completed': return 'default';
-      case 'Pending': return 'secondary';
-      case 'In Progress': return 'outline';
-      case 'Failed': return 'destructive';
+      case 'Completed': return 'softSuccess';
+      case 'Pending': return 'softPrimary';
+      case 'In Progress': return 'softInfo';
+      case 'Failed': return 'softDestructive';
+      default: return 'outline';
+    }
+  };
+
+  const getPriorityBadgeVariant = (priority: string) => {
+    switch (priority) {
+      case 'High': return 'softDestructive';
+      case 'Medium': return 'softWarning';
+      case 'Low': return 'softInfo';
       default: return 'outline';
     }
   };
@@ -98,11 +107,11 @@ export default function TasksPage() {
       />
       <div className="space-y-4">
         {Object.keys(groupedTasks).length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              <ClipboardCheck className="mx-auto h-12 w-12 mb-2" />
-              <p>No tasks found.</p>
-              <p className="text-sm">Click "Create Task" to get started.</p>
+          <Card className="border border-border/80 shadow-sm rounded-xl">
+            <CardContent className="pt-8 pb-8 text-center text-muted-foreground">
+              <ClipboardCheck className="mx-auto h-12 w-12 text-muted-foreground/60 mb-3" />
+              <p className="font-bold text-foreground">No tasks found.</p>
+              <p className="text-xs text-muted-foreground mt-1">Click "Create Task" to get started.</p>
             </CardContent>
           </Card>
         ) : (
@@ -111,57 +120,59 @@ export default function TasksPage() {
                 const completedCount = tasks.filter(t => t.status === 'Completed').length;
                 const failedCount = tasks.filter(t => t.status === 'Failed').length;
                 return (
-              <AccordionItem value={user.id} key={user.id} className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline">
-                  <div className="flex items-center gap-3 flex-grow">
-                    <Avatar><AvatarImage src={`https://placehold.co/40x40.png?text=${user.name.charAt(0)}`} data-ai-hint="user avatar" /><AvatarFallback>{user.name.charAt(0)}</AvatarFallback></Avatar>
-                    <span className="font-semibold text-lg">{user.name}</span>
-                    <Badge variant="outline">{tasks.length} task(s)</Badge>
+              <AccordionItem value={user.id} key={user.id} className="border border-border/80 rounded-xl bg-card shadow-sm overflow-hidden mb-2">
+                <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:border-b border-border/50">
+                  <div className="flex items-center gap-3 flex-grow text-left">
+                    <Avatar className="h-9 w-9 border border-border"><AvatarImage src={`https://placehold.co/40x40.png?text=${user.name.charAt(0)}`} data-ai-hint="user avatar" /><AvatarFallback>{user.name.charAt(0)}</AvatarFallback></Avatar>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                      <span className="font-bold text-base text-foreground">{user.name}</span>
+                      <Badge variant="softPrimary" className="w-fit text-[10px] font-semibold tracking-wide py-0 px-2">{tasks.length} task(s)</Badge>
+                    </div>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="p-4 pt-0">
+                <AccordionContent className="p-4 pt-4">
                   <div className="flex justify-end mb-4">
                      <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isProcessing}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete Tasks
-                          <MoreVertical className="ml-2 h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleDeleteRequest(user.id, 'Completed')} disabled={completedCount === 0}>
-                           Delete {completedCount} Completed Task(s)
-                        </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => handleDeleteRequest(user.id, 'Failed')} disabled={failedCount === 0} className="text-destructive focus:text-destructive">
-                           Delete {failedCount} Failed Task(s)
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                       <DropdownMenuTrigger asChild>
+                         <Button variant="ghost" size="sm" className="h-8 text-xs font-semibold hover:bg-muted" disabled={isProcessing}>
+                           <Trash2 className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Delete Tasks
+                           <MoreVertical className="ml-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                         </Button>
+                       </DropdownMenuTrigger>
+                       <DropdownMenuContent align="end">
+                         <DropdownMenuItem onClick={() => handleDeleteRequest(user.id, 'Completed')} disabled={completedCount === 0} className="text-xs font-medium">
+                            Delete {completedCount} Completed Task(s)
+                         </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteRequest(user.id, 'Failed')} disabled={failedCount === 0} className="text-xs font-semibold text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/20">
+                            Delete {failedCount} Failed Task(s)
+                         </DropdownMenuItem>
+                       </DropdownMenuContent>
+                     </DropdownMenu>
                   </div>
                   <div className="space-y-3">
                     {tasks.map(task => {
                       const isTaskPastDue = isPast(task.taskDate) && !['Completed', 'Failed'].includes(task.status);
                       return (
-                        <div key={task.id} className="p-3 border rounded-md">
-                          <div className="flex justify-between items-start">
-                             <div className="space-y-1">
-                                <p className="font-medium">{task.comment}</p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                    <span>Due: {format(task.taskDate, 'dd MMM, yyyy p')}</span>
-                                    <span>Priority: {task.priority}</span>
-                                    {isTaskPastDue && <Badge variant="destructive" className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Overdue by {formatDistanceToNow(task.taskDate)}</Badge>}
+                        <div key={task.id} className="p-4 border border-border/50 rounded-xl bg-muted/10 hover:bg-muted/20 transition-all duration-200">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                             <div className="space-y-1.5 flex-grow">
+                                <p className="font-semibold text-foreground text-sm sm:text-base">{task.comment}</p>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1 font-medium"><Clock className="h-3.5 w-3.5 text-muted-foreground/85" /> Due: {format(task.taskDate, 'dd MMM, yyyy p')}</span>
+                                    <span className="flex items-center gap-1.5 font-medium">Priority: <Badge variant={getPriorityBadgeVariant(task.priority) as any} className="text-[10px] py-0 px-2 font-semibold capitalize">{task.priority}</Badge></span>
+                                    {isTaskPastDue && <Badge variant="softDestructive" className="flex items-center gap-1 text-[10px] font-bold py-0.5"><AlertTriangle className="h-3 w-3" /> Overdue by {formatDistanceToNow(task.taskDate)}</Badge>}
                                 </div>
                              </div>
-                             <Badge variant={getStatusBadgeVariant(task.status)}>{task.status}</Badge>
+                             <Badge variant={getStatusBadgeVariant(task.status) as any} className="text-[10px] font-bold py-0.5 px-2.5 uppercase tracking-wider">{task.status}</Badge>
                           </div>
-                           <div className="mt-3 pt-3 border-t">
-                            <p className="text-xs text-muted-foreground">
-                                Created by {task.createdBy?.name || 'System'}. Last updated: {formatDistanceToNow(task.updatedAt, { addSuffix: true })}
-                            </p>
-                            {task.status === 'Failed' && task.reason && (
-                                <p className="text-xs text-destructive mt-1"><span className="font-semibold">Reason:</span> {task.reason}</p>
-                            )}
-                           </div>
+                          <div className="mt-3.5 pt-3.5 border-t border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                             <p className="text-[11px] text-muted-foreground">
+                                 Created by <span className="font-semibold text-foreground/85">{task.createdBy?.name || 'System'}</span> &bull; Last updated {formatDistanceToNow(task.updatedAt, { addSuffix: true })}
+                             </p>
+                             {task.status === 'Failed' && task.reason && (
+                                 <p className="text-[11px] text-rose-500 font-medium bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/25"><span className="font-bold">Reason:</span> {task.reason}</p>
+                             )}
+                          </div>
                         </div>
                       )
                     })}

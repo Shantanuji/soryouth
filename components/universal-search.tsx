@@ -58,18 +58,17 @@ export function UniversalSearch() {
 
   return (
     <>
-      <Button
-        variant="outline"
-        className="w-full justify-start text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64"
+      <div 
+        className="flex items-center w-full max-w-[240px] rounded-lg border border-border bg-card overflow-hidden h-9 shadow-sm cursor-pointer hover:border-border/80 transition-colors" 
         onClick={() => setOpen(true)}
       >
-        <Search className="mr-2 h-4 w-4" />
-        <span className="hidden lg:inline-flex">Search anything...</span>
-        <span className="inline-flex lg:hidden">Search...</span>
-        <kbd className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </Button>
+        <span className="flex-grow pl-3 text-xs text-muted-foreground select-none">
+          Quick Search...
+        </span>
+        <div className="h-full px-3 bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0">
+          <Search className="h-3.5 w-3.5" />
+        </div>
+      </div>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <DialogTitle className="sr-only">Universal Search</DialogTitle>
         <CommandInput

@@ -144,95 +144,97 @@ export default function ManageUsersPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
              </div>
           ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>View Permission</TableHead>
-                <TableHead>Date Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone}</TableCell>
-                  <TableCell>
-                    <Badge variant={user.role === 'Admin' ? 'destructive' : 'secondary'}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.isActive ? 'default' : 'outline'}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.viewPermission === 'ALL' ? 'default' : 'secondary'}>
-                       {user.viewPermission === 'ALL' ? 'All Data' : 'Assigned Only'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{format(new Date(user.createdAt), 'dd MMM, yyyy')}</TableCell>
-                   <TableCell className="text-right">
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenEditDialog(user)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit User
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                {user.isActive ? <UserX className="mr-2 h-4 w-4" /> : <UserCheck className="mr-2 h-4 w-4" />}
-                                <span>{user.isActive ? 'Make Inactive' : 'Make Active'}</span>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => handleToggleViewPermission(user)}>
-                                {user.viewPermission === 'ALL' ? <ListFilter className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                                <span>{user.viewPermission === 'ALL' ? 'Set to Assigned View' : 'Set to All View'}</span>
-                            </DropdownMenuItem>
-                           <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete the user account for "{user.name}".
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            className={buttonVariants({ variant: 'destructive' })}
-                                            onClick={() => handleDeleteUser(user.id)}
-                                            disabled={isProcessing}
-                                        >
-                                            {isProcessing ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </DropdownMenuContent>
-                     </DropdownMenu>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="w-full align-middle mb-0">
+              <TableHeader className="bg-muted/15 border-b border-border/60">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Email</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Phone</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Role</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">View Permission</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Date Joined</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="divide-y divide-border/40">
+                {users.map((user) => (
+                  <TableRow key={user.id} className="hover:bg-muted/10 border-b border-border/40 transition-colors">
+                    <TableCell className="font-semibold py-3.5 text-sm">{user.name}</TableCell>
+                    <TableCell className="py-3.5 text-xs text-muted-foreground">{user.email}</TableCell>
+                    <TableCell className="py-3.5 text-xs text-muted-foreground font-medium">{user.phone}</TableCell>
+                    <TableCell className="py-3.5">
+                      <Badge variant={user.role === 'Admin' ? 'softDestructive' : 'softSecondary' as any} className="text-[10px] font-semibold tracking-wide py-0.5 px-2.5">
+                        {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3.5">
+                      <Badge variant={user.isActive ? 'softSuccess' : 'softDestructive' as any} className="text-[10px] font-semibold tracking-wide py-0.5 px-2.5">
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3.5">
+                      <Badge variant={user.viewPermission === 'ALL' ? 'softSuccess' : 'softInfo' as any} className="text-[10px] font-semibold tracking-wide py-0.5 px-2.5">
+                         {user.viewPermission === 'ALL' ? 'All Data' : 'Assigned Only'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3.5 text-xs text-muted-foreground">{format(new Date(user.createdAt), 'dd MMM, yyyy')}</TableCell>
+                     <TableCell className="text-right py-3.5">
+                       <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-7 w-7 p-0 rounded-circle hover:bg-muted">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleOpenEditDialog(user)}>
+                                  <Edit className="mr-2 h-3.5 w-3.5" />
+                                  Edit User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                  {user.isActive ? <UserX className="mr-2 h-3.5 w-3.5 text-rose-500" /> : <UserCheck className="mr-2 h-3.5 w-3.5 text-emerald-500" />}
+                                  <span>{user.isActive ? 'Make Inactive' : 'Make Active'}</span>
+                              </DropdownMenuItem>
+                               <DropdownMenuItem onClick={() => handleToggleViewPermission(user)}>
+                                  {user.viewPermission === 'ALL' ? <ListFilter className="mr-2 h-3.5 w-3.5" /> : <Eye className="mr-2 h-3.5 w-3.5" />}
+                                  <span>{user.viewPermission === 'ALL' ? 'Set to Assigned View' : 'Set to All View'}</span>
+                              </DropdownMenuItem>
+                             <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/20">
+                                          <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                          Delete
+                                      </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                              This action cannot be undone. This will permanently delete the user account for "{user.name}".
+                                          </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                              className={buttonVariants({ variant: 'destructive' })}
+                                              onClick={() => handleDeleteUser(user.id)}
+                                              disabled={isProcessing}
+                                          >
+                                              {isProcessing ? 'Deleting...' : 'Delete'}
+                                          </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
+                          </DropdownMenuContent>
+                       </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
           )}
         </CardContent>
       </Card>

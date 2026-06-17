@@ -244,31 +244,41 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
           {paginatedGroups.map(({ details, proposals: customerProposals, totalValue, lastProposalDate }) => {
             const customerType = 'dropReason' in details ? 'lead' : 'client';
             const link = `/proposals/${details.id}`;
+            
+            let badgeVariant: 'softDestructive' | 'softWarning' | 'softPrimary' | 'softInfo' = 'softPrimary';
+            if (details.isDropped) badgeVariant = 'softDestructive';
+            else if (details.isInactive) badgeVariant = 'softWarning';
+            else if (customerType === 'lead') badgeVariant = 'softInfo';
 
             return (
               <Link href={link} key={details.id}>
-                <Card className="hover:shadow-lg hover:border-primary/50 transition-all flex flex-col h-full">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-3">
-                            <CustomerTypeIcon type={details.clientType as ClientType} isDropped={details.isDropped} />
-                            <CardTitle className="font-headline text-lg">{details.name}</CardTitle>
-                        </div>
-                        <Badge variant={details.isDropped ? 'destructive' : details.isInactive ? 'outline' : customerType === 'client' ? 'default' : 'secondary'}>
-                          {details.isDropped ? 'Dropped' : details.isInactive ? 'Inactive' : customerType === 'client' ? 'Client' : 'Lead'}
-                        </Badge>
+                <Card className="flex flex-col border border-border/80 shadow-sm rounded-xl overflow-hidden hover:shadow-md hover:border-primary/40 transition-all duration-200 h-full">
+                  <CardHeader className="flex flex-row items-start justify-between pb-3 pt-4 px-4 gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <CustomerTypeIcon type={details.clientType as ClientType} isDropped={details.isDropped} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-bold text-foreground line-clamp-1">{details.name}</CardTitle>
+                        <CardDescription className="text-[11px] text-muted-foreground mt-0.5">
+                          {customerProposals.length} proposal{customerProposals.length > 1 ? 's' : ''}
+                        </CardDescription>
+                      </div>
                     </div>
-                    <CardDescription className="text-xs pt-1">
-                      {customerProposals.length} proposal{customerProposals.length > 1 ? 's' : ''}
-                    </CardDescription>
+                    <Badge variant={badgeVariant} className="text-[10px] py-0 px-2 font-semibold capitalize shrink-0">
+                      {details.isDropped ? 'Dropped' : details.isInactive ? 'Inactive' : customerType === 'client' ? 'Client' : 'Lead'}
+                    </Badge>
                   </CardHeader>
-                  <CardContent className="flex-grow">
-                     <p className="text-lg font-bold text-primary flex items-center">
-                      <IndianRupee className="h-5 w-5 mr-1" />{totalValue.toLocaleString('en-IN')}
-                      <span className="text-xs text-muted-foreground ml-1">(Total Value)</span>
-                    </p>
-                     <p className="text-xs text-muted-foreground mt-1">
-                      Last proposal on: {format(parseISO(lastProposalDate), 'dd MMM, yyyy')}
+                  <CardContent className="flex-grow pt-0 pb-4 px-4 flex flex-col justify-end">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[11px] text-muted-foreground font-medium">Total Value:</span>
+                      <span className="text-base font-extrabold text-primary flex items-center">
+                        <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
+                        {totalValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Last proposal: {format(parseISO(lastProposalDate), 'dd MMM, yyyy')}
                     </p>
                   </CardContent>
                 </Card>
