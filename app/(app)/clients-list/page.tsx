@@ -1,4 +1,4 @@
-﻿
+
 'use client';
 import React, { useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const allColumns: Record<string, string> = {
@@ -441,22 +442,44 @@ export default function ClientsListPage() {
         }
       />
       <div className="mb-4">
-        <div className="flex flex-wrap gap-2 items-center">
-          {statusFilters.map(filter => (
-            <Button
-              key={filter.value}
-              variant={activeFilter === filter.value ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => handleFilterChange({ status: filter.value })}
-              className={`py-1 px-3 h-auto text-xs rounded-full ${activeFilter === filter.value ? 'border-b-2 border-primary font-semibold' : 'text-muted-foreground'}`}
-            >
-              {filter.label}
-              <Badge variant={activeFilter === filter.value ? 'default' : 'secondary'} className="ml-2 rounded-sm px-1.5 py-0.5 text-[10px] h-4 leading-none">
-                {filter.count}
-              </Badge>
-            </Button>
-          ))}
-        </div>
+        <Accordion type="single" collapsible defaultValue="status-filters" className="w-full bg-card rounded-xl border shadow-sm">
+          <AccordionItem value="status-filters" className="border-b-0">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline font-medium text-sm text-muted-foreground data-[state=open]:border-b">
+               <div className="flex items-center gap-2">
+                 <i className="ri-filter-3-line" />
+                 <span>Filter by Status</span>
+                 {activeFilter !== 'all' && (
+                   <Badge variant="secondary" className="ml-2 font-normal rounded-sm px-1.5 py-0.5 text-[10px]">{activeFilter}</Badge>
+                 )}
+               </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 py-4 bg-muted/10 rounded-b-xl">
+              <div className="flex flex-wrap gap-2 items-center">
+                {statusFilters.map(filter => (
+                  <button
+                    key={filter.value}
+                    onClick={() => handleFilterChange({ status: filter.value })}
+                    className={`
+                      flex items-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-full transition-all duration-150 border
+                      ${activeFilter === filter.value
+                        ? 'bg-primary text-white border-primary shadow-md shadow-primary/20 scale-105'
+                        : 'bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    {filter.label}
+                    <span className={`
+                      text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none
+                      ${activeFilter === filter.value ? 'bg-white/20 text-white' : 'bg-muted-foreground/10 text-muted-foreground'}
+                    `}>
+                      {filter.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
       
       <LeadsTable

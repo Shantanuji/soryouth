@@ -639,31 +639,45 @@ export default function LeadsListPage() {
           </div>
         }
       />
-      {/* Dhonu nav-tab style status filter pills */}
       <div className="mb-4">
-        <div className="flex flex-wrap gap-1.5 items-center border-b border-border/40 pb-3">
-          {statusFilters.map(filter => (
-            <button
-              key={filter.value}
-              onClick={() => handleFilterChange({ status: filter.value })}
-              className={`
-                flex items-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-full transition-all duration-150
-                ${activeFilter === filter.value
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }
-              `}
-            >
-              {filter.label}
-              <span className={`
-                text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none
-                ${activeFilter === filter.value ? 'bg-white/20 text-white' : 'bg-muted-foreground/10 text-muted-foreground'}
-              `}>
-                {filter.count}
-              </span>
-            </button>
-          ))}
-        </div>
+        <Accordion type="single" collapsible defaultValue="status-filters" className="w-full bg-card rounded-xl border shadow-sm">
+          <AccordionItem value="status-filters" className="border-b-0">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline font-medium text-sm text-muted-foreground data-[state=open]:border-b">
+               <div className="flex items-center gap-2">
+                 <i className="ri-filter-3-line" />
+                 <span>Filter by Status</span>
+                 {activeFilter !== 'all' && (
+                   <Badge variant="secondary" className="ml-2 font-normal rounded-sm px-1.5 py-0.5 text-[10px]">{activeFilter}</Badge>
+                 )}
+               </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 py-4 bg-muted/10 rounded-b-xl">
+              <div className="flex flex-wrap gap-2 items-center">
+                {statusFilters.map(filter => (
+                  <button
+                    key={filter.value}
+                    onClick={() => handleFilterChange({ status: filter.value })}
+                    className={`
+                      flex items-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-full transition-all duration-150 border
+                      ${activeFilter === filter.value
+                        ? 'bg-primary text-white border-primary shadow-md shadow-primary/20 scale-105'
+                        : 'bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    {filter.label}
+                    <span className={`
+                      text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none
+                      ${activeFilter === filter.value ? 'bg-white/20 text-white' : 'bg-muted-foreground/10 text-muted-foreground'}
+                    `}>
+                      {filter.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
       
       <LeadsTable
