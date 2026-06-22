@@ -33,7 +33,7 @@ import {
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import { DEAL_PIPELINES, ALL_DEAL_STAGES, type DealPipelineType, type DealStage } from '@/lib/constants';
 import type { User, Client, CreateClientData, CustomSetting, LeadSourceOptionType, Lead, Deal } from '@/types';
-import { IndianRupee, Calendar as CalendarIcon, ChevronsUpDown, Check, PlusCircle, Loader2 } from 'lucide-react';
+import { IndianRupee, Calendar as CalendarIcon, ChevronsUpDown, Check, PlusCircle, Loader2, Handshake, Info, ShieldCheck, FileText } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -199,205 +199,272 @@ export function DealForm({ isOpen, onClose, onSubmit, users, clients, deal, pipe
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[620px]">
-        <DialogHeader>
-          <DialogTitle>{deal?.id ? 'Edit Deal' : 'Add New Deal'}</DialogTitle>
-          <DialogDescription>Enter the details for the deal.</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-2 pb-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="space-y-2">
-                <FormLabel>Client *</FormLabel>
-                <div className="flex gap-2">
-                  <Popover>
-                      <PopoverTrigger asChild>
-                          <Button variant="outline" role="combobox" className="w-full justify-between">
-                              {selectedClient ? selectedClient.name : "Select client"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                              <CommandInput placeholder="Search clients..." />
-                              <CommandEmpty>No client found.</CommandEmpty>
-                              <CommandGroup>
-                                  {clients.map((c) => (
-                                      <CommandItem key={c.id} value={c.name} onSelect={() => handleClientSelect(c)}>
-                                          <Check className={cn("mr-2 h-4 w-4", selectedClient?.id === c.id ? "opacity-100" : "opacity-0")} />
-                                          {c.name}
-                                      </CommandItem>
-                                  ))}
-                              </CommandGroup>
-                          </Command>
-                      </PopoverContent>
-                  </Popover>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setClientFormOpen(true)}><PlusCircle /></Button>
-                </div>
+      <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-border/60 shadow-2xl rounded-2xl">
+        
+        {/* Header Section */}
+        <div className="bg-primary/5 border-b border-border/50 px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+              <Handshake className="h-6 w-6 text-primary" />
             </div>
+            <div>
+              <DialogTitle className="text-xl font-extrabold text-foreground tracking-tight">
+                {deal?.id ? 'Edit Deal' : 'Add New Deal'}
+              </DialogTitle>
+              <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">
+                {deal?.id ? 'Update the details for this deal.' : 'Enter the details to create a new deal pipeline entry.'}
+              </DialogDescription>
+            </div>
+          </div>
+        </div>
 
-            <FormField control={form.control} name="clientName" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Deal Name / Client Name *</FormLabel>
-                  <FormControl><Input placeholder="ABC Corporation" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-            )} />
-             <FormField control={form.control} name="contactPerson" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contact Person *</FormLabel>
-                  <FormControl><Input placeholder="Mr. John Doe" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-            )} />
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl><Input type="email" placeholder="john.doe@example.com" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-                )} />
-                <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mobile No.</FormLabel>
-                  <FormControl><Input type="tel" placeholder="9876543210" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="pipeline" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Pipeline *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>{Object.keys(DEAL_PIPELINES).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField control={form.control} name="dealFor" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deal For</FormLabel>
-                    <FormControl><Input placeholder="e.g., Rooftop Solar" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <FormField control={form.control} name="source" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Source</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger></FormControl>
-                            <SelectContent>{sources.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                 <FormField control={form.control} name="stage" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Stage *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>{stagesForSelectedPipeline.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="dealValue" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Deal Value (₹)</FormLabel>
-                        <FormControl>
-                            <div className="relative">
-                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input type="number" placeholder="0.00" className="pl-8" {...field} />
-                            </div>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField
-                  control={form.control}
-                  name="kilowatt"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Kilowatt (kW)</FormLabel>
-                      <FormControl>
-                          <Input type="number" placeholder="0" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                />
-            </div>
-            {watchedPipeline === 'Solar PV Plant' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md">
-                    <FormField control={form.control} name="amcDurationInMonths" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>AMC Duration (in months)</FormLabel>
-                            <FormControl><Input type="number" placeholder="e.g., 12" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="amcDealValue" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>AMC Deal Value (₹)</FormLabel>
-                             <FormControl>
-                                <div className="relative">
-                                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input type="number" placeholder="0.00" className="pl-8" {...field} value={field.value || 0} disabled={!watchedAmcDuration || watchedAmcDuration <= 0}/>
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col max-h-[75vh]">
+            <div className="px-6 py-4 overflow-y-auto custom-scrollbar space-y-6">
+              
+              {/* Section 1: Client & Contact */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
+                  <Info className="h-4 w-4" /> Client Information
                 </div>
-            )}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField control={form.control} name="assignedTo" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Assigned To</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select user"/></SelectTrigger></FormControl>
-                            <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                 )} />
-                 <FormField control={form.control} name="poWoDate" render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>PO/WO Date *</FormLabel>
+                
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                      <FormLabel className="font-semibold text-foreground">Select Existing Client *</FormLabel>
+                      <div className="flex gap-2">
                         <Popover>
                             <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                </FormControl>
+                                <Button variant="outline" role="combobox" className="w-full justify-between bg-muted/30 hover:bg-muted/50 border-border/60 transition-colors">
+                                    {selectedClient ? <span className="font-bold text-primary">{selectedClient.name}</span> : <span className="text-muted-foreground">Search and select client...</span>}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-xl border-border/60 rounded-xl">
+                                <Command>
+                                    <CommandInput placeholder="Search clients..." />
+                                    <CommandEmpty>No client found.</CommandEmpty>
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                                        {clients.map((c) => (
+                                            <CommandItem key={c.id} value={c.name} onSelect={() => handleClientSelect(c)} className="cursor-pointer">
+                                                <Check className={cn("mr-2 h-4 w-4 text-primary", selectedClient?.id === c.id ? "opacity-100" : "opacity-0")} />
+                                                {c.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </Command>
                             </PopoverContent>
                         </Popover>
+                        <Button type="button" variant="outline" className="border-border/60 bg-muted/30 hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => setClientFormOpen(true)}>
+                          <PlusCircle className="h-4 w-4 mr-2" /> New Client
+                        </Button>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="clientName" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold">Deal Name / Client Name *</FormLabel>
+                          <FormControl><Input placeholder="ABC Corporation" className="bg-muted/20" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="contactPerson" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold">Contact Person *</FormLabel>
+                          <FormControl><Input placeholder="Mr. John Doe" className="bg-muted/20" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                    )} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="email" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold">Email</FormLabel>
+                        <FormControl><Input type="email" placeholder="john.doe@example.com" className="bg-muted/20" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                      )} />
+                      <FormField control={form.control} name="phone" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold">Mobile No.</FormLabel>
+                        <FormControl><Input type="tel" placeholder="9876543210" className="bg-muted/20" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                      )} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-border/50 w-full" />
+
+              {/* Section 2: Deal Commercials */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
+                  <ShieldCheck className="h-4 w-4" /> Pipeline & Commercials
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="pipeline" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="font-semibold">Pipeline *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-muted/20"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>{Object.keys(DEAL_PIPELINES).map(p => <SelectItem key={p} value={p} className="font-medium">{p}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="stage" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="font-semibold">Stage *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-muted/20"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>{stagesForSelectedPipeline.map(s => <SelectItem key={s} value={s} className="font-medium">{s}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="dealFor" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-semibold">Deal For</FormLabel>
+                      <FormControl><Input placeholder="e.g., Rooftop Solar" className="bg-muted/20" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="source" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="font-semibold">Source</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-muted/20"><SelectValue placeholder="Select source" /></SelectTrigger></FormControl>
+                              <SelectContent>{sources.map(s => <SelectItem key={s.id} value={s.name} className="font-medium">{s.name}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="dealValue" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="font-semibold">Deal Value (₹) *</FormLabel>
+                          <FormControl>
+                              <div className="relative">
+                                  <div className="absolute left-0 top-0 bottom-0 w-10 bg-primary/10 border-r border-border/50 flex items-center justify-center rounded-l-md">
+                                    <IndianRupee className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <Input type="number" placeholder="0.00" className="pl-12 bg-muted/20 font-bold text-primary" {...field} />
+                              </div>
+                          </FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField
+                    control={form.control}
+                    name="kilowatt"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="font-semibold">System Size (kW)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="0" className="bg-muted/20 font-semibold" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                  />
+                </div>
+
+                {watchedPipeline === 'Solar PV Plant' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/20 p-4 rounded-xl mt-2 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-2 h-full bg-emerald-500/50" />
+                        <FormField control={form.control} name="amcDurationInMonths" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="font-semibold text-emerald-800 dark:text-emerald-400">AMC Duration (in months)</FormLabel>
+                                <FormControl><Input type="number" placeholder="e.g., 12" className="bg-background/80 border-emerald-200 dark:border-emerald-900/50" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="amcDealValue" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="font-semibold text-emerald-800 dark:text-emerald-400">AMC Deal Value (₹)</FormLabel>
+                                 <FormControl>
+                                    <div className="relative">
+                                        <div className="absolute left-0 top-0 bottom-0 w-10 bg-emerald-500/10 border-r border-emerald-200 dark:border-emerald-900/50 flex items-center justify-center rounded-l-md">
+                                          <IndianRupee className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <Input type="number" placeholder="0.00" className="pl-12 bg-background/80 border-emerald-200 dark:border-emerald-900/50 font-bold text-emerald-700 dark:text-emerald-300" {...field} value={field.value || 0} disabled={!watchedAmcDuration || watchedAmcDuration <= 0}/>
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                )}
+              </div>
+
+              <div className="h-px bg-border/50 w-full" />
+
+              {/* Section 3: Extra Info */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
+                  <FileText className="h-4 w-4" /> Assignment & Details
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="assignedTo" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="font-semibold">Assigned To</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-muted/20"><SelectValue placeholder="Select user"/></SelectTrigger></FormControl>
+                              <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name} className="font-medium">{user.name}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="poWoDate" render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                          <FormLabel className="font-semibold">PO/WO Date *</FormLabel>
+                          <Popover>
+                              <PopoverTrigger asChild>
+                                  <FormControl>
+                                      <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal bg-muted/20", !field.value && "text-muted-foreground")}>
+                                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                  </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0 shadow-xl border-border/60" align="start">
+                                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                              </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                </div>
+                
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-semibold">Internal Notes</FormLabel>
+                        <FormControl><Textarea placeholder="Add any relevant notes for this deal..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
-                 )} />
+                )} />
+              </div>
+
             </div>
-            <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl><Textarea placeholder="Add any relevant notes for this deal..." {...field} /></FormControl>
-                    <FormMessage />
-                </FormItem>
-            )} />
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit">{deal?.id ? 'Save Changes' : 'Add Deal'}</Button>
-            </DialogFooter>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-border/50 bg-muted/10 flex justify-end gap-3 mt-auto rounded-b-2xl">
+              <Button type="button" variant="outline" onClick={onClose} className="font-bold border-border/60 hover:bg-muted/50 transition-colors">
+                Cancel
+              </Button>
+              <Button type="submit" className="font-bold px-8 shadow-sm hover:shadow transition-all">
+                {deal?.id ? 'Save Changes' : 'Create Deal'}
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
