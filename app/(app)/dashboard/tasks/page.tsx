@@ -120,7 +120,7 @@ export default function TasksPage() {
       </main>
 
        <aside className="w-64 flex-shrink-0">
-          <Card>
+          <Card className="border-border/50 shadow-sm bg-card/50 backdrop-blur-xl">
             <CardContent className="pt-6 space-y-6">
               <div>
                   <h4 className="font-semibold text-sm mb-2">Filter by Date</h4>

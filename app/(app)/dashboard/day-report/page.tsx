@@ -14,6 +14,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DhonuStatCard } from '@/components/dhonu/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Lead, Proposal, Client, DroppedLead, User, FollowUp, Deal } from '@/types';
@@ -303,25 +304,26 @@ export default function DayReportPage() {
       
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : reportStats ? (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {statCards.map(stat => (
-              <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                </CardContent>
-              </Card>
-            ))}
+            {statCards.map((stat, i) => {
+              const variants = ['info', 'danger', 'primary', 'success', 'warning', 'primary'] as const;
+              return (
+                <DhonuStatCard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  icon={stat.icon}
+                  variant={variants[i]}
+                />
+              );
+            })}
           </div>
 
-          <Card>
+          <Card className="border-border/50 shadow-sm bg-card/50 backdrop-blur-xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LineChartIcon className="h-5 w-5 text-primary" />

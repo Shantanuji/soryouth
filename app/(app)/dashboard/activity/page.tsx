@@ -1,4 +1,4 @@
-﻿
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -20,6 +20,7 @@ import { useSession } from '@/hooks/use-sessions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { sendCallNotification } from '@/lib/fcm';
 import Link from 'next/link';
+import { DhonuStatCard } from '@/components/dhonu/stat-card';
 
 // Helper to get customer name from a followup
 const getCustomerName = (followUp: FollowUp): string | null => {
@@ -179,24 +180,23 @@ export default function ActivityPage() {
           </Popover>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {activityStats.map((stat) => (
-            <Card key={stat.type} className="shadow-md">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className={`flex-shrink-0 h-12 w-12 rounded-full ${stat.color} flex items-center justify-center text-white font-bold text-lg`}>
-                  {stat.count}
-                </div>
-                <div className="flex items-center">
-                  <stat.Icon className="h-5 w-5 mr-2 text-muted-foreground" />
-                  <p className="text-sm font-medium text-foreground">{stat.type}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          {activityStats.map((stat, i) => {
+            const variants = ['info', 'primary', 'danger', 'warning', 'success'] as const;
+            return (
+              <DhonuStatCard
+                key={stat.type}
+                title={stat.type}
+                value={stat.count}
+                icon={stat.Icon}
+                variant={variants[i % variants.length]}
+              />
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-md">
+          <Card className="border-border/50 shadow-sm bg-card/50 backdrop-blur-xl">
             <CardHeader><CardTitle>Activity type</CardTitle></CardHeader>
             <CardContent className="h-[250px] pb-0">
               <ChartContainer config={chartConfig(activityTypeChartData)} className="w-full h-full">
@@ -213,7 +213,7 @@ export default function ActivityPage() {
               </ChartContainer>
             </CardContent>
           </Card>
-          <Card className="shadow-md">
+          <Card className="border-border/50 shadow-sm bg-card/50 backdrop-blur-xl">
             <CardHeader><CardTitle>User</CardTitle></CardHeader>
             <CardContent className="h-[250px] pb-0">
                 <ChartContainer config={chartConfig(userActivityChartData)} className="w-full h-full">
@@ -232,7 +232,7 @@ export default function ActivityPage() {
           </Card>
         </div>
 
-        <Card className="shadow-md">
+        <Card className="border-border/50 shadow-sm bg-card/50 backdrop-blur-xl">
           <CardHeader>
             <CardTitle>Activity list ({filteredData.length})</CardTitle>
             <CardDescription>List of activities performed on {selectedDate ? format(selectedDate, "dd-MM-yyyy") : 'the selected date'}.</CardDescription>
@@ -280,7 +280,7 @@ export default function ActivityPage() {
       </div>
 
       <div className="lg:w-1/3 lg:max-w-xs flex-shrink-0">
-        <Card className="shadow-md h-full flex flex-col">
+        <Card className="border-border/50 shadow-sm bg-card/50 backdrop-blur-xl h-full flex flex-col">
           <CardHeader>
             <CardTitle>Team</CardTitle>
             <CardDescription>Select a user to filter activities.</CardDescription>
