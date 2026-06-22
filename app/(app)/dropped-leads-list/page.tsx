@@ -206,7 +206,7 @@ export default function DroppedLeadsListPage() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <Repeat className="mr-2 h-4 w-4" /> Activate Leads ({selectedLeadIds.length})
+                    <i className="ri-refresh-line mr-2" /> Activate Leads ({selectedLeadIds.length})
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -228,8 +228,8 @@ export default function DroppedLeadsListPage() {
                 <>
                   <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Filter className="mr-2 h-4 w-4" /> Filter
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <i className="ri-filter-3-line" /> Filter
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -263,23 +263,23 @@ export default function DroppedLeadsListPage() {
                     </DropdownMenuSub>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
-                  <Search className="mr-2 h-4 w-4" /> Search
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsSearchOpen(true)}>
+                  <i className="ri-search-line" /> Search
                 </Button>
               </>
             )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Settings2 className="h-5 w-5" />
-                  </Button>
+                  <button className="topbar-icon-btn">
+                    <i className="ri-settings-3-line text-lg" />
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>View Options</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <ListFilter className="mr-2 h-4 w-4" />
+                            <i className="ri-layout-column-line mr-2" />
                             <span>Columns</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
@@ -303,7 +303,7 @@ export default function DroppedLeadsListPage() {
                     </DropdownMenuSub>
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <Rows className="mr-2 h-4 w-4" />
+                            <i className="ri-layout-row-line mr-2" />
                             <span>Rows per page</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
@@ -321,21 +321,28 @@ export default function DroppedLeadsListPage() {
           </div>
         }
       />
-      <div className="mb-4">
-        <div className="flex flex-wrap gap-2 items-center">
+      <div className="mb-6">
+        <div className="flex flex-nowrap overflow-x-auto gap-1 bg-muted/50 p-1.5 rounded-xl border hide-scrollbar">
           {dropReasonFilters.map(filter => (
-            <Button
+            <button
               key={filter.value}
-              variant={activeFilter === filter.value ? 'secondary' : 'ghost'}
-              size="sm"
               onClick={() => handleFilterChange({ reason: filter.value })}
-              className={`py-1 px-3 h-auto text-xs rounded-full ${activeFilter === filter.value ? 'border-b-2 border-primary font-semibold' : 'text-muted-foreground'}`}
+              className={`
+                flex items-center gap-2 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-lg transition-all
+                ${activeFilter === filter.value
+                   ? 'bg-background text-primary shadow-sm ring-1 ring-primary/20'
+                   : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                }
+              `}
             >
               {filter.label}
-              <Badge variant={activeFilter === filter.value ? 'default' : 'secondary'} className="ml-2 rounded-sm px-1.5 py-0.5 text-[10px] h-4 leading-none">
+              <span className={`
+                 px-2 py-0.5 rounded-full text-[11px] font-bold
+                 ${activeFilter === filter.value ? 'bg-primary/15 text-primary' : 'bg-muted-foreground/10'}
+              `}>
                 {filter.count}
-              </Badge>
-            </Button>
+              </span>
+            </button>
           ))}
         </div>
       </div>

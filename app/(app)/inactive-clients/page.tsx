@@ -193,8 +193,8 @@ export default function InactiveClientsListPage() {
                     <span className="text-sm text-muted-foreground whitespace-nowrap">{selectedClientIds.length} selected</span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          Actions <ChevronDown className="ml-2 h-4 w-4" />
+                        <Button variant="outline" size="sm" className="gap-1.5">
+                          Actions <i className="ri-arrow-down-s-line" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -209,26 +209,26 @@ export default function InactiveClientsListPage() {
                 </div>
             ) : (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => toast({ title: "Coming Soon!", description: "Filters for inactive clients will be added in a future update." })}>
-                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => toast({ title: "Coming Soon!", description: "Filters for inactive clients will be added in a future update." })}>
+                    <i className="ri-filter-3-line" /> Filter
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
-                    <Search className="mr-2 h-4 w-4" /> Search
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsSearchOpen(true)}>
+                    <i className="ri-search-line" /> Search
                   </Button>
                 </>
             )}
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Settings2 className="h-5 w-5" />
-                  </Button>
+                  <button className="topbar-icon-btn">
+                    <i className="ri-settings-3-line text-lg" />
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>View Options</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <ListFilter className="mr-2 h-4 w-4" />
+                            <i className="ri-layout-column-line mr-2" />
                             <span>Columns</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
@@ -252,7 +252,7 @@ export default function InactiveClientsListPage() {
                     </DropdownMenuSub>
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <Rows className="mr-2 h-4 w-4" />
+                            <i className="ri-layout-row-line mr-2" />
                             <span>Rows per page</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
