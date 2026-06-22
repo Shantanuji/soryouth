@@ -211,41 +211,67 @@ export default function DealsPage() {
   return (
     <>
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex flex-wrap items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-card p-4 rounded-xl shadow-sm border border-border/60">
         <PageHeader
-            title={`Deals (${totalDeals} - ${totalValue.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 })})`}
+            title={`Deals Pipeline`}
             icon={Handshake}
         />
-        <div className="flex items-center gap-4">
+        
+        <div className="flex items-center gap-3">
             <Droppable droppableId="delete-zone">
                 {(provided, snapshot) => (
                     <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`p-4 border-2 border-dashed rounded-full transition-colors duration-200 ${snapshot.isDraggingOver ? 'border-destructive bg-destructive/20' : 'border-muted-foreground/50'}`}
+                        className={`flex items-center px-4 py-2 transition-all duration-300 rounded-lg border-2 border-dashed ${
+                          snapshot.isDraggingOver 
+                            ? 'border-destructive bg-destructive/10 text-destructive scale-105 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
+                            : 'border-muted bg-muted/50 text-muted-foreground'
+                        }`}
                     >
-                        <Trash2 className={`h-8 w-8 transition-colors ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        <Trash2 className={`h-5 w-5 mr-2 ${snapshot.isDraggingOver ? 'animate-bounce' : ''}`} />
+                        <span className="text-sm font-semibold whitespace-nowrap">
+                          {snapshot.isDraggingOver ? 'Drop to Delete!' : 'Drag here to delete'}
+                        </span>
                         {provided.placeholder}
                     </div>
                 )}
             </Droppable>
+
+            <div className="h-8 w-px bg-border mx-1"></div>
+            
             <div className="flex items-center gap-2">
-                 <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
-                  <Search className="mr-2 h-4 w-4" /> Search
+                 <Button variant="secondary" size="icon" onClick={() => setIsSearchOpen(true)} className="rounded-full shadow-sm hover:shadow">
+                  <Search className="h-4 w-4" />
                 </Button>
-                <div className="w-48">
+                <div className="w-[200px]">
                 <Select value={selectedPipeline} onValueChange={(value) => setSelectedPipeline(value as DealPipelineType)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="font-semibold shadow-sm rounded-lg bg-background">
                     <SelectValue placeholder="Select a pipeline" />
                     </SelectTrigger>
                     <SelectContent>
                     {Object.keys(DEAL_PIPELINES).map(pipeline => (
-                        <SelectItem key={pipeline} value={pipeline}>{pipeline}</SelectItem>
+                        <SelectItem key={pipeline} value={pipeline} className="font-medium">{pipeline}</SelectItem>
                     ))}
                     </SelectContent>
                 </Select>
                 </div>
             </div>
+        </div>
+      </div>
+      
+      {/* Pipeline Summary Metrics */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-primary/10 to-transparent p-4 rounded-xl border border-primary/20 flex flex-col justify-center">
+          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Total Deals in Pipeline</p>
+          <p className="text-2xl font-black text-foreground">{totalDeals}</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-500/10 to-transparent p-4 rounded-xl border border-emerald-500/20 flex flex-col justify-center">
+          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Total Pipeline Value</p>
+          <p className="text-2xl font-black text-foreground flex items-center">
+            <IndianRupee className="h-5 w-5 mr-1" />
+            {totalValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+          </p>
         </div>
       </div>
       
