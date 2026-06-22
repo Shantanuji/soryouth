@@ -16,6 +16,8 @@ from flask import Flask, request, jsonify
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Inches
 import docx # From python-docx
+import pythoncom
+from docx2pdf import convert as convert_to_pdf
 
 app = Flask(__name__)
 
@@ -145,93 +147,18 @@ def generate_proposal():
             if not os.path.exists(template_full_path):
                 return jsonify({"error": f"Template not found at provided path"}), 404
             
-            # --- Find LibreOffice/SOffice executable ---
-            def find_soffice_command():
-                if platform.system() == "Windows":
-                    command = shutil.which("soffice.exe")
-                    if command:
-                        return command
-                    default_path = r"C:\Program Files\LibreOffice\program\soffice.exe"
-                    if os.path.exists(default_path):
-                        return default_path
-                else:
-                    command = shutil.which("libreoffice")
-                    if command:
-                        return command
-                    command = shutil.which("soffice")
-                    if command:
-                        return command
-                return None
-
-            soffice_cmd = find_soffice_command()
-
-            if not soffice_cmd:
-                error_msg = ("LibreOffice executable not found. "
-                             "Please ensure LibreOffice is installed and its program directory is in the system's PATH, "
-                             "or that it is installed in the default Windows location 'C:\\Program Files\\LibreOffice\\program'.")
-                return jsonify({"error": error_msg}), 500
-
-            doc = DocxTemplate(template_full_path)
-            
-            # --- Graph Generation ---
-            raw_capacity = context.get('capacity')
-            raw_unit_rate = context.get('unit_rate')
-            
-            capacity_kw = 0
-            if raw_capacity:
-                try:
-                    capacity_kw = float(str(raw_capacity).replace(',', ''))
-                except (ValueError, TypeError):
-                    capacity_kw = 0
-
-            unit_rate = 0
-            if raw_unit_rate:
-                try:
-                    unit_rate = float(str(raw_unit_rate).replace(',', ''))
-                except (ValueError, TypeError):
-                    unit_rate = 0
-                    
-            if 'monthly_generation_chart' in doc.get_undeclared_template_variables():
-                monthly_chart_image = create_monthly_generation_chart(doc, capacity_kw)
-                if monthly_chart_image:
-                    context['monthly_generation_chart'] = monthly_chart_image
-            
-            if 'yearly_savings_chart' in doc.get_undeclared_template_variables():
-                yearly_savings_chart_image = create_yearly_savings_chart(doc, capacity_kw, unit_rate)
-                if yearly_savings_chart_image:
-                    context['yearly_savings_chart'] = yearly_savings_chart_image
-            # --- End Graph Generation ---
-
-            doc.render(context)
-            
-            user_profile_dir = os.path.join(temp_dir, 'lo_profile')
-            os.makedirs(user_profile_dir, exist_ok=True)
-            user_profile_url = f'file:///{user_profile_dir.replace(os.sep, "/")}'
-
             temp_docx_path = os.path.join(temp_dir, 'output.docx')
             doc.save(temp_docx_path)
             
+            temp_pdf_path = os.path.join(temp_dir, 'output.pdf')
+            
             try:
-                subprocess.run(
-                    [
-                        soffice_cmd,
-                        f'-env:UserInstallation={user_profile_url}',
-                        '--headless',
-                        '--convert-to',
-                        'pdf:writer_pdf_Export',
-                        '--outdir',
-                        temp_dir,
-                        temp_docx_path
-                    ],
-                    check=True,
-                    timeout=30
-                )
-            except FileNotFoundError:
-                return jsonify({"error": f"'{soffice_cmd}' command not found. Check PATH and permissions. LibreOffice must be installed to generate PDFs."}), 500
-            except subprocess.CalledProcessError as e:
-                return jsonify({"error": f"PDF conversion failed with LibreOffice. Error: {e}"}), 500
-            except subprocess.TimeoutExpired:
-                return jsonify({"error": "PDF conversion with LibreOffice timed out."}), 500
+                pythoncom.CoInitialize()
+                convert_to_pdf(temp_docx_path, temp_pdf_path)
+            except Exception as e:
+                return jsonify({"error": f"PDF conversion failed with MS Word. Error: {e}"}), 500
+            finally:
+                pythoncom.CoUninitialize()
 
             temp_pdf_path = os.path.join(temp_dir, 'output.pdf')
 
