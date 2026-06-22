@@ -78,13 +78,13 @@ export default function ManageTemplatesPage() {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {templateList.map(template => (
-          <Card key={template.id} className="flex flex-col border border-border/80 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all duration-200">
+          <Card key={template.id} className="flex flex-col border-border/50 shadow-sm bg-card/50 backdrop-blur-xl rounded-2xl overflow-hidden hover:shadow-md hover:border-primary/50 transition-all duration-300 group">
              <CardHeader className="flex flex-row items-start gap-3 pb-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                <FileText className="h-5 w-5" />
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] text-primary flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <FileText className="h-6 w-6" />
               </div>
               <div className="flex-grow space-y-0.5">
-                <CardTitle className="text-sm font-bold text-foreground line-clamp-1">{template.name}</CardTitle>
+                <CardTitle className="text-sm font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">{template.name}</CardTitle>
                 <CardDescription className="text-[11px] text-muted-foreground">
                   Last updated: {format(new Date(template.updatedAt), 'dd MMM, yyyy')}
                 </CardDescription>
@@ -93,19 +93,19 @@ export default function ManageTemplatesPage() {
             <CardContent className="flex-grow pt-0 pb-3">
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="text-[11px] text-muted-foreground font-medium">Type:</span>
-                <Badge variant="softInfo" className="text-[10px] py-0 px-2 font-semibold capitalize">{template.type}</Badge>
+                <Badge variant="outline" className="text-[10px] py-0 px-2 font-semibold capitalize bg-primary/5 border-primary/20 text-primary">{template.type}</Badge>
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end gap-2 bg-muted/15 border-t border-border/40 p-3">
-              <Button asChild variant="outline" size="sm" className="h-8 text-xs font-semibold hover:bg-muted">
+            <CardFooter className="flex justify-end gap-2 bg-muted/20 border-t border-border/30 p-3 backdrop-blur-md">
+              <Button asChild variant="outline" size="sm" className="h-8 text-xs font-semibold rounded-lg bg-background hover:bg-muted border-border/50 shadow-sm">
                 <Link href={`/manage-templates/${template.id}`}>
-                  <Edit className="mr-1.5 h-3.5 w-3.5" />
+                  <Edit className="mr-1.5 h-3.5 w-3.5 text-primary" />
                   Edit
                 </Link>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="h-8 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white border-transparent">
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-semibold rounded-lg bg-background hover:bg-rose-500/10 hover:text-rose-600 border-border/50 shadow-sm transition-colors text-muted-foreground">
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                     Delete
                   </Button>
@@ -153,30 +153,30 @@ export default function ManageTemplatesPage() {
         }
       />
       <Tabs defaultValue="proposal">
-        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-10">
-          <TabsTrigger value="proposal" className="flex-wrap h-auto py-2 sm:py-1.5 sm:h-10">
+        <TabsList className="flex flex-wrap w-fit bg-muted/50 p-1.5 rounded-2xl h-auto gap-1 border border-border/50 mb-6">
+          <TabsTrigger value="proposal" className="rounded-xl px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all">
             <FileText className="mr-2 h-4 w-4" />
             <span className="truncate">Proposal Templates</span>
-            <span className="ml-1">({proposalTemplates.length})</span>
+            <Badge variant="outline" className="ml-2 bg-transparent text-xs">{proposalTemplates.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="document" className="flex-wrap h-auto py-2 sm:py-1.5 sm:h-10">
+          <TabsTrigger value="document" className="rounded-xl px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all">
             <Files className="mr-2 h-4 w-4" />
             <span className="truncate">Document Templates</span>
-            <span className="ml-1">({documentTemplates.length})</span>
+            <Badge variant="outline" className="ml-2 bg-transparent text-xs">{documentTemplates.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="financial" className="flex-wrap h-auto py-2 sm:py-1.5 sm:h-10">
+          <TabsTrigger value="financial" className="rounded-xl px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all">
             <Banknote className="mr-2 h-4 w-4" />
             <span className="truncate">Financial Templates</span>
-            <span className="ml-1">({financialTemplates.length})</span>
+            <Badge variant="outline" className="ml-2 bg-transparent text-xs">{financialTemplates.length}</Badge>
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="proposal" className="mt-6">
+        <TabsContent value="proposal" className="mt-0">
           {renderTemplateList(proposalTemplates)}
         </TabsContent>
-        <TabsContent value="document" className="mt-6">
+        <TabsContent value="document" className="mt-0">
           {renderTemplateList(documentTemplates)}
         </TabsContent>
-        <TabsContent value="financial" className="mt-6">
+        <TabsContent value="financial" className="mt-0">
           {renderTemplateList(financialTemplates)}
         </TabsContent>
       </Tabs>

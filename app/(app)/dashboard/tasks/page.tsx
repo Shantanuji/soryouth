@@ -95,7 +95,6 @@ export default function TasksPage() {
 
 
   return (
-  return (
     <div className="flex flex-col h-full space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Tasks ({filteredTasks.length})</h2>

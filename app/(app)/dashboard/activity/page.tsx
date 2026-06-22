@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { CalendarIcon, Phone, MessageSquare, Mail, Users, UserCircle, Loader2 } from 'lucide-react';
 import { format, formatDistanceToNow, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
@@ -107,7 +107,7 @@ export default function ActivityPage() {
         acc[stat.type] = stat.count;
         return acc;
     }, {} as Record<string, number>);
-    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${index + 1}))`}));
+    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${(index % 5) + 1}))`}));
   }, [activityStats]);
 
   const userActivityChartData = useMemo(() => {
@@ -125,7 +125,7 @@ export default function ActivityPage() {
             counts[fu.createdBy]++;
         }
     });
-    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${index + 1}))`})).filter(u => u.value > 0);
+    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${(index % 5) + 1}))`})).filter(u => u.value > 0);
   }, [allFollowUps, users, selectedDate]);
   
   const chartConfig = (data: {name: string, fill: string}[]) => useMemo(() => {
@@ -203,11 +203,12 @@ export default function ActivityPage() {
                 <ResponsiveContainer>
                 <PieChart accessibilityLayer>
                   <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Pie data={activityTypeChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={activityTypeChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false}>
                     {activityTypeChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
+                  <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                 </PieChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -220,11 +221,12 @@ export default function ActivityPage() {
                 <ResponsiveContainer>
                 <PieChart accessibilityLayer>
                   <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Pie data={userActivityChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={userActivityChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false}>
                     {userActivityChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
+                  <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                 </PieChart>
                 </ResponsiveContainer>
               </ChartContainer>
