@@ -240,8 +240,28 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           ...initialFormStateForUseForm,
           proposalNumber: `P-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
         });
-        setSelectedClientId(null);
-        setSelectedLeadId(null);
+        
+        if (clients.length === 1 && leads.length === 0) {
+            setSelectedClientId(clients[0].id);
+            setSelectedLeadId(null);
+            form.setValue("clientId", clients[0].id);
+            form.setValue("name", clients[0].name);
+            form.setValue("clientType", clients[0].clientType || 'Other');
+            form.setValue("contactPerson", clients[0].name);
+            form.setValue("location", clients[0].address || "");
+        } else if (leads.length === 1 && clients.length === 0) {
+            setSelectedLeadId(leads[0].id);
+            setSelectedClientId(null);
+            form.setValue("leadId", leads[0].id);
+            form.setValue("name", leads[0].name);
+            form.setValue("clientType", leads[0].clientType || 'Other');
+            form.setValue("contactPerson", leads[0].name);
+            form.setValue("location", leads[0].address || "");
+            form.setValue("capacity", leads[0].kilowatt || 0);
+        } else {
+            setSelectedClientId(null);
+            setSelectedLeadId(null);
+        }
       }
     }
   }, [isOpen, proposal, form]);
