@@ -5,7 +5,7 @@
 import { useState, useEffect, useTransition, useMemo } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Handshake, Loader2, Trash2, Search } from 'lucide-react';
+import { Handshake, Loader2, Trash2, Search, IndianRupee } from 'lucide-react';
 import { DEAL_PIPELINES, type DealPipelineType, type DealStage } from '@/lib/constants';
 import { DealsKanbanView } from './deals-kanban-view';
 import { DealForm, type DealFormValues } from './deal-form';
@@ -97,6 +97,7 @@ export default function DealsPage() {
             toast({
                 title: "Deal Saved",
                 description: `Deal for ${result.clientName} has been saved.`,
+                variant: "success",
             });
             await refreshData();
             setIsFormOpen(false);
@@ -112,7 +113,7 @@ export default function DealsPage() {
     startTransition(async () => {
       const result = await deleteDeal(dealToDelete.id);
       if (result.success) {
-        toast({ title: "Deal Deleted", description: `Deal "${dealToDelete.clientName}" has been deleted.` });
+        toast({ title: "Deal Deleted", description: `Deal "${dealToDelete.clientName}" has been deleted.`, variant: "success" });
         await refreshData();
       } else {
         toast({ title: "Error", description: result.error || "Failed to delete deal.", variant: "destructive" });
@@ -132,7 +133,7 @@ export default function DealsPage() {
     startTransition(async () => {
         const updatedDealResult = await updateDealStage(dealId, 'Completed');
         if (updatedDealResult.success && updatedDealResult.deal) {
-           toast({ title: "Deal Completed", description: `${updatedDealResult.deal.clientName} moved to Completed.` });
+           toast({ title: "Deal Completed", description: `${updatedDealResult.deal.clientName} moved to Completed.`, variant: "success" });
            await refreshData();
         } else {
           toast({ title: "Error", description: updatedDealResult.error || "Could not complete deal.", variant: "destructive" });
@@ -185,7 +186,7 @@ export default function DealsPage() {
       startTransition(async () => {
         const updatedDealResult = await updateDealStage(draggableId, finishStage);
         if (updatedDealResult.success && updatedDealResult.deal) {
-           toast({ title: "Deal Stage Updated", description: `${updatedDealResult.deal.clientName} moved to ${finishStage}.` });
+           toast({ title: "Deal Stage Updated", description: `${updatedDealResult.deal.clientName} moved to ${finishStage}.`, variant: "success" });
            await refreshData(); // Re-fetch to ensure consistency
         } else {
           // Revert UI on failure
