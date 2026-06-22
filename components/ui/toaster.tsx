@@ -31,6 +31,18 @@ export function Toaster() {
               t.includes('completed')
             ) {
               inferredVariant = 'success';
+            } else if (
+              t.includes('error') || 
+              t.includes('failed') || 
+              t.includes('invalid') ||
+              t.includes('required')
+            ) {
+              inferredVariant = 'destructive';
+            } else if (
+              t.includes('warning') || 
+              t.includes('attention')
+            ) {
+              inferredVariant = 'warning';
             }
           }
         }
@@ -40,7 +52,7 @@ export function Toaster() {
         if (inferredVariant === 'success') {
           ToastIcon = <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mr-2 shrink-0" />;
         } else if (inferredVariant === 'destructive') {
-          ToastIcon = <AlertCircle className="h-5 w-5 text-destructive mr-2 shrink-0" />;
+          ToastIcon = <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 mr-2 shrink-0" />;
         } else if (inferredVariant === 'warning') {
           ToastIcon = <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 shrink-0" />;
         } else if (title) {
