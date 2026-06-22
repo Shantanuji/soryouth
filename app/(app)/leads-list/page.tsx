@@ -640,23 +640,23 @@ export default function LeadsListPage() {
         }
       />
       <div className="mb-6">
-        <div className="flex flex-nowrap overflow-x-auto gap-6 border-b border-border/60 hide-scrollbar">
+        <div className="flex flex-nowrap overflow-x-auto gap-1 bg-muted/50 p-1.5 rounded-xl border hide-scrollbar">
           {statusFilters.map(filter => (
             <button
               key={filter.value}
               onClick={() => handleFilterChange({ status: filter.value })}
               className={`
-                flex items-center gap-2 pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-[1px]
+                flex items-center gap-2 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-lg transition-all
                 ${activeFilter === filter.value
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-900/5'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }
               `}
             >
               {filter.label}
               <span className={`
                 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none
-                ${activeFilter === filter.value ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}
+                ${activeFilter === filter.value ? 'bg-white/20 text-white' : 'bg-muted-foreground/15 text-muted-foreground'}
               `}>
                 {filter.count}
               </span>
