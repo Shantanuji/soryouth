@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   UsersRound, 
@@ -12,14 +12,15 @@ import {
   BarChart3, 
   TrendingUp, 
   PieChart as PieChartIcon,
-  Users, 
-  CalendarRange, 
-  Sigma,
   Loader2,
-  AlertCircle,
   IndianRupee,
   LineChart as LineChartIcon,
+  Phone,
+  ClipboardCheck,
+  Ticket,
 } from 'lucide-react';
+import { DhonuStatCard } from '@/components/dhonu/stat-card';
+import { PageHeader } from '@/components/page-header';
 import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
@@ -29,6 +30,7 @@ import { getDroppedLeads } from '@/app/(app)/dropped-leads-list/actions';
 import { getActiveClients, getInactiveClients } from '@/app/(app)/clients-list/actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { getAllDeals } from '@/app/(app)/deals/actions';
+import { getDashboardAggregates } from '@/app/(app)/dashboard/data-actions';
 import { useToast } from '@/hooks/use-toast';
 import { punchIn, punchOut, getCurrentUserAttendanceStatus } from '@/app/(app)/attendance/actions';
 import { format, parseISO, startOfMonth, getYear, getMonth } from 'date-fns';
@@ -53,32 +55,29 @@ export default function DashboardOverviewPage() {
     yearlySales: [] as { month: string; value: number; count: number }[],
     totalSalesValue: 0,
     totalSalesCount: 0,
+    callsMade: 0,
+    pendingTasks: 0,
+    openTickets: 0,
+    pipelineValue: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Attendance State
-  const [isPunchedIn, setIsPunchedIn] = useState(false);
-  const [punchInTime, setPunchInTime] = useState<string | null>(null);
 
-  const refreshAttendanceStatus = async () => {
-    const status = await getCurrentUserAttendanceStatus();
-    setIsPunchedIn(status.isPunchedIn);
-    setPunchInTime(status.punchInTime || null);
-  };
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [activeLeads, droppedLeads, activeClients, inactiveClients, users, allDeals] = await Promise.all([
+        const [activeLeads, droppedLeads, activeClients, inactiveClients, users, allDeals, aggregates] = await Promise.all([
             getLeads({ ignorePermissions: true }),
             getDroppedLeads({ ignorePermissions: true }),
             getActiveClients({ ignorePermissions: true }),
             getInactiveClients({ ignorePermissions: true }),
             getUsers(),
             getAllDeals({ ignorePermissions: true }),
+            getDashboardAggregates(),
         ]);
         
         const userNames = users.map(u => u.name);
@@ -153,9 +152,11 @@ export default function DashboardOverviewPage() {
             yearlySales,
             totalSalesValue,
             totalSalesCount,
+            callsMade: aggregates.callsMade || aggregates.totalFollowUps,
+            pendingTasks: aggregates.pendingTasks,
+            openTickets: aggregates.openTickets,
+            pipelineValue: aggregates.pipelineValue,
         });
-
-        await refreshAttendanceStatus();
         
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -167,40 +168,7 @@ export default function DashboardOverviewPage() {
     fetchData();
   }, []);
 
-  const handlePunchInOut = () => {
-    setIsProcessing(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const location = { latitude, longitude };
-          
-          const action = isPunchedIn ? punchOut : punchIn;
-          const result = await action(location);
 
-          if (result && result.success) {
-            toast({ title: 'Success', description: `You have successfully punched ${isPunchedIn ? 'out' : 'in'}.` });
-            await refreshAttendanceStatus();
-          } else {
-            toast({ title: 'Error', description: result?.error || 'An unknown error occurred.', variant: 'destructive' });
-          }
-        } catch (e) {
-            console.error("Punch in/out failed:", e);
-            toast({ title: 'Error', description: 'An unexpected server error occurred.', variant: 'destructive' });
-        } finally {
-            setIsProcessing(false);
-        }
-      },
-      (error) => {
-        toast({
-          title: 'Location Error',
-          description: `Could not get your location: ${error.message}. Please enable location services.`,
-          variant: 'destructive',
-        });
-        setIsProcessing(false);
-      }
-    );
-  };
   
   const dealsByUserChartConfig = useMemo(() => {
     const config: ChartConfig = {};
@@ -228,177 +196,122 @@ export default function DashboardOverviewPage() {
             <p className="ml-4 text-lg text-muted-foreground">Loading Dashboard Data...</p>
         </div>
     );
-  }  const topStats = [
-    { title: 'Active Leads', value: dashboardData.totalLeads.toString(), icon: UsersRound, bgClass: "bg-primary/10 text-primary", iconColor: "text-primary" },
-    { title: 'Total Clients', value: dashboardData.totalClients.toString(), icon: Briefcase, bgClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", iconColor: "text-emerald-600 dark:text-emerald-400" },
-    { title: 'Deals Won', value: dashboardData.dealsWon.toString(), icon: Award, bgClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400", iconColor: "text-amber-600 dark:text-amber-400" },
-    { title: 'Leads Dropped', value: dashboardData.leadsDropped.toString(), icon: UserX, bgClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400", iconColor: "text-rose-600 dark:text-rose-400" },
-  ];
+  }
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-1 w-full">
-        <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-1">
-          <div>
-            <h1 className="text-base font-extrabold text-foreground tracking-tight">Welcome</h1>
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground/80 uppercase tracking-wider">
-            <span>Soryouth</span>
-            <span>&gt;</span>
-            <span>Dashboard</span>
-            <span>&gt;</span>
-            <span className="text-foreground/85">Welcome</span>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">Welcome to Soryouth Overview.</p>
-      </div>
+      <PageHeader title="Welcome" breadcrumbs={['Dashboard', 'Welcome']} />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        {topStats.map((stat) => {
-          let borderClass = "border-l-primary";
-          let percentageChange = "▲ 5.42%";
-          if (stat.title.includes('Clients')) {
-            borderClass = "border-l-emerald-500";
-            percentageChange = "▲ 8.76%";
-          } else if (stat.title.includes('Won')) {
-            borderClass = "border-l-amber-500";
-            percentageChange = "▲ 12.5%";
-          } else if (stat.title.includes('Dropped')) {
-            borderClass = "border-l-rose-500";
-            percentageChange = "▼ 0.00%";
-          }
-
-          return (
-            <Card key={stat.title} className={`overflow-hidden border-0 border-l-[3.5px] ${borderClass} bg-card shadow-sm rounded-xl p-4 hover:shadow-md transition-all duration-200`}>
-              <div className="flex flex-col justify-between h-full">
-                <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">{stat.title}</span>
-                <div className="flex items-center gap-3.5 mt-2.5">
-                  <div className={`h-11 w-11 rounded-full flex items-center justify-center ${stat.bgClass} flex-shrink-0`}>
-                    <stat.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</h3>
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-3 flex items-center gap-1.5 font-medium">
-                  <span className={`${stat.title.includes('Dropped') ? 'text-rose-500' : 'text-emerald-500'} font-extrabold`}>
-                    {percentageChange}
-                  </span>
-                  <span>Since last month</span>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 mb-8">
-        <Card className="lg:col-span-1 border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-              <Clock className="h-5 w-5 text-primary" />
-              Attendance
-            </CardTitle>
-            <CardDescription className="text-xs">Track your work hours</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4 pt-2">
-             {isPunchedIn ? (
-                <div className="w-full rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
-                    <h5 className="font-bold text-sm text-emerald-600 dark:text-emerald-400">You are Punched In</h5>
-                    <p className="text-xs text-emerald-500/90 mt-1">
-                        Punched in at: <span className="font-semibold">{punchInTime}</span>
-                    </p>
-                </div>
-             ) : (
-                <div className="w-full rounded-lg bg-rose-500/10 border border-rose-500/20 p-4 text-center">
-                    <h5 className="font-bold text-sm text-rose-600 dark:text-rose-400">You are Punched Out</h5>
-                    <p className="text-xs text-rose-500/90 mt-1">Punch in to start tracking work hours</p>
-                </div>
-             )}
-            <Button onClick={handlePunchInOut} className="w-full font-semibold" disabled={isProcessing}>
-                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                {isPunchedIn ? 'Punch Out' : 'Punch In'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-1 border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              Deals Won Leaderboard
-            </CardTitle>
-            <CardDescription className="text-xs">Top performers by number of deals closed.</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            {topSalesPerformers.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2 pb-1" style={{ width: '10%' }}>#</th>
-                      <th className="py-2 pb-1">Name</th>
-                      <th className="py-2 pb-1 text-right">Deals Won</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 text-xs">
-                    {topSalesPerformers.map((user, index) => (
-                      <tr key={user.name} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-2">{index + 1}</td>
-                        <td className="py-2 font-medium">{user.name}</td>
-                        <td className="py-2 text-right font-semibold text-primary">{user.value} Deals</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <p className="text-xs text-muted-foreground">No deal data available.</p>}
-          </CardContent>
-        </Card>
+      {/* Row 1: Dhonu Original Side-by-Side Layout */}
+      <div className="grid gap-6 lg:grid-cols-12 mb-6">
         
-        <Card className="lg:col-span-1 border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-              <TrendingUp className="h-5 w-5 text-primary" />
-               Lead Assignment Leaderboard
-            </CardTitle>
-            <CardDescription className="text-xs">Top users by number of assigned active leads.</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-             {topLeadHandlers.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2 pb-1" style={{ width: '10%' }}>#</th>
-                      <th className="py-2 pb-1">Name</th>
-                      <th className="py-2 pb-1 text-right">Leads</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 text-xs">
-                    {topLeadHandlers.map((user, index) => (
-                      <tr key={user.name} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-2">{index + 1}</td>
-                        <td className="py-2 font-medium">{user.name}</td>
-                        <td className="py-2 text-right font-semibold text-primary">{user.value} Leads</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* Left Side: 2x2 Stat Cards */}
+        <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 lg:h-[360px]">
+          <DhonuStatCard
+            title="Active Leads"
+            value={dashboardData.totalLeads}
+            icon={UsersRound}
+            variant="primary"
+            trend="5.42%"
+            trendUp={true}
+          />
+          <DhonuStatCard
+            title="Total Clients"
+            value={dashboardData.totalClients}
+            icon={Briefcase}
+            variant="success"
+            trend="8.76%"
+            trendUp={true}
+          />
+          <DhonuStatCard
+            title="Deals Won"
+            value={dashboardData.dealsWon}
+            icon={Award}
+            variant="warning"
+            trend="12.5%"
+            trendUp={true}
+          />
+          <DhonuStatCard
+            title="Leads Dropped"
+            value={dashboardData.leadsDropped}
+            icon={UserX}
+            variant="danger"
+            trend="0.00%"
+            trendUp={false}
+          />
+        </div>
+
+        {/* Right Side: Main Chart */}
+        <div className="lg:col-span-7 h-[300px] lg:h-[360px]">
+          <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
+            <div className="dhonu-card-header">
+              <div>
+                <p className="dhonu-card-title flex items-center gap-2">
+                  <i className="ri ri-currency-line text-primary" /> Yearly Sales (Value)
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Total: <span className="font-semibold text-foreground">Rs. {dashboardData.totalSalesValue.toLocaleString('en-IN')}</span>
+                  {' '} · Financial Year (Apr–Mar)
+                </p>
               </div>
-             ) : <p className="text-xs text-muted-foreground">No lead assignment data available.</p>}
-          </CardContent>
-        </Card>
+            </div>
+            <CardContent className="flex-1 pt-3 min-h-0">
+               <ChartContainer config={chartConfig} className="w-full h-full">
+                    <ResponsiveContainer>
+                    <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                      <YAxis tickFormatter={(value) => `Rs ${Number(value) / 1000}k`} />
+                      <Tooltip content={<ChartTooltipContent indicator="line" />} />
+                      <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mb-8">
-        <Card className="border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-              <PieChartIcon className="h-5 w-5 text-primary" />
-              Deals by User
-            </CardTitle>
-            <CardDescription className="text-xs">Distribution of deals closed by each user.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px]">
+      {/* Row 1.5: 4 More Stat Cards for deeper CRM metrics */}
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <DhonuStatCard
+          title="Total Calls & Follow-ups"
+          value={dashboardData.callsMade}
+          icon={Phone}
+          variant="info"
+        />
+        <DhonuStatCard
+          title="Pending Tasks"
+          value={dashboardData.pendingTasks}
+          icon={ClipboardCheck}
+          variant="warning"
+        />
+        <DhonuStatCard
+          title="Open Tickets"
+          value={dashboardData.openTickets}
+          icon={Ticket}
+          variant="danger"
+        />
+        <DhonuStatCard
+          title="Pipeline Value"
+          value={`₹${(dashboardData.pipelineValue / 1000).toFixed(1)}k`}
+          icon={IndianRupee}
+          variant="success"
+        />
+      </div>
+
+      {/* Row 3: Secondary Charts */}
+      <div className="grid gap-6 lg:grid-cols-3 mb-6">
+        <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col h-[350px]">
+          <div className="dhonu-card-header">
+            <div>
+              <p className="dhonu-card-title flex items-center gap-2">
+                <i className="ri ri-pie-chart-2-line text-primary" /> Deals by User
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Distribution of deals closed by each user.</p>
+            </div>
+          </div>
+          <CardContent className="flex-1 pt-3 min-h-0">
             {dashboardData.dealsByUser.length > 0 ? (
               <ChartContainer config={dealsByUserChartConfig} className="h-full w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -418,15 +331,17 @@ export default function DashboardOverviewPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-              <Users className="h-5 w-5 text-primary" />
-              Active Leads by User
-            </CardTitle>
-            <CardDescription className="text-xs">Distribution of active leads assigned to each user.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px]">
+
+        <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col h-[350px]">
+          <div className="dhonu-card-header">
+            <div>
+              <p className="dhonu-card-title flex items-center gap-2">
+                <i className="ri ri-group-line text-primary" /> Active Leads by User
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Active leads assigned to each user.</p>
+            </div>
+          </div>
+          <CardContent className="flex-1 pt-3 min-h-0">
              {dashboardData.leadsByUser.length > 0 ? (
               <ChartContainer config={leadsByUserChartConfig} className="h-full w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -446,40 +361,19 @@ export default function DashboardOverviewPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card className="border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-              <IndianRupee className="h-5 w-5 text-primary" />
-              Yearly Sales (Value) - Total: Rs. {dashboardData.totalSalesValue.toLocaleString('en-IN')}
-            </CardTitle>
-            <CardDescription className="text-xs">Total sales value over the financial year (Apr-Mar).</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-             <ChartContainer config={chartConfig} className="w-full h-full">
-                  <ResponsiveContainer>
-                  <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickFormatter={(value) => `Rs ${Number(value) / 1000}k`} />
-                    <Tooltip content={<ChartTooltipContent indicator="line" />} />
-                    <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card className="border border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold">
-             <LineChartIcon className="h-5 w-5 text-primary" />
-              Yearly Sales (Count) - Total: {dashboardData.totalSalesCount}
-            </CardTitle>
-            <CardDescription className="text-xs">Total number of deals closed over the financial year (Apr-Mar).</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px]">
+
+        <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col h-[350px]">
+          <div className="dhonu-card-header">
+            <div>
+              <p className="dhonu-card-title flex items-center gap-2">
+                <i className="ri ri-line-chart-line text-primary" /> Yearly Sales (Count)
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Total: <span className="font-semibold text-foreground">{dashboardData.totalSalesCount} Deals</span>
+              </p>
+            </div>
+          </div>
+          <CardContent className="flex-1 pt-3 min-h-0">
              <ChartContainer config={chartConfig} className="w-full h-full">
                   <ResponsiveContainer>
                   <LineChart data={dashboardData.yearlySales} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -493,6 +387,89 @@ export default function DashboardOverviewPage() {
             </ChartContainer>
           </CardContent>
         </Card>
+      </div>
+      
+      {/* Row 4: Leaderboards */}
+      <div className="grid gap-6 lg:grid-cols-12 mb-6">
+        {/* Deals Won Leaderboard */}
+        <div className="lg:col-span-6">
+          <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 h-full">
+            <div className="dhonu-card-header">
+              <div>
+                <p className="dhonu-card-title flex items-center gap-2">
+                  <i className="ri ri-bar-chart-2-line text-primary" /> Deals Won Leaderboard
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Top performers by number of deals closed.</p>
+              </div>
+            </div>
+            <CardContent className="pt-3">
+              {topSalesPerformers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="dhonu-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '10%' }}>#</th>
+                        <th>Name</th>
+                        <th className="text-right">Deals Won</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topSalesPerformers.map((user, index) => (
+                        <tr key={user.name}>
+                          <td>{index + 1}</td>
+                          <td className="font-medium">{user.name}</td>
+                          <td className="text-right">
+                            <span className="badge-soft-primary">{user.value} Deals</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <p className="text-xs text-muted-foreground p-2">No deal data available.</p>}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Lead Assignment Leaderboard */}
+        <div className="lg:col-span-6">
+          <Card className="border-0 shadow-sm h-full">
+            <div className="dhonu-card-header">
+              <div>
+                <p className="dhonu-card-title flex items-center gap-2">
+                  <i className="ri ri-trending-up-line text-primary" /> Lead Assignment
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Active leads assigned to each user.</p>
+              </div>
+            </div>
+            <CardContent className="pt-3">
+               {topLeadHandlers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="dhonu-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '10%' }}>#</th>
+                        <th>Name</th>
+                        <th className="text-right">Leads</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topLeadHandlers.map((user, index) => (
+                        <tr key={user.name}>
+                          <td>{index + 1}</td>
+                          <td className="font-medium">{user.name}</td>
+                          <td className="text-right">
+                            <span className="badge-soft-success">{user.value}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+               ) : <p className="text-xs text-muted-foreground p-2">No data.</p>}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

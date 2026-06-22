@@ -138,7 +138,7 @@ export default function ApproveFinancialDocumentPage() {
                         {isAdmin && (
                             <CardFooter className="flex flex-col gap-2">
                                 <Button 
-                                    className="w-full bg-green-600 hover:bg-green-700"
+                                    className="w-full bg-primary hover:bg-primary/90"
                                     onClick={() => handleReview('Approved')}
                                     disabled={isSubmitting || document.status === 'Approved'}
                                 >

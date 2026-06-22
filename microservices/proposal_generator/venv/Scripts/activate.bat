@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set "VIRTUAL_ENV=C:\Users\adity\Downloads\Soryouth CRM\Soryouth-CRM\microservices\proposal_generator\venv"
+set "VIRTUAL_ENV=G:\saral infotech\Soryouth-CRM\Soryouth-CRM\microservices\proposal_generator\venv"
 
 if not defined PROMPT set PROMPT=$P$G
 

@@ -10,12 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { LEAD_PRIORITY_OPTIONS, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_TYPES, DROP_REASON_OPTIONS } from '@/lib/constants';
 import type { Lead, User, LeadStatusType, LeadPriorityType, ClientType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateLeadData, DropReasonType, Proposal, CustomSetting, SiteSurvey, LeadSourceOptionType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft, UserX, ChevronDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead, deleteElectricityBill } from '@/app/(app)/leads-list/actions';
 import { getProposalsForLead, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -35,6 +37,7 @@ import { ProposalForm } from '@/app/(app)/proposals/proposal-form';
 import { TemplateSelectionDialog } from '@/app/(app)/proposals/template-selection-dialog';
 import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { sendCallNotification } from '@/lib/fcm';
 import { useSession } from '@/hooks/use-sessions';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -103,6 +106,7 @@ export default function LeadDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const fromTask = searchParams?.get('from_task');
   const leadId = typeof params.leadId === 'string' ? params.leadId : null;
   const { toast } = useToast();
   const [lead, setLead] = useState<Lead | null | undefined>(undefined);
@@ -121,6 +125,7 @@ export default function LeadDetailsPage() {
 
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDropDialogOpen, setIsDropDialogOpen] = useState(false);
+  const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [isProposalFormOpen, setIsProposalFormOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -137,6 +142,14 @@ export default function LeadDetailsPage() {
   const [taskForUser, setTaskForUser] = useState<string | undefined>(undefined);
   const [taskDate, setTaskDate] = useState('');
   const [taskTime, setTaskTime] = useState('');
+
+  const [detailsState, setDetailsState] = useState({
+    source: '',
+    clientType: '',
+    assignedTo: '',
+    kilowatt: '',
+    notes: '',
+  });
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedProposalForPreview, setSelectedProposalForPreview] = useState<Proposal | null>(null);
@@ -230,6 +243,18 @@ export default function LeadDetailsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, toast]);
+
+  useEffect(() => {
+    if (lead) {
+      setDetailsState({
+        source: lead.source || '',
+        clientType: lead.clientType || '',
+        assignedTo: lead.assignedTo || '',
+        kilowatt: lead.kilowatt?.toString() || '',
+        notes: lead.notes || '',
+      });
+    }
+  }, [lead]);
 
   useEffect(() => {
     if (session && lead && session.viewPermission === 'ASSIGNED' && lead.assignedTo !== session.name) {
@@ -418,6 +443,34 @@ export default function LeadDetailsPage() {
     });
   };
   
+  const handleUpdateDetails = () => {
+    if (!lead || !lead.id) return;
+
+    startUpdateTransition(async () => {
+        const result = await updateLead(lead.id, { 
+            source: detailsState.source,
+            clientType: detailsState.clientType as ClientType,
+            assignedTo: detailsState.assignedTo,
+            kilowatt: detailsState.kilowatt ? parseFloat(detailsState.kilowatt) : null,
+            notes: detailsState.notes,
+        });
+
+        if (result !== null && !('error' in result))  {
+            setLead(result);
+            toast({
+                title: `Lead Details Updated`,
+                description: `Successfully saved the lead details.`,
+            });
+        } else {
+            toast({
+                title: "Update Failed",
+                description: result && 'error' in result ? result.error : `Could not update lead details.`,
+                variant: "destructive",
+            });
+        }
+    });
+  };
+
   const handleAttributeChange = (
     key: 'status' | 'priority' | 'assignedTo' | 'clientType' | 'kilowatt' | 'source' | 'notes',
     value: string | number
@@ -566,11 +619,10 @@ export default function LeadDetailsPage() {
     : 'Not set';
 
   return (
-    <>
-    {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
-        <h1 className="text-xl font-semibold font-headline">{lead.name}</h1>
+      {fromTask && <TaskCompletionToast taskId={fromTask} />}
+      <div className="flex justify-between items-center p-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
+        <h1 className="text-xl font-semibold font-headline">Lead Details</h1>
         <div className="flex flex-wrap justify-center gap-2">
             <AlertDialog open={isDropDialogOpen} onOpenChange={setIsDropDialogOpen}>
                 <AlertDialogTrigger asChild>
@@ -635,412 +687,462 @@ export default function LeadDetailsPage() {
         </div>
       </div>
 
-      <div className="flex-grow p-4 overflow-y-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-3 space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row justify-between items-center pb-2">
-                <CardTitle className="text-lg font-semibold">Lead Information</CardTitle>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenEditForm} >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xl font-bold text-primary">{lead.name}</p>
-                <p className="text-sm text-muted-foreground">{lead.phone || 'No phone number'}</p>
-                <p className="text-xs text-muted-foreground">Created: {creationDateTime}</p>
-                <div>
-                  <Label htmlFor="lead-status" className="text-xs font-medium">Stage</Label>
-                  <Select value={lead.status || ''} onValueChange={(value) => handleAttributeChange('status', value)} disabled={isUpdating}>
-                    <SelectTrigger id="lead-status" className="h-8 text-xs">
-                      <SelectValue placeholder="Select stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leadStatuses.map(stage => <SelectItem key={stage.id} value={stage.name} className="text-xs">{stage.name}</SelectItem>)}
-                    </SelectContent>
+      <div className="flex-grow flex flex-col bg-muted/20 overflow-hidden">
+        
+        {/* CORPORATE HEADER PANEL */}
+        <div className="bg-card border-b shadow-sm px-6 py-4 shrink-0 z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            
+            {/* Identity */}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1.5">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">{lead.name}</h1>
+                <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">{lead.status || 'New'}</Badge>
+                {lead.priority && <Badge variant="outline" className="text-muted-foreground">{lead.priority}</Badge>}
+              </div>
+              <div className="flex items-center gap-5 text-sm text-muted-foreground font-medium">
+                {lead.phone && <span className="flex items-center gap-1.5"><i className="ri-phone-fill" /> {lead.phone}</span>}
+                {lead.kilowatt && <span className="flex items-center gap-1.5"><i className="ri-flashlight-fill text-amber-500" /> {lead.kilowatt} kW</span>}
+                <span className="flex items-center gap-1.5"><i className="ri-calendar-line" /> Created {creationDateTime}</span>
+              </div>
+            </div>
+            
+            {/* Quick Stats & Assignment */}
+            <div className="flex items-center gap-6 md:border-l border-border/50 md:pl-6">
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Deal Value</p>
+                <p className="text-lg font-bold flex items-center text-foreground"><IndianRupee className="h-3.5 w-3.5 mr-0.5 text-muted-foreground"/> {lead.totalDealValue?.toLocaleString('en-IN') || 0}</p>
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Created By</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Avatar className="h-6 w-6 border bg-muted"><AvatarFallback className="text-[10px] text-muted-foreground">{lead.createdBy?.charAt(0) || 'S'}</AvatarFallback></Avatar>
+                  <span className="text-sm font-semibold">{lead.createdBy || 'System'}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Assigned To</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Avatar className="h-6 w-6 border bg-muted"><AvatarFallback className="text-[10px] text-muted-foreground">{lead.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                  <Select value={lead.assignedTo || ''} onValueChange={(value) => handleAttributeChange('assignedTo', value)} disabled={isUpdating}>
+                      <SelectTrigger className="h-6 border-0 bg-transparent p-0 w-auto shadow-none text-sm font-semibold focus:ring-0 [&>svg]:hidden hover:underline">
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                 <div>
-                  <Label htmlFor="lead-priority" className="text-xs font-medium">Priority</Label>
-                  <Select value={lead.priority || ''} onValueChange={(value) => handleAttributeChange('priority', value as LeadPriorityType)} disabled={isUpdating}>
-                    <SelectTrigger id="lead-priority" className="h-8 text-xs">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LEAD_PRIORITY_OPTIONS.map(p => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <p className="text-xs font-medium">Next follow-up:</p>
-                  <p className="text-sm">{nextFollowUpDisplay}</p>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-md">Communication</CardTitle>
-              </CardHeader>
-              <CardContent className="flex justify-around items-center">
-                <CallButton />
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageCircle className="h-5 w-5" /></Button>
-              </CardContent>
-            </Card>
+            {/* Actions */}
+            <div className="flex items-center gap-2 md:border-l border-border/50 md:pl-6">
+               <CallButton />
+               <Button variant="outline" className="h-9 px-3 font-medium bg-background" onClick={handleOpenEditForm}>
+                 <Edit className="h-4 w-4 mr-2"/> Edit Profile
+               </Button>
+               <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="default" className="h-9 px-4 font-medium shadow-sm bg-blue-600 hover:bg-blue-700 text-white" disabled={isUpdating}>
+                      <Repeat className="mr-2 h-4 w-4" /> Convert
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 p-3 border border-border shadow-xl rounded-xl flex flex-col gap-2 bg-card">
+                    <div className="font-semibold text-[13px] mb-1 px-1">Quick Actions</div>
 
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-md">Attributes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="lead-source" className="text-xs font-medium">Source</Label>
-                        <Select value={lead.source || ''} onValueChange={(value) => handleAttributeChange('source', value as LeadSourceOptionType)} disabled={isUpdating}>
-                            <SelectTrigger id="lead-source" className="h-8 text-xs">
-                                <SelectValue placeholder="Select source" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {leadSources.map(source => <SelectItem key={source.id} value={source.name} className="text-xs">{source.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label htmlFor="lead-kw" className="text-xs font-medium">Capacity (KW)</Label>
-                        <Input
-                            id="lead-kw"
-                            key={lead.id}
-                            type="number"
-                            defaultValue={lead.kilowatt || ''}
-                            onBlur={(e) => {
-                                const value = parseFloat(e.target.value);
-                                if (!isNaN(value) && value !== lead.kilowatt) {
-                                    handleAttributeChange('kilowatt', value);
-                                }
-                            }}
-                            className="h-8 text-xs"
-                            disabled={isUpdating}
-                        />
-                    </div>
-                    <div>
-                        <Label htmlFor="lead-client-type" className="text-xs font-medium">Customer Type</Label>
-                        <Select value={lead.clientType || ''} onValueChange={(value) => handleAttributeChange('clientType', value as ClientType)} disabled={isUpdating}>
-                            <SelectTrigger id="lead-client-type" className="h-8 text-xs">
-                                <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CLIENT_TYPES.map(p => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-md">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button className="w-full bg-green-600 hover:bg-green-700" size="sm" disabled={isUpdating}>
+                    <Button className="justify-start shadow-sm font-medium h-10" onClick={() => setIsConvertDialogOpen(true)}>
                       <Repeat className="mr-2 h-4 w-4" /> Convert to Client
                     </Button>
-                  </AlertDialogTrigger>
+
+                    <Button variant="outline" className="justify-start shadow-sm font-medium hover:bg-muted h-10 text-slate-700 dark:text-slate-200" onClick={() => setIsTemplateDialogOpen(true)}>
+                      <FileText className="mr-2 h-4 w-4" /> Create Proposal
+                    </Button>
+
+                    <Button variant="outline" disabled className="justify-start shadow-sm font-medium h-10 text-muted-foreground opacity-60">
+                      <ShoppingCart className="mr-2 h-4 w-4" /> Create Purchase Order
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+
+               <AlertDialog open={isConvertDialogOpen} onOpenChange={setIsConvertDialogOpen}>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Convert Lead to Client?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will convert "{lead.name}" into a client, moving them and their activity history to the Clients section. This action cannot be undone.
+                        This will convert "{lead.name}" into a client, moving them and their activity history to the Clients section.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleConvertToClient} disabled={isUpdating}>
+                      <AlertDialogAction onClick={() => { setIsConvertDialogOpen(false); handleConvertToClient(); }} disabled={isUpdating}>
                         {isUpdating ? "Converting..." : "Yes, Convert"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-                <Button className="w-full" variant="outline" size="sm" onClick={handleCreateNewProposal}><FileText className="mr-2 h-4 w-4" /> Create Proposal</Button>
-                <Button className="w-full" variant="outline" size="sm" disabled><ShoppingCart className="mr-2 h-4 w-4" /> Create Purchase Order</Button>
-              </CardContent>
-            </Card>
+            </div>
           </div>
+        </div>
 
-          <div className="lg:col-span-6 space-y-6">
-            <Card>
-              <CardHeader><CardTitle>New follow-up</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                  <div className="sm:col-span-1">
-                    <Select value={activityType} onValueChange={(val) => setActivityType(val as FollowUpType)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{FOLLOW_UP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-1"><Input type="date" value={activityDate} onChange={e => setActivityDate(e.target.value)} /></div>
-                  <div className="sm:col-span-1"><Input type="time" value={activityTime} onChange={e => setActivityTime(e.target.value)} /></div>
-                </div>
-                <RadioGroup value={activityStatus} onValueChange={(value) => setActivityStatus(value as FollowUpStatus)} className="flex flex-wrap gap-x-4 gap-y-2">
-                    {FOLLOW_UP_STATUSES.map(status => (<div key={status} className="flex items-center space-x-2"><RadioGroupItem value={status} id={`activity-status-${status}`} /><Label htmlFor={`activity-status-${status}`} className="text-sm font-normal">{status}</Label></div>))}
-                </RadioGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="activityLeadStage">Lead Stage</Label>
-                    <Select value={activityLeadStage} onValueChange={(val) => setActivityLeadStage(val as LeadStatusType)}><SelectTrigger id="activityLeadStage"><SelectValue placeholder="Select stage" /></SelectTrigger><SelectContent>{leadStatuses.map(stage => <SelectItem key={stage.id} value={stage.name}>{stage.name}</SelectItem>)}</SelectContent></Select>
-                  </div>
-                   <div>
-                    <Label htmlFor="activityPriority">Lead Priority</Label>
-                    <Select value={activityPriority} onValueChange={(val) => setActivityPriority(val as LeadPriorityType)}><SelectTrigger id="activityPriority"><SelectValue placeholder="Select priority" /></SelectTrigger><SelectContent>{LEAD_PRIORITY_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="activityComment">Follow-up Comment</Label>
-                  <Textarea id="activityComment" placeholder="Enter comment..." value={activityComment} onChange={e => setActivityComment(e.target.value)} />
-                </div>
-                <Separator />
-                <div>
-                    <h3 className="text-md font-semibold mb-2">Schedule new task</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <Label htmlFor="taskForUser">Task for</Label>
-                            <Select value={taskForUser} onValueChange={(val) => setTaskForUser(val)}><SelectTrigger id="taskForUser"><SelectValue placeholder="Select user" /></SelectTrigger><SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent></Select>
+        {/* MAIN WORKSPACE */}
+        <div className="flex-grow overflow-y-auto p-6 scrollbar-thin">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT COLUMN: Activity Logging & Form */}
+            <div className="lg:col-span-5 space-y-6 sticky top-0 max-h-[calc(100vh-150px)] overflow-y-auto scrollbar-none pb-4">
+              <Card className="shadow-sm border-border/50">
+                <Tabs defaultValue="activity-followup" className="w-full">
+                  <CardHeader className="pb-0 border-b px-2 pt-2 bg-muted/10 rounded-t-xl">
+                    <TabsList className="h-10 bg-transparent border-b-0 w-full justify-start overflow-x-auto rounded-none p-0">
+                      <TabsTrigger value="activity-followup" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold">Activity & Follow-up</TabsTrigger>
+                      <TabsTrigger value="lead-details" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold">Lead Details</TabsTrigger>
+                    </TabsList>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <TabsContent value="activity-followup" className="m-0">
+                      <Tabs defaultValue="log-activity" className="w-full">
+                        <div className="px-5 pt-4 pb-2 flex justify-between items-center">
+                          <span className="text-sm font-semibold text-foreground hidden sm:block">Record Activity</span>
+                          <TabsList className="h-8 bg-muted/50">
+                            <TabsTrigger value="log-activity" className="text-xs font-medium">Log Activity</TabsTrigger>
+                            <TabsTrigger value="schedule-task" className="text-xs font-medium">Schedule Task</TabsTrigger>
+                          </TabsList>
                         </div>
-                        <div><Label htmlFor="taskDate">Task date</Label><Input type="date" id="taskDate" value={taskDate} onChange={e => setTaskDate(e.target.value)}/></div>
-                        <div><Label htmlFor="taskTime">Task time</Label><Input type="time" id="taskTime" value={taskTime} onChange={e => setTaskTime(e.target.value)}/></div>
-                    </div>
-                </div>
-                <Button onClick={handleSaveActivity} className="w-full bg-green-600 hover:bg-green-700" disabled={isFormPending}>
-                  {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Save
-                </Button>
-              </CardContent>
-            </Card>
+                        <div className="px-5 pb-5">
+                          <TabsContent value="log-activity" className="space-y-4 mt-0">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                              <div className="sm:col-span-1">
+                                <Select value={activityType} onValueChange={(val) => setActivityType(val as FollowUpType)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>{FOLLOW_UP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </div>
+                              <div className="sm:col-span-1"><Input type="date" className="h-9 text-sm" value={activityDate} onChange={e => setActivityDate(e.target.value)} /></div>
+                              <div className="sm:col-span-1"><Input type="time" className="h-9 text-sm" value={activityTime} onChange={e => setActivityTime(e.target.value)} /></div>
+                            </div>
+                            <RadioGroup value={activityStatus} onValueChange={(value) => setActivityStatus(value as FollowUpStatus)} className="flex flex-wrap gap-x-5 gap-y-2 py-1">
+                                {FOLLOW_UP_STATUSES.map(status => (<div key={status} className="flex items-center space-x-2"><RadioGroupItem value={status} id={`activity-status-${status}`} /><Label htmlFor={`activity-status-${status}`} className="text-sm cursor-pointer">{status}</Label></div>))}
+                            </RadioGroup>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="activityLeadStage" className="text-[11px] font-bold uppercase text-muted-foreground">Update Stage</Label>
+                                <Select value={activityLeadStage} onValueChange={(val) => setActivityLeadStage(val as LeadStatusType)}><SelectTrigger id="activityLeadStage" className="h-9 mt-1"><SelectValue placeholder="Select stage" /></SelectTrigger><SelectContent>{leadStatuses.map(stage => <SelectItem key={stage.id} value={stage.name}>{stage.name}</SelectItem>)}</SelectContent></Select>
+                              </div>
+                               <div>
+                                <Label htmlFor="activityPriority" className="text-[11px] font-bold uppercase text-muted-foreground">Update Priority</Label>
+                                <Select value={activityPriority} onValueChange={(val) => setActivityPriority(val as LeadPriorityType)}><SelectTrigger id="activityPriority" className="h-9 mt-1"><SelectValue placeholder="Select priority" /></SelectTrigger><SelectContent>{LEAD_PRIORITY_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
+                              </div>
+                            </div>
+                            <div>
+                              <Label htmlFor="activityComment" className="text-[11px] font-bold uppercase text-muted-foreground">Notes / Description</Label>
+                              <Textarea id="activityComment" placeholder="Enter what happened..." value={activityComment} onChange={e => setActivityComment(e.target.value)} className="resize-none mt-1 h-20" />
+                            </div>
+                            <Button onClick={() => { setTaskDate(''); setTaskTime(''); handleSaveActivity(); }} className="w-full font-semibold shadow-sm" disabled={isFormPending}>
+                              {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Log Activity
+                            </Button>
+                          </TabsContent>
 
-            <Card>
-              <CardHeader><CardTitle>Activity History ({lead.followupCount || 0})</CardTitle></CardHeader>
-              <CardContent>
-                {isActivitiesLoading ? (
-                   <div className="flex items-center justify-center p-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-                ) : activities.length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    {activities.map(activity => (
-                      <div key={activity.id} className="flex items-start gap-4 p-3 border rounded-md">
-                         <Avatar className="h-9 w-9 border mt-1">
-                           <ActivityIcon type={activity.type} className="h-full w-full p-2 text-muted-foreground" />
-                        </Avatar>
-                        <div className="flex-1 space-y-1.5">
-                           <p className="text-sm font-semibold">
-                              {activity.comment || (activity.followupOrTask === 'Task' ? 'Task Scheduled' : 'Activity Logged')}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(parseISO(activity.createdAt), 'dd-MM-yyyy p')} by {activity.createdBy || 'System'}
-                          </p>
-                           <div className="flex items-center gap-2 flex-wrap pt-1">
-                              <Badge variant="secondary" className="capitalize bg-blue-100 text-blue-800 border-transparent hover:bg-blue-200">
-                                 {activity.type}
-                              </Badge>
-                              {activity.leadStageAtTimeOfFollowUp && (
-                                <Badge variant="outline" className="capitalize bg-slate-800 text-white border-transparent hover:bg-slate-700">{activity.leadStageAtTimeOfFollowUp}</Badge>
-                              )}
-                              {activity.followupOrTask === 'Task' ? (
-                                activity.taskStatus === 'Closed' ? (
-                                    <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
-                                      <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
-                                      Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
-                                    </Badge>
-                                  )
-                                ) : (
-                                  <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
-                                )}
+                          <TabsContent value="schedule-task" className="space-y-4 mt-0">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                               <div className="sm:col-span-1">
+                                <Label htmlFor="taskType" className="text-[11px] font-bold uppercase text-muted-foreground">Task Type</Label>
+                                <Select value={activityType} onValueChange={(val) => setActivityType(val as FollowUpType)}>
+                                    <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+                                    <SelectContent>{FOLLOW_UP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                  <Label htmlFor="taskForUser" className="text-[11px] font-bold uppercase text-muted-foreground">Assign To</Label>
+                                  <Select value={taskForUser} onValueChange={(val) => setTaskForUser(val)}><SelectTrigger id="taskForUser" className="h-9 mt-1"><SelectValue placeholder="Select user" /></SelectTrigger><SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent></Select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                                <div><Label htmlFor="taskDate" className="text-[11px] font-bold uppercase text-muted-foreground">Due Date</Label><Input type="date" id="taskDate" className="h-9 mt-1" value={taskDate} onChange={e => setTaskDate(e.target.value)}/></div>
+                                <div><Label htmlFor="taskTime" className="text-[11px] font-bold uppercase text-muted-foreground">Due Time</Label><Input type="time" id="taskTime" className="h-9 mt-1" value={taskTime} onChange={e => setTaskTime(e.target.value)}/></div>
+                            </div>
+                            <div>
+                              <Label htmlFor="taskComment" className="text-[11px] font-bold uppercase text-muted-foreground">Task Description</Label>
+                              <Textarea id="taskComment" placeholder="What needs to be done?" value={activityComment} onChange={e => setActivityComment(e.target.value)} className="resize-none mt-1 h-20" />
+                            </div>
+                            <Button onClick={handleSaveActivity} className="w-full font-semibold shadow-sm" disabled={isFormPending || !taskDate || !taskTime}>
+                              {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Schedule Task
+                            </Button>
+                          </TabsContent>
+                        </div>
+                      </Tabs>
+                    </TabsContent>
+
+                    <TabsContent value="lead-details" className="m-0">
+                      <div className="px-5 pt-5 pb-5 space-y-5 relative">
+                        {isUpdating && <span className="absolute top-2 right-5 text-[10px] text-muted-foreground flex items-center font-medium bg-muted px-2 py-1 rounded-md"><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Saving</span>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                          <div>
+                              <Label htmlFor="lead-source" className="text-xs font-semibold text-muted-foreground mb-1 block">Source</Label>
+                              <Select value={detailsState.source} onValueChange={(value) => setDetailsState(s => ({...s, source: value}))} disabled={isUpdating}>
+                                  <SelectTrigger id="lead-source" className="h-8 text-sm bg-background">
+                                      <SelectValue placeholder="Select source" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {leadSources.map(source => <SelectItem key={source.id} value={source.name} className="text-sm">{source.name}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div>
+                              <Label htmlFor="lead-client-type" className="text-xs font-semibold text-muted-foreground mb-1 block">Customer Type</Label>
+                              <Select value={detailsState.clientType} onValueChange={(value) => setDetailsState(s => ({...s, clientType: value}))} disabled={isUpdating}>
+                                  <SelectTrigger id="lead-client-type" className="h-8 text-sm bg-background">
+                                      <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {CLIENT_TYPES.map(p => <SelectItem key={p} value={p} className="text-sm">{p}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div>
+                              <Label htmlFor="lead-assigned" className="text-xs font-semibold text-muted-foreground mb-1 block">Assigned To</Label>
+                              <Select value={detailsState.assignedTo} onValueChange={(value) => setDetailsState(s => ({...s, assignedTo: value}))} disabled={isUpdating}>
+                                  <SelectTrigger id="lead-assigned" className="h-8 text-sm bg-background">
+                                      <SelectValue placeholder="Select user" />
+                                  </SelectTrigger>
+                                  <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name} className="text-sm">{user.name}</SelectItem>)}</SelectContent>
+                              </Select>
+                          </div>
+                          <div>
+                              <Label htmlFor="lead-kw" className="text-xs font-semibold text-muted-foreground mb-1 block">Capacity (kW)</Label>
+                              <Input
+                                  id="lead-kw"
+                                  key={`kw-${lead.id}`}
+                                  type="number"
+                                  value={detailsState.kilowatt}
+                                  onChange={(e) => setDetailsState(s => ({...s, kilowatt: e.target.value}))}
+                                  className="h-8 text-sm bg-background"
+                                  disabled={isUpdating}
+                              />
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-center text-muted-foreground py-6">No activity history yet.</p>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <ClipboardEdit className="h-5 w-5 text-primary" />
-                        Site Survey History
-                    </CardTitle>
-                    <CardDescription>All surveys conducted for this client.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {surveys.length === 0 ? (
-                        <p className="text-sm text-center text-muted-foreground py-4">No surveys found.</p>
-                    ) : (
-                        <Accordion type="single" collapsible className="w-full">
-                            {surveys.map(survey => (
-                                <AccordionItem value={survey.id} key={survey.id}>
-                                    <AccordionTrigger>
-                                        <div className="flex justify-between w-full pr-4">
-                                            <span>Survey No: {survey.surveyNumber.slice(-8)}</span>
-                                            <span className="text-muted-foreground text-sm">{format(parseISO(survey.date), 'dd MMM, yyyy')}</span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="p-1">
-                                       <div className="text-xs space-y-3 p-3 border rounded-md">
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                                <div><strong>Surveyor:</strong> {survey.surveyorName}</div>
-                                                <div><strong>Category:</strong> {survey.consumerCategory}</div>
-                                                <div><strong>Roof Type:</strong> {survey.roofType}</div>
-                                                <div><strong>Building Height:</strong> {survey.buildingHeight}</div>
-                                                <div><strong>Shadow-Free Area:</strong> {survey.shadowFreeArea}</div>
-                                                <div><strong>DISCOM:</strong> {survey.discom}</div>
-                                                <div><strong>Sanctioned Load:</strong> {survey.sanctionedLoad || 'N/A'}</div>
-                                                <div><strong>Meter Phase:</strong> {survey.meterPhase || 'N/A'}</div>
-                                                <div><strong>No. of Meters:</strong> {survey.numberOfMeters}</div>
-                                                <div><strong>Meter Rating:</strong> {survey.meterRating || 'N/A'}</div>
-                                                <div><strong>Avg. Bill (₹):</strong> {survey.electricityAmount?.toLocaleString('en-IN') || 'N/A'}</div>
-                                            </div>
-                                            {survey.remark && (
-                                                <div className="pt-1">
-                                                    <strong className="font-semibold">Remark:</strong>
-                                                    <p className="p-2 bg-muted rounded-md mt-1 text-xs">{survey.remark}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                    )}
-                </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-3 space-y-6">
-            <Card>
-              <CardContent className="pt-6 space-y-1">
-                <div className="flex items-center gap-2">
-                   <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${lead.assignedTo?.charAt(0) || 'U'}`} data-ai-hint="user avatar" /><AvatarFallback>{lead.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
-                   <Select
-                      value={lead.assignedTo || ''}
-                      onValueChange={(value) => handleAttributeChange('assignedTo', value)}
-                      disabled={isUpdating}
-                    >
-                      <SelectTrigger className="h-9 text-sm flex-grow">
-                        <SelectValue placeholder="Unassigned" />
-                      </SelectTrigger>
-                      <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                </div>
-                <p className="text-xs text-muted-foreground ml-10">Assigned to</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 space-y-1">
-                 <div className="flex items-center gap-2">
-                   <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${lead.createdBy?.charAt(0) || 'S'}`} data-ai-hint="user avatar"/><AvatarFallback>{lead.createdBy?.charAt(0) || 'S'}</AvatarFallback></Avatar>
-                  <p className="text-sm font-medium flex-grow bg-muted px-3 py-2 rounded-md h-9 flex items-center">{lead.createdBy || 'System'}</p>
-                </div>
-                <p className="text-xs text-muted-foreground ml-10">Created by</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-primary/10 border-primary/20">
-                <CardContent className="pt-6 text-center">
-                    <p className="text-sm text-primary font-semibold">Total Deal Value</p>
-                    <p className="text-3xl font-bold text-primary flex items-center justify-center">
-                        <IndianRupee className="h-7 w-7 mr-1" />
-                        {lead.totalDealValue?.toLocaleString('en-IN') || 0}
-                    </p>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">E-Bills ({lead.electricityBillUrls?.length || 0})</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                    {lead.electricityBillUrls && lead.electricityBillUrls.length > 0 ? (
-                       <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                            {lead.electricityBillUrls.map((url, index) => (
-                                <div key={url} className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" className="flex-grow justify-start text-xs" onClick={() => setBillToPreview(url)}>
-                                      <Eye className="mr-2 h-4 w-4" /> 
-                                      <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="destructive" size="icon" className="h-8 w-8" disabled={isDeletingBill}>
-                                          <Trash2 className="h-4 w-4"/>
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete this bill?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will permanently delete the uploaded bill file. This action cannot be undone.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteBill(url)}>Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-                            ))}
+                        
+                        <div className="pt-2 border-t border-border/50">
+                          <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Permanent Notes</Label>
+                          <Textarea 
+                            key={`notes-${lead.id}`}
+                            placeholder="Type notes here..." 
+                            value={detailsState.notes}
+                            onChange={(e) => setDetailsState(s => ({...s, notes: e.target.value}))}
+                            disabled={isUpdating}
+                            className="min-h-[100px] text-sm bg-background focus-visible:ring-1 resize-none" 
+                          />
                         </div>
+                        
+                        <div className="pt-4 flex justify-end">
+                            <Button onClick={handleUpdateDetails} disabled={isUpdating} className="font-semibold shadow-sm">
+                                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />} Update Details
+                            </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </CardContent>
+                </Tabs>
+              </Card>
+            </div>
+          {/* RIGHT COLUMN: History & Records Tabs */}
+          <div className="lg:col-span-7 sticky top-0 h-[calc(100vh-150px)] pb-4 flex flex-col">
+            <Card className="shadow-sm border-border/50 h-full flex flex-col">
+              <Tabs defaultValue="activity" className="w-full h-full flex flex-col overflow-hidden">
+                <CardHeader className="pb-0 border-b px-2 pt-2 bg-muted/10 rounded-t-xl shrink-0">
+                  <TabsList className="h-10 bg-transparent border-b-0 w-full justify-start overflow-x-auto rounded-none p-0">
+                    <TabsTrigger value="activity" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold">Activity History ({lead.followupCount || 0})</TabsTrigger>
+                    <TabsTrigger value="proposals" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold">Proposals ({proposals.length})</TabsTrigger>
+                    <TabsTrigger value="surveys" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold">Surveys ({surveys.length})</TabsTrigger>
+                    <TabsTrigger value="bills" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold">E-Bills ({lead.electricityBillUrls?.length || 0})</TabsTrigger>
+                  </TabsList>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow overflow-y-auto scrollbar-none relative">
+                  
+                  {/* Activity Tab */}
+                  <TabsContent value="activity" className="p-5 m-0 h-full">
+                    {isActivitiesLoading ? (
+                      <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                    ) : activities.length > 0 ? (
+                      <div className="relative pl-6 border-l-2 border-muted space-y-4 mt-2 ml-2">
+                        {activities.map((activity, index) => {
+                          const activityNumber = activities.length - index;
+                          return (
+                          <div key={activity.id} className="relative flex flex-col gap-1.5 p-3 border border-border/50 rounded-lg hover:bg-muted/10 transition-colors shadow-sm bg-background">
+                            {/* Circle on the line */}
+                            <div className="absolute -left-[33px] top-3 h-6 w-6 rounded-full border-[3px] border-background bg-primary shadow-sm z-10 flex items-center justify-center text-[10px] font-bold text-primary-foreground">
+                               {activityNumber}
+                            </div>
+                            
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-2">
+                                <ActivityIcon type={activity.type} className="h-3.5 w-3.5 text-primary" />
+                                <span className="font-semibold text-[13px] text-foreground">{activity.type}</span>
+                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider hidden sm:inline">
+                                  • {format(parseISO(activity.createdAt), 'dd MMM yyyy, p')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider sm:hidden">
+                                  {format(parseISO(activity.createdAt), 'dd MMM yyyy, p')}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <p className="text-[13px] text-foreground mt-0.5 font-medium leading-snug">
+                                {activity.comment || (activity.followupOrTask === 'Task' ? 'Task Scheduled' : 'Activity Logged')}
+                            </p>
+                            
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                {activity.leadStageAtTimeOfFollowUp && (
+                                  <Badge variant="outline" className="capitalize text-[9px] px-1.5 py-0 h-4 bg-background">{activity.leadStageAtTimeOfFollowUp}</Badge>
+                                )}
+                                {activity.followupOrTask === 'Task' ? (
+                                  activity.taskStatus === 'Closed' ? (
+                                      <Badge className="bg-primary/10 text-primary border-transparent hover:bg-primary/20 text-[9px] px-1.5 py-0 h-4">
+                                        <CheckCircle className="mr-1 h-2.5 w-2.5"/> Completed
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-amber-100 text-amber-800 border-transparent hover:bg-amber-200 text-[9px] px-1.5 py-0 h-4">
+                                        Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd MMM') : ''} {activity.taskTime || ''}
+                                      </Badge>
+                                    )
+                                  ) : null}
+                            </div>
+                            <p className="text-[9px] text-muted-foreground mt-0.5 uppercase tracking-wider">By <span className="font-bold text-foreground">{activity.createdBy || 'System'}</span></p>
+                          </div>
+                        )})}
+                      </div>
                     ) : (
-                        <div className="text-center text-xs text-muted-foreground p-2">No bills uploaded.</div>
+                      <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg border-dashed bg-muted/10">
+                        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                        <p className="text-sm font-semibold text-foreground">No activity logged yet</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">Use the form on the left to log calls, meetings, or schedule future follow-up tasks.</p>
+                      </div>
                     )}
-                    <div>
-                        <Label htmlFor="bill-upload" className={cn(buttonVariants({variant: "secondary", size: "sm"}), "w-full cursor-pointer")}>
-                            {isUploadingBill ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4"/>}
-                            {lead.electricityBillUrls?.length ? 'Upload More Bills' : 'Upload Bills'}
+                  </TabsContent>
+
+                  {/* Proposals Tab */}
+                  <TabsContent value="proposals" className="p-5 m-0">
+                    <div className="mb-4 flex justify-end">
+                      <Button variant="outline" size="sm" onClick={handleCreateNewProposal} className="h-8 shadow-sm">
+                        <FileText className="mr-2 h-3.5 w-3.5" /> Create Proposal
+                      </Button>
+                    </div>
+                    {proposals.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {proposals.map(proposal => (
+                          <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="flex flex-col p-4 border border-border/50 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all shadow-sm">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="bg-primary/10 p-2 rounded-md"><FileText className="h-4 w-4 text-primary" /></div>
+                              <div>
+                                <p className="font-bold text-sm text-foreground">{proposal.proposalNumber}</p>
+                                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{format(parseISO(proposal.proposalDate), 'dd MMM yyyy')}</p>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-end mt-auto pt-2 border-t border-border/50">
+                               <p className="text-xs text-muted-foreground font-medium">{proposal.capacity} kW System</p>
+                               <p className="font-bold text-sm flex items-center text-foreground"><IndianRupee className="h-3.5 w-3.5 mr-0.5" />{proposal.finalAmount.toLocaleString('en-IN')}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg border-dashed bg-muted/10">
+                         <FileText className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                         <p className="text-sm font-semibold text-foreground">No proposals created</p>
+                         <p className="text-xs text-muted-foreground mt-1">Generate a proposal for this lead to send them a quotation.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Surveys Tab */}
+                  <TabsContent value="surveys" className="p-5 m-0">
+                     {surveys.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg border-dashed bg-muted/10">
+                          <ClipboardEdit className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                          <p className="text-sm font-semibold text-foreground">No site surveys</p>
+                          <p className="text-xs text-muted-foreground mt-1">Surveys conducted for this lead will appear here.</p>
+                        </div>
+                      ) : (
+                          <Accordion type="single" collapsible className="w-full space-y-3">
+                              {surveys.map(survey => (
+                                  <AccordionItem value={survey.id} key={survey.id} className="border border-border/50 rounded-lg px-4 bg-background shadow-sm">
+                                      <AccordionTrigger className="py-4 hover:no-underline">
+                                          <div className="flex flex-col items-start w-full pr-2 text-left">
+                                              <span className="text-sm font-semibold">Survey No: {survey.surveyNumber.slice(-8)}</span>
+                                              <span className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5"><i className="ri-calendar-line" /> {format(parseISO(survey.date), 'dd MMM yyyy')}</span>
+                                          </div>
+                                      </AccordionTrigger>
+                                      <AccordionContent className="p-0 pb-4">
+                                         <div className="text-xs space-y-3 p-4 bg-muted/20 border border-border/50 rounded-lg">
+                                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                                                  <div><span className="text-muted-foreground block mb-0.5">Surveyor</span> <span className="font-semibold">{survey.surveyorName}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Category</span> <span className="font-semibold">{survey.consumerCategory}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Roof Type</span> <span className="font-semibold">{survey.roofType}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Shadow-Free</span> <span className="font-semibold">{survey.shadowFreeArea}</span></div>
+                                              </div>
+                                          </div>
+                                      </AccordionContent>
+                                  </AccordionItem>
+                              ))}
+                          </Accordion>
+                      )}
+                  </TabsContent>
+
+                  {/* E-Bills Tab */}
+                  <TabsContent value="bills" className="p-5 m-0">
+                      <div className="mb-4 flex justify-end">
+                        <Label htmlFor="bill-upload" className="flex items-center h-8 px-3 text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md cursor-pointer shadow-sm transition-colors border">
+                            {isUploadingBill ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/> : <UploadCloud className="mr-2 h-3.5 w-3.5"/>}
+                            Upload New Bill
                         </Label>
                         <Input id="bill-upload" type="file" multiple className="hidden" accept=".pdf,.png,.jpg,.jpeg" onChange={handleBillUpload} disabled={isUploadingBill}/>
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">Notes</CardTitle></CardHeader>
-              <CardContent>
-                 <Textarea 
-                  key={lead.id}
-                  placeholder="Add notes here..." 
-                  defaultValue={lead.notes || ''}
-                  onBlur={(e) => handleAttributeChange('notes', e.target.value)}
-                  disabled={isUpdating}
-                  className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" 
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Proposal History ({proposals.length})</CardTitle></CardHeader>
-              <CardContent>
-                {proposals.length > 0 ? (
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {proposals.map(proposal => (
-                      <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <p className="font-semibold text-sm">{proposal.proposalNumber}</p>
-                            <p className="text-xs text-muted-foreground">Capacity: {proposal.capacity} kW</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                           <p className="font-semibold text-sm flex items-center"><IndianRupee className="h-4 w-4 mr-0.5" />{proposal.finalAmount.toLocaleString('en-IN')}</p>
-                           <p className="text-xs text-muted-foreground">{format(parseISO(proposal.proposalDate), 'dd MMM yyyy')}</p>
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                   <p className="text-sm text-center text-muted-foreground py-6">No proposals created for this lead yet.</p>
-                )}
-              </CardContent>
+
+                      {lead.electricityBillUrls && lead.electricityBillUrls.length > 0 ? (
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {lead.electricityBillUrls.map((url, index) => (
+                                  <div key={url} className="flex items-center gap-2 group p-3 border border-border/50 rounded-lg bg-background shadow-sm hover:border-primary/50 transition-colors">
+                                    <div className="bg-primary/10 p-2 rounded-md"><UploadCloud className="h-4 w-4 text-primary" /></div>
+                                    <div className="flex-grow min-w-0">
+                                      <p className="text-sm font-semibold truncate cursor-pointer hover:underline" onClick={() => setBillToPreview(url)}>Bill Document {index + 1}</p>
+                                      <p className="text-[10px] text-muted-foreground truncate font-mono mt-0.5">{url.split('-').pop()}</p>
+                                    </div>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" disabled={isDeletingBill}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                              <AlertDialogTitle>Delete this bill?</AlertDialogTitle>
+                                              <AlertDialogDescription>This will permanently delete the uploaded bill file. This action cannot be undone.</AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => handleDeleteBill(url)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                              ))}
+                          </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg border-dashed bg-muted/10">
+                          <UploadCloud className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                          <p className="text-sm font-semibold text-foreground">No electricity bills</p>
+                          <p className="text-xs text-muted-foreground mt-1 max-w-sm">Upload electricity bills to help with system sizing and proposals.</p>
+                        </div>
+                      )}
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
             </Card>
           </div>
         </div>
       </div>
+      </div>
+      
+      {/* DIALOGS */}
       {isEditFormOpen && lead && (<LeadForm isOpen={isEditFormOpen} onClose={() => setIsEditFormOpen(false)} onSubmit={handleEditFormSubmit} lead={lead} users={users} statuses={leadStatuses} sources={leadSources} />)}
       {isProposalFormOpen && lead && (
           <ProposalForm 
@@ -1074,6 +1176,5 @@ export default function LeadDetailsPage() {
         />
       )}
     </div>
-    </>
   );
 }

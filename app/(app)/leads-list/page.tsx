@@ -4,14 +4,14 @@ import React, { useState, useMemo, useEffect, useTransition, useCallback } from 
 import { PageHeader } from '@/components/page-header';
 import { LeadsTable } from '@/app/(app)/leads/leads-table';
 import { DROP_REASON_OPTIONS } from '@/lib/constants';
-import { Loader2, Filter, Search, Upload, PlusCircle, Settings2, ListChecks, ListFilter, Rows, ChevronDown } from 'lucide-react';
+import { Loader2, ListChecks, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LeadForm } from '@/app/(app)/leads/lead-form';
 import { SettingsDialog } from '@/app/(app)/settings/settings-dialog';
 import { useToast } from "@/hooks/use-toast";
 import type { Lead, User, LeadStatusType, StatusFilterItem, LeadSortConfig, CreateLeadData, UserOptionType, LeadSourceOptionType, DropReasonType, CustomSetting } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, startOfDay, isSameDay } from 'date-fns';
+import { format, parseISO, startOfDay, isSameDay, isValid } from 'date-fns';
 import { getLeads, createLead, updateLead, deleteLead, bulkUpdateLeads, bulkDropLeads, importLeads } from './actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { getLeadStatuses, getLeadSources } from '@/app/(app)/settings/actions';
@@ -21,6 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,10 +30,21 @@ import * as z from 'zod';
 import { Form, FormControl, FormMessage, FormField, FormItem } from '@/components/ui/form';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return '-';
+  try {
+    const date = parseISO(dateString);
+    if (isValid(date)) {
+      return format(date, 'dd-MM-yyyy');
+    }
+    return dateString;
+  } catch (e) {
+    return dateString;
+  }
+};
 
 const allColumns: Record<string, string> = {
-    email: 'Email',
-    phone: 'Mobile No.',
+    name: 'Contact Info',
     status: 'Stage',
     lastCommentText: 'Last Comment',
     nextFollowUpDate: 'Next Follow-up',
@@ -154,9 +167,11 @@ export default function LeadsListPage() {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState<Lead | null>(null);
-  const { toast } = useToast();
-  
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLeadForView, setSelectedLeadForView] = useState<Lead | null>(null);
+
+  const { toast } = useToast();
   
   const [sortConfig, setSortConfig] = useState<LeadSortConfig | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -513,8 +528,8 @@ export default function LeadsListPage() {
                 <>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                        <Filter className="mr-2 h-4 w-4" /> Filter
+                        <Button variant="outline" size="sm" className="gap-1.5">
+                          <i className="ri ri-filter-3-line" /> Filter
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -554,22 +569,22 @@ export default function LeadsListPage() {
                         </DropdownMenuSub>
                     </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
-                    <Search className="mr-2 h-4 w-4" /> Search
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsSearchOpen(true)}>
+                    <i className="ri ri-search-line" /> Search
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-                    <Upload className="mr-2 h-4 w-4" /> Upload
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsImportDialogOpen(true)}>
+                    <i className="ri ri-upload-2-line" /> Upload
                     </Button>
                 </>
             )}
-            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleAddLead} disabled={isPending}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Lead
+            <Button size="sm" className="gap-1.5" onClick={handleAddLead} disabled={isPending}>
+              <i className="ri ri-add-line" /> Add Lead
             </Button>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Settings2 className="h-5 w-5" />
-                  </Button>
+                  <button className="topbar-icon-btn">
+                    <i className="ri ri-settings-3-line text-lg" />
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>View Options</DropdownMenuLabel>
@@ -577,7 +592,7 @@ export default function LeadsListPage() {
                     <DropdownMenuSeparator />
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <ListFilter className="mr-2 h-4 w-4" />
+                            <i className="ri ri-layout-column-line mr-2" />
                             <span>Columns</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
@@ -604,7 +619,7 @@ export default function LeadsListPage() {
                     </DropdownMenuSub>
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <Rows className="mr-2 h-4 w-4" />
+                            <i className="ri ri-layout-row-line mr-2" />
                             <span>Rows per page</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
@@ -624,21 +639,29 @@ export default function LeadsListPage() {
           </div>
         }
       />
+      {/* Dhonu nav-tab style status filter pills */}
       <div className="mb-4">
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-1.5 items-center border-b border-border/40 pb-3">
           {statusFilters.map(filter => (
-            <Button
+            <button
               key={filter.value}
-              variant={activeFilter === filter.value ? 'secondary' : 'ghost'}
-              size="sm"
               onClick={() => handleFilterChange({ status: filter.value })}
-              className={`py-1 px-3 h-auto text-xs rounded-full ${activeFilter === filter.value ? 'border-b-2 border-primary font-semibold' : 'text-muted-foreground'}`}
+              className={`
+                flex items-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-full transition-all duration-150
+                ${activeFilter === filter.value
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }
+              `}
             >
               {filter.label}
-              <Badge variant={activeFilter === filter.value ? 'default' : 'secondary'} className="ml-2 rounded-sm px-1.5 py-0.5 text-[10px] h-4 leading-none">
+              <span className={`
+                text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none
+                ${activeFilter === filter.value ? 'bg-white/20 text-white' : 'bg-muted-foreground/10 text-muted-foreground'}
+              `}>
                 {filter.count}
-              </Badge>
-            </Button>
+              </span>
+            </button>
           ))}
         </div>
       </div>
@@ -646,6 +669,7 @@ export default function LeadsListPage() {
       <LeadsTable
         items={paginatedLeads}
         onEdit={(item) => { setSelectedLeadForEdit(item as Lead); setIsFormOpen(true); }}
+        onViewDetails={(item) => setSelectedLeadForView(item as Lead)}
         onDelete={handleDeleteLead}
         sortConfig={sortConfig}
         requestSort={requestSort as (key: keyof Lead) => void}
@@ -657,30 +681,29 @@ export default function LeadsListPage() {
         currentPage={currentPage}
       />
 
+       {/* Pagination — Dhonu style */}
        <div className="flex items-center justify-between pt-4">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-xs text-muted-foreground font-medium">
           Showing {paginatedLeads.length} of {allFilteredLeads.length} leads.
         </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground mr-1">
             Page {currentPage} of {totalPages}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={() => handleFilterChange({ page: currentPage - 1 })}
             disabled={currentPage === 1}
+            className="topbar-icon-btn disabled:opacity-40"
           >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            <i className="ri ri-arrow-left-s-line text-lg" />
+          </button>
+          <button
             onClick={() => handleFilterChange({ page: currentPage + 1 })}
             disabled={currentPage >= totalPages}
+            className="topbar-icon-btn disabled:opacity-40"
           >
-            Next
-          </Button>
+            <i className="ri ri-arrow-right-s-line text-lg" />
+          </button>
         </div>
       </div>
 
@@ -689,6 +712,85 @@ export default function LeadsListPage() {
         onClose={() => setIsImportDialogOpen(false)}
         onImportSuccess={refreshData}
       />
+
+      <Dialog open={!!selectedLeadForView} onOpenChange={(open) => !open && setSelectedLeadForView(null)}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Lead Quick View</DialogTitle>
+          </DialogHeader>
+          {selectedLeadForView && (
+            <div className="py-2">
+              <h3 className="text-2xl font-bold text-primary mb-1">{selectedLeadForView.name}</h3>
+              <div className="flex gap-4 text-sm text-muted-foreground mb-6">
+                {selectedLeadForView.phone && <span className="flex items-center gap-1.5"><i className="ri-phone-fill text-primary" /> {selectedLeadForView.phone}</span>}
+                {selectedLeadForView.email && <span className="flex items-center gap-1.5"><i className="ri-mail-fill text-primary" /> {selectedLeadForView.email}</span>}
+              </div>
+
+              <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+                <AccordionItem value="item-1">
+                  <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-primary">Project Requirements</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm p-2 bg-muted/30 rounded-lg border">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">Stage</span>
+                        <Badge variant="outline" className="bg-background">{selectedLeadForView.status}</Badge>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">Priority</span>
+                        <span className="font-medium">{selectedLeadForView.priority || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">Source</span>
+                        <span className="font-medium">{selectedLeadForView.source || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">System Size (kW)</span>
+                        <span className="font-medium">{selectedLeadForView.kilowatt ? `${selectedLeadForView.kilowatt} kW` : '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">Assigned To</span>
+                        <span className="font-medium">{selectedLeadForView.assignedTo || '-'}</span>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-2">
+                  <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-primary">Latest Activity</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 text-sm p-2 bg-muted/30 rounded-lg border">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">Next Follow-up</span>
+                        <span className="font-medium">{selectedLeadForView.nextFollowUpDate ? `${formatDate(selectedLeadForView.nextFollowUpDate)} ${selectedLeadForView.nextFollowUpTime || ''}` : '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider mb-1">Last Comment</span>
+                        <p className="whitespace-pre-wrap font-medium">{selectedLeadForView.lastCommentText || 'No comments yet.'}</p>
+                        {selectedLeadForView.lastCommentDate && <span className="text-[10px] text-muted-foreground block mt-1">{formatDate(selectedLeadForView.lastCommentDate)}</span>}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          )}
+          <DialogFooter className="flex sm:justify-between items-center mt-4">
+             <Button variant="outline" asChild className="mr-auto">
+                <Link href={`/leads/${selectedLeadForView?.id}?${searchParams.toString()}`}>View Full Profile</Link>
+             </Button>
+             <div className="flex gap-2">
+               <Button variant="secondary" onClick={() => setSelectedLeadForView(null)}>Close</Button>
+               <Button onClick={() => {
+                 const lead = selectedLeadForView;
+                 setSelectedLeadForView(null);
+                 setTimeout(() => {
+                   setSelectedLeadForEdit(lead);
+                   setIsFormOpen(true);
+                 }, 150);
+               }}>Edit Lead</Button>
+             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isFormOpen && (
         <LeadForm

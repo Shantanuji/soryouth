@@ -1,16 +1,9 @@
-
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { SunMedium, Moon, Settings, LogOut, UserCircle, ChevronDown } from 'lucide-react';
-import { TOOLS_NAV_ITEMS } from '@/lib/constants';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { logout } from '@/app/(auth)/actions';
-import { useEffect, useState } from 'react';
-import type { RolePermission } from '@/types';
-import { getUserPermissions } from '@/app/(app)/users/actions';
 
 type User = {
   userId: string;
@@ -20,83 +13,74 @@ type User = {
 } | null;
 
 export function UserNavClient({ user }: { user: User }) {
-  const [permissions, setPermissions] = useState<RolePermission[]>([]);
-
-  useEffect(() => {
-    async function fetchPermissions() {
-      if (user?.role) {
-        const userPermissions = await getUserPermissions(user.role);
-        setPermissions(userPermissions);
-      }
-    }
-    fetchPermissions();
-  }, [user]);
-
-  const toggleTheme = () => {
-    document.documentElement.classList.toggle('dark');
-  };
-
   const handleLogout = async () => {
     await logout();
   };
 
-  const allowedToolsPaths = permissions.map(p => p.navPath);
-  const filteredToolsItems = TOOLS_NAV_ITEMS.filter(item => allowedToolsPaths.includes(item.href));
-
-
   if (!user) {
     return (
-        <Button variant="ghost" className="w-full justify-start gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0" asChild>
-          <Link href="/login">
-            <UserCircle className="h-8 w-8" />
-            <span className="truncate group-data-[collapsible=icon]:hidden">Login</span>
-          </Link>
-        </Button>
+      <Link
+        href="/login"
+        className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors text-sm font-medium"
+      >
+        <i className="ri ri-user-line text-lg" />
+        <span className="hidden md:inline">Login</span>
+      </Link>
     );
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center gap-2 px-2.5 py-1.5 h-auto hover:bg-muted/50 rounded-lg">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={`https://placehold.co/40x40.png?text=${user.name.charAt(0)}`} data-ai-hint="user avatar" alt={user.name} />
-            <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+        {/* Dhonu nav-user style: avatar + name + chevron */}
+        <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors focus-visible:outline-none">
+          <Avatar className="h-8 w-8 ring-2 ring-border">
+            <AvatarFallback className="bg-primary text-white text-xs font-extrabold">
+              {user.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
-          <span className="hidden md:inline font-bold text-xs text-foreground/85">{user.name}</span>
-          <ChevronDown className="hidden md:inline h-3.5 w-3.5 opacity-60 text-muted-foreground" />
-        </Button>
+          <div className="hidden md:flex flex-col items-start leading-none">
+            <span className="font-bold text-xs text-foreground">{user.name}</span>
+            <span className="text-[10px] text-muted-foreground capitalize">{user.role}</span>
+          </div>
+          <i className="ri ri-arrow-down-s-line text-muted-foreground hidden md:inline" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="bottom" align="end" className="w-56 mt-2 mr-2">
-        <DropdownMenuLabel>
-            <div className="font-semibold">{user.name}</div>
-            <div className="text-xs text-muted-foreground font-normal">{user.email}</div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
+
+      <DropdownMenuContent side="bottom" align="end" className="w-56 mt-2">
+        {/* Dhonu dropdown header — "Welcome back!" */}
+        <div className="px-3 py-2 border-b border-border/60">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Welcome back!</p>
+          <p className="text-sm font-semibold text-foreground truncate mt-0.5">{user.name}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+        </div>
+
+        {/* Profile */}
+        <DropdownMenuItem className="gap-2 mt-1">
+          <i className="ri ri-user-line text-base text-primary" />
+          <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={toggleTheme}>
-           <SunMedium className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-           <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span>Toggle theme</span>
+
+        {/* Notifications */}
+        <DropdownMenuItem className="gap-2">
+          <i className="ri ri-notification-3-line text-base text-amber-500" />
+          <span>Notifications</span>
         </DropdownMenuItem>
+
+        {/* Settings */}
+        <DropdownMenuItem className="gap-2">
+          <i className="ri ri-settings-line text-base text-muted-foreground" />
+          <span>Account Settings</span>
+        </DropdownMenuItem>
+
+        {/* Logout — Dhonu puts this with danger color */}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Tools & Sections</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {filteredToolsItems.map((item) => (
-          <DropdownMenuItem key={item.label} asChild>
-            <Link href={item.href}>
-              <item.icon className="mr-2 h-4 w-4" />
-              <span>{item.label}</span>
-            </Link>
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="gap-2 text-rose-600 dark:text-rose-400 font-semibold focus:text-rose-600"
+        >
+          <i className="ri ri-logout-box-line text-base" />
+          <span>Log Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

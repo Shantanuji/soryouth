@@ -26,11 +26,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <PageHeader
-        title={pageTitle}
-        description={`Welcome to Soryouth ${pageTitle}.`}
-        icon={pageIcon}
-      />
+      {pathname !== '/dashboard' && (
+        <PageHeader
+          title={pageTitle}
+          description={`Welcome to Soryouth ${pageTitle}.`}
+          icon={pageIcon}
+        />
+      )}
       {children}
     </>
   );

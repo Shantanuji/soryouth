@@ -142,6 +142,14 @@ export default function ClientDetailsPage() {
   const [taskDate, setTaskDate] = useState('');
   const [taskTime, setTaskTime] = useState('');
 
+  const [attributesState, setAttributesState] = useState({
+    kilowatt: '',
+    clientType: '',
+    source: '',
+  });
+  const [notesState, setNotesState] = useState('');
+  const [assignedToState, setAssignedToState] = useState('');
+
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedProposalForPreview, setSelectedProposalForPreview] = useState<Proposal | null>(null);
   const [billToPreview, setBillToPreview] = useState<string|null>(null);
@@ -251,6 +259,13 @@ export default function ClientDetailsPage() {
   useEffect(() => {
     if (client) {
         setActivityClientStage(client.status as ClientStatusType);
+        setAttributesState({
+            kilowatt: client.kilowatt?.toString() || '',
+            clientType: client.clientType || '',
+            source: client.source || '',
+        });
+        setNotesState(client.notes || '');
+        setAssignedToState(client.assignedTo || '');
     }
   }, [client]);
 
@@ -448,6 +463,49 @@ export default function ClientDetailsPage() {
     });
   };
   
+  const handleUpdateAttributes = () => {
+    if (!client || !client.id) return;
+    startUpdateTransition(async () => {
+        const result = await updateClient(client.id, { 
+            kilowatt: attributesState.kilowatt ? parseFloat(attributesState.kilowatt) : null,
+            clientType: attributesState.clientType as ClientType,
+            source: attributesState.source,
+        });
+        if (result !== null && !('error' in result)) {
+            setClient(result);
+            toast({ title: `Attributes Updated`, description: `Successfully saved attributes.` });
+        } else {
+            toast({ title: "Update Failed", description: result?.error || 'Unknown Error', variant: "destructive" });
+        }
+    });
+  };
+
+  const handleUpdateNotes = () => {
+    if (!client || !client.id) return;
+    startUpdateTransition(async () => {
+        const result = await updateClient(client.id, { notes: notesState });
+        if (result !== null && !('error' in result)) {
+            setClient(result);
+            toast({ title: `Notes Updated`, description: `Successfully saved notes.` });
+        } else {
+            toast({ title: "Update Failed", description: result?.error || 'Unknown Error', variant: "destructive" });
+        }
+    });
+  };
+
+  const handleUpdateAssignedTo = () => {
+    if (!client || !client.id) return;
+    startUpdateTransition(async () => {
+        const result = await updateClient(client.id, { assignedTo: assignedToState });
+        if (result !== null && !('error' in result)) {
+            setClient(result);
+            toast({ title: `Assignment Updated`, description: `Successfully saved assignment.` });
+        } else {
+            toast({ title: "Update Failed", description: result?.error || 'Unknown Error', variant: "destructive" });
+        }
+    });
+  };
+
   const handleAttributeChange = (
     key: 'status' | 'priority' | 'assignedTo' | 'clientType' | 'kilowatt' | 'source' | 'notes',
     value: string | number
@@ -469,7 +527,7 @@ export default function ClientDetailsPage() {
             setClient(originalClient);
             toast({
                 title: "Update Failed",
-                description: `Could not update client ${key}, due to ${result.error || 'Unknown Error '}`,
+                description: `Could not update client ${key}, due to ${result?.error || 'Unknown Error '}`,
                 variant: "destructive",
             });
         }
@@ -705,22 +763,17 @@ export default function ClientDetailsPage() {
                         <Label htmlFor="client-kw" className="text-xs font-medium">Capacity (KW)</Label>
                         <Input
                             id="client-kw"
-                            key={client.id} // Re-renders the input when client data changes
+                            key={`kw-${client.id}`}
                             type="number"
-                            defaultValue={client.kilowatt || ''}
-                            onBlur={(e) => {
-                                const value = parseFloat(e.target.value);
-                                if (!isNaN(value) && value !== client.kilowatt) {
-                                    handleAttributeChange('kilowatt', value);
-                                }
-                            }}
+                            value={attributesState.kilowatt}
+                            onChange={(e) => setAttributesState(s => ({...s, kilowatt: e.target.value}))}
                             className="h-8 text-xs"
                             disabled={isUpdating}
                         />
                     </div>
                     <div>
                         <Label htmlFor="client-type" className="text-xs font-medium">Customer Type</Label>
-                        <Select value={client.clientType || ''} onValueChange={(value) => handleAttributeChange('clientType', value as ClientType)} disabled={isUpdating}>
+                        <Select value={attributesState.clientType} onValueChange={(value) => setAttributesState(s => ({...s, clientType: value}))} disabled={isUpdating}>
                             <SelectTrigger id="client-type" className="h-8 text-xs">
                                 <SelectValue placeholder="Select type" />
                             </SelectTrigger>
@@ -731,7 +784,7 @@ export default function ClientDetailsPage() {
                     </div>
                     <div>
                       <Label htmlFor="client-source" className="text-xs font-medium">Source</Label>
-                      <Select value={client.source || ''} onValueChange={(value) => handleAttributeChange('source', value)} disabled={isUpdating}>
+                      <Select value={attributesState.source} onValueChange={(value) => setAttributesState(s => ({...s, source: value}))} disabled={isUpdating}>
                         <SelectTrigger id="client-source" className="h-8 text-xs">
                           <SelectValue placeholder="Select source" />
                         </SelectTrigger>
@@ -740,6 +793,9 @@ export default function ClientDetailsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <Button className="w-full text-xs h-8" onClick={handleUpdateAttributes} disabled={isUpdating}>
+                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-2"/> : <Save className="h-3 w-3 mr-2" />} Update Attributes
+                    </Button>
                 </CardContent>
             </Card>
             
@@ -860,7 +916,7 @@ export default function ClientDetailsPage() {
                         <div><Label htmlFor="taskTime">Task time</Label><Input type="time" id="taskTime" value={taskTime} onChange={e => setTaskTime(e.target.value)}/></div>
                     </div>
                 </div>
-                <Button onClick={handleSaveActivity} className="w-full bg-green-600 hover:bg-green-700" disabled={isFormPending}>
+                <Button onClick={handleSaveActivity} className="w-full bg-primary hover:bg-primary/90" disabled={isFormPending}>
                   {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Save
                 </Button>
               </CardContent>
@@ -894,7 +950,7 @@ export default function ClientDetailsPage() {
                             )}
                               {activity.followupOrTask === 'Task' ? (
                                 activity.taskStatus === 'Closed' ? (
-                                    <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
+                                    <Badge className="bg-primary/10 text-primary border-transparent hover:bg-primary/20">
                                       <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
                                     </Badge>
                                   ) : (
@@ -973,8 +1029,8 @@ export default function ClientDetailsPage() {
                 <div className="flex items-center gap-2">
                    <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${client.assignedTo?.charAt(0) || 'U'}`} data-ai-hint="user avatar" /><AvatarFallback>{client.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                    <Select
-                      value={client.assignedTo || ''}
-                      onValueChange={(value) => handleAttributeChange('assignedTo', value)}
+                      value={assignedToState}
+                      onValueChange={(value) => setAssignedToState(value)}
                       disabled={isUpdating}
                     >
                       <SelectTrigger className="h-9 text-sm flex-grow">
@@ -983,7 +1039,12 @@ export default function ClientDetailsPage() {
                       <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name} className="text-sm">{user.name}</SelectItem>)}</SelectContent>
                     </Select>
                 </div>
-                <p className="text-xs text-muted-foreground ml-10">Assigned to</p>
+                <div className="flex justify-between items-center ml-10">
+                    <p className="text-xs text-muted-foreground">Assigned to</p>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={handleUpdateAssignedTo} disabled={isUpdating}>
+                        Update
+                    </Button>
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -1090,15 +1151,18 @@ export default function ClientDetailsPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">Notes</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <Textarea 
-                  key={client.id}
+                  key={`notes-${client.id}`}
                   placeholder="Add notes here..." 
-                  defaultValue={client.notes || ''}
-                  onBlur={(e) => handleAttributeChange('notes', e.target.value)}
+                  value={notesState}
+                  onChange={(e) => setNotesState(e.target.value)}
                   disabled={isUpdating}
                   className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" 
                 />
+                <Button className="w-full text-xs h-8" onClick={handleUpdateNotes} disabled={isUpdating}>
+                    {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-2"/> : <Save className="h-3 w-3 mr-2" />} Update Notes
+                </Button>
               </CardContent>
             </Card>
              <Card>

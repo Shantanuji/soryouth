@@ -1,82 +1,89 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 213 22% 95%; /* Dhonu light body-bg (#eef2f7 / #f9f9f9) */
-    --foreground: 240 10% 20%; /* Dhonu dark body-color (#4c4c5c) */
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 240 10% 20%;
+    /* ============================================================
+       SORYOUTH BRAND THEME
+       Primary Blue:  #1976F3  hsl(217 89% 53%)
+       Orange:        #F47C1F  hsl(27  92% 54%)
+       ============================================================ */
+
+    --background: 210 20% 98%;          /* #F8FAFD */
+    --foreground: 218 40% 12%;          /* #111827 */
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 218 40% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 20%;
-    --primary: 213 47% 47%; /* Dhonu Primary Blue #3F72AF */
-    --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 228 53% 64%; /* Dhonu Secondary Indigo #7286D3 */
-    --secondary-foreground: 0 0% 100%; /* White */
-    --muted: 213 22% 90%; /* Light background grey */
-    --muted-foreground: 240 10% 50%; /* Medium grey text */
-    --accent: 35 100% 72%; /* Dhonu Warning Orange #FFC26F */
-    --accent-foreground: 240 10% 20%;
-    --destructive: 341 97% 65%; /* Dhonu Danger Pink #FC5185 */
+    --popover-foreground: 218 40% 12%;
+    --primary: 217 89% 53%;             /* #1976F3 Soryouth Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 27 92% 54%;            /* #F47C1F Soryouth Orange */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 213 27% 94%;
+    --muted-foreground: 215 16% 47%;    /* #64748B */
+    --accent: 217 89% 96%;
+    --accent-foreground: 217 89% 40%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 213 22% 85%; /* Soft borders */
-    --input: 213 22% 90%;
-    --ring: 213 47% 47%;
-    --chart-1: 213 47% 47%; /* Dhonu Primary Blue */
-    --chart-2: 35 100% 72%; /* Dhonu Warning Orange */
-    --chart-3: 118 26% 51%; /* Dhonu Success Green */
-    --chart-4: 228 53% 64%; /* Dhonu Secondary Indigo */
-    --chart-5: 183 54% 52%; /* Dhonu Info Teal */
+    --border: 214 32% 91%;              /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 217 89% 53%;
+
+    /* Charts — Blue + Orange palette */
+    --chart-1: 217 89% 53%;             /* Blue */
+    --chart-2: 27 92% 54%;              /* Orange */
+    --chart-3: 199 89% 48%;             /* Sky Blue */
+    --chart-4: 0 84% 60%;               /* Red */
+    --chart-5: 213 93% 68%;             /* Light Blue */
     --radius: 0.5rem;
 
-    /* Sidebar specific colors matching Dhonu light sidebar */
-    --sidebar-background: 0 0% 100%; /* White #ffffff */
-    --sidebar-foreground: 240 10% 25%; /* Dark gray text #3f3f46 */
-    --sidebar-primary: 213 47% 47%; /* Dhonu Blue */
+    /* Sidebar — Clean White (same as original) */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 218 40% 12%;
+    --sidebar-primary: 217 89% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 16% 96%; /* Soft gray hover bg #f5f6f8 */
-    --sidebar-accent-foreground: 213 47% 47%; /* Hover/active blue text */
-    --sidebar-border: 210 16% 93%; /* #eef2f7 */
-    --sidebar-ring: 213 47% 47%;
+    --sidebar-accent: 213 27% 94%;
+    --sidebar-accent-foreground: 217 89% 53%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 89% 53%;
   }
 
   .dark {
-    --background: 231 13% 10%; /* #17181e */
-    --foreground: 211 20% 72%; /* #aab8c5 */
-    --card: 233 13% 14%; /* #1e1f27 */
-    --card-foreground: 211 20% 72%;
-    --popover: 233 13% 14%;
-    --popover-foreground: 211 20% 72%;
-    --primary: 213 47% 47%; /* Dhonu Primary Blue */
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 89% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 228 53% 64%; /* Dhonu Secondary Indigo */
+    --secondary: 27 92% 54%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 235 12% 17%; /* #272832 */
-    --muted-foreground: 211 20% 55%;
-    --accent: 35 100% 72%; /* Dhonu Warning Orange */
-    --accent-foreground: 231 13% 10%;
-    --destructive: 341 97% 65%; /* Dhonu Danger Pink */
+    --muted: 217 33% 20%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 235 12% 20%;
-    --input: 235 12% 20%;
-    --ring: 213 47% 47%;
-    --chart-1: 213 47% 47%;
-    --chart-2: 35 100% 72%;
-    --chart-3: 118 26% 51%;
-    --chart-4: 228 53% 64%;
-    --chart-5: 183 54% 52%;
+    --border: 215 25% 27%;
+    --input: 215 25% 27%;
+    --ring: 217 89% 53%;
 
-    /* Dark Sidebar specific colors */
-    --sidebar-background: 231 13% 8%; /* Even darker #14151a */
-    --sidebar-foreground: 211 20% 80%;
-    --sidebar-primary: 213 47% 47%;
+    --chart-1: 217 89% 53%;
+    --chart-2: 27 92% 54%;
+    --chart-3: 199 89% 48%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 213 93% 68%;
+
+    --sidebar-background: 222 47% 7%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 89% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 213 47% 57%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 231 13% 15%;
-    --sidebar-ring: 213 47% 47%;
+    --sidebar-accent: 217 33% 20%;
+    --sidebar-accent-foreground: 217 89% 53%;
+    --sidebar-border: 215 25% 27%;
+    --sidebar-ring: 217 89% 53%;
   }
 }
 
@@ -86,34 +93,38 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* font-feature-settings: "rlig" 1, "calt" 1; */ /* Already in default Inter example, PT Sans might not need this explicitly */
+    font-family: var(--font-hanken-grotesk), sans-serif;
   }
+
+  /* Custom Sleek Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  /* Card shadow */
+  .card, [data-slot="card"] {
+    box-shadow: 0 1px 4px 0 rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04);
+  }
+
   /* Tiptap Editor Styles */
   .ProseMirror {
-    > * + * {
-      margin-top: 0.75em;
-    }
-    ul,
-    ol {
-      padding: 0 1rem;
-      list-style-position: inside;
-    }
-    ul {
-        list-style-type: disc;
-    }
-    ol {
-        list-style-type: decimal;
-    }
-    h1, h2, h3, h4, h5, h6 {
-      line-height: 1.1;
-      font-weight: bold;
-    }
-    h2 {
-        font-size: 1.5em;
-    }
-    h3 {
-        font-size: 1.25em;
-    }
+    > * + * { margin-top: 0.75em; }
+    ul, ol { padding: 0 1rem; list-style-position: inside; }
+    ul { list-style-type: disc; }
+    ol { list-style-type: decimal; }
+    h1, h2, h3, h4, h5, h6 { line-height: 1.1; font-weight: bold; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
     code {
       background-color: hsla(var(--foreground), 0.1);
       color: hsl(var(--foreground));
@@ -126,39 +137,167 @@
       font-family: 'JetBrainsMono', monospace;
       padding: 0.75rem 1rem;
       border-radius: 0.5rem;
-      code {
-        color: inherit;
-        padding: 0;
-        background: none;
-        font-size: 0.8rem;
-      }
+      code { color: inherit; padding: 0; background: none; font-size: 0.8rem; }
     }
-    img {
-      max-width: 100%;
-      height: auto;
-    }
-    blockquote {
-      padding-left: 1rem;
-      border-left: 2px solid hsl(var(--border));
-    }
-    hr {
-      border: none;
-      border-top: 2px solid hsl(var(--border));
-      margin: 2rem 0;
-    }
+    img { max-width: 100%; height: auto; }
+    blockquote { padding-left: 1rem; border-left: 2px solid hsl(var(--border)); }
+    hr { border: none; border-top: 2px solid hsl(var(--border)); margin: 2rem 0; }
   }
 }
 
 @layer utilities {
   .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
+    position: absolute; width: 1px; height: 1px; padding: 0;
+    margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+    white-space: nowrap; border-width: 0;
+  }
+
+  /* --- Scrollbar Utilities --- */
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ============================================================
+     DESIGN SYSTEM UTILITIES
+     ============================================================ */
+
+  /* --- Soft Badges --- */
+  .badge-soft-primary {
+    @apply bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-md;
+  }
+  .badge-soft-success {
+    @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 text-xs font-semibold px-2 py-0.5 rounded-md;
+  }
+  .badge-soft-danger {
+    @apply bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold px-2 py-0.5 rounded-md;
+  }
+  .badge-soft-warning {
+    @apply bg-secondary/10 text-secondary dark:text-secondary text-xs font-semibold px-2 py-0.5 rounded-md;
+  }
+  .badge-soft-info {
+    @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 text-xs font-semibold px-2 py-0.5 rounded-md;
+  }
+  .badge-soft-secondary {
+    @apply bg-secondary/10 text-secondary text-xs font-semibold px-2 py-0.5 rounded-md;
+  }
+
+  /* --- Avatar Circles --- */
+  .avatar-circle-primary {
+    @apply h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0;
+  }
+  .avatar-circle-success {
+    @apply h-10 w-10 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center flex-shrink-0;
+  }
+  .avatar-circle-warning {
+    @apply h-10 w-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center flex-shrink-0;
+  }
+  .avatar-circle-danger {
+    @apply h-10 w-10 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0;
+  }
+  .avatar-circle-info {
+    @apply h-10 w-10 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center flex-shrink-0;
+  }
+
+  /* --- Stat Card Avatars (filled) --- */
+  .avatar-stat-primary {
+    @apply h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 shadow-sm;
+  }
+  .avatar-stat-success {
+    @apply h-12 w-12 rounded-full bg-sky-500/10 text-sky-600 flex items-center justify-center flex-shrink-0 shadow-sm;
+  }
+  .avatar-stat-warning {
+    @apply h-12 w-12 rounded-full bg-secondary/10 text-secondary flex items-center justify-center flex-shrink-0 shadow-sm;
+  }
+  .avatar-stat-info {
+    @apply h-12 w-12 rounded-full bg-sky-500/10 text-sky-500 flex items-center justify-center flex-shrink-0 shadow-sm;
+  }
+  .avatar-stat-danger {
+    @apply h-12 w-12 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center flex-shrink-0 shadow-sm;
+  }
+
+  /* --- Card Header --- */
+  .dhonu-card-header {
+    @apply flex items-center justify-between px-4 pt-4 pb-0;
+  }
+  .dhonu-card-title {
+    @apply text-[0.9rem] font-semibold text-foreground leading-none;
+  }
+
+  /* --- Page Title --- */
+  .dhonu-page-title-head {
+    @apply flex flex-col sm:flex-row sm:items-center justify-between mb-5 pb-3 border-b border-border/40;
+  }
+  .dhonu-page-main-title {
+    @apply text-[1rem] font-extrabold text-foreground tracking-tight leading-none m-0;
+  }
+  .dhonu-breadcrumb {
+    @apply flex items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground/80 uppercase tracking-wider mt-2 sm:mt-0;
+  }
+  .dhonu-breadcrumb-sep { @apply text-muted-foreground/50; }
+  .dhonu-breadcrumb-active { @apply text-foreground/80; }
+
+  /* --- Table --- */
+  .dhonu-table { @apply w-full text-sm border-collapse; }
+  .dhonu-table thead tr { @apply border-b border-border/60; }
+  .dhonu-table thead th {
+    @apply py-3 px-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap;
+  }
+  .dhonu-table tbody tr {
+    @apply border-b border-border/30 hover:bg-muted/30 transition-colors duration-150;
+  }
+  .dhonu-table tbody td { @apply py-3 px-3 text-sm text-foreground align-middle; }
+
+  /* --- Form Controls --- */
+  .dhonu-form-label { @apply block text-sm font-medium text-foreground mb-1.5; }
+  .dhonu-form-control {
+    @apply w-full border border-input bg-background px-3 py-2 text-sm rounded-md
+           focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent
+           placeholder:text-muted-foreground/60 transition-all duration-150;
+  }
+
+  /* --- Auth --- */
+  .dhonu-auth-box {
+    @apply min-h-screen flex items-center justify-center bg-background p-4;
+  }
+
+  /* --- Sidebar Section Title --- */
+  .dhonu-nav-section-title {
+    @apply text-[9px] font-extrabold tracking-[0.18em] uppercase text-muted-foreground/55 px-3 mb-1 mt-3 select-none;
+  }
+
+  /* --- Topbar Icon Button --- */
+  .topbar-icon-btn {
+    @apply h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground
+           hover:bg-muted hover:text-foreground transition-all duration-150 cursor-pointer;
+  }
+
+  /* --- Trend Badges --- */
+  .trend-up   { @apply text-sky-600 dark:text-sky-400 font-extrabold text-[11px]; }
+  .trend-down { @apply text-rose-500 dark:text-rose-400 font-extrabold text-[11px]; }
+
+  /* --- Bell Animation --- */
+  @keyframes dhonu-ring {
+    0%, 100% { transform: rotate(0deg); }
+    10%  { transform: rotate(10deg); }
+    20%  { transform: rotate(-10deg); }
+    30%  { transform: rotate(8deg); }
+    40%  { transform: rotate(-8deg); }
+    50%  { transform: rotate(5deg); }
+    60%  { transform: rotate(-5deg); }
+    70%  { transform: rotate(0deg); }
+  }
+  .animate-ring {
+    animation: dhonu-ring 3s ease-in-out infinite;
+    display: inline-block;
+    transform-origin: top center;
+  }
+
+  /* --- Content Page --- */
+  .dhonu-content-page {
+    @apply flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 bg-background;
   }
 }

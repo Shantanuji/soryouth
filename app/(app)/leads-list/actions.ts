@@ -446,8 +446,8 @@ export async function deleteLead(id: string): Promise<{ success: boolean }> {
           }
       });
       // - E-Bills
-      if (lead.electricityBillUrls && lead.electricityBillUrls.length > 0) {
-            lead.electricityBillUrls.forEach(url => {
+      if (lead.electricityBillUrls && Array.isArray(lead.electricityBillUrls) && lead.electricityBillUrls.length > 0) {
+            (lead.electricityBillUrls as string[]).forEach(url => {
                 try {
                     const billKey = new URL(url).pathname.substring(1);
                     s3DeletePromises.push(deleteFileFromS3(billKey).catch(e => console.error(`Failed to delete S3 object ${billKey}:`, e)));
@@ -598,7 +598,7 @@ export async function convertToClient(leadId: string): Promise<{ success: boolea
           kilowatt: lead.kilowatt,
           address: lead.address,
           clientType: lead.clientType,
-          electricityBillUrls: lead.electricityBillUrls,
+          electricityBillUrls: lead.electricityBillUrls as Prisma.InputJsonValue,
           createdById: lead.createdById,
           assignedToId: lead.assignedToId,
           lastCommentText: lead.lastCommentText,
@@ -687,7 +687,7 @@ export async function dropLead(leadId: string, dropReason: DropReasonType, dropC
                     address: leadToDrop.address,
                     priority: leadToDrop.priority,
                     clientType: leadToDrop.clientType,
-                    electricityBillUrls: leadToDrop.electricityBillUrls,
+                    electricityBillUrls: leadToDrop.electricityBillUrls as Prisma.InputJsonValue,
                     dropReason: dropReason,
                     dropComment: dropComment,
                     createdById: leadToDrop.createdById,

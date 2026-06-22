@@ -192,12 +192,12 @@ export async function deleteSurveys(surveyIds: string[]): Promise<{ success: boo
     });
 
     // Flatten all file URLs into a single array
-    const filesToDelete = surveysToDelete.flatMap(survey => survey.electricityBillFiles);
+    const filesToDelete = surveysToDelete.flatMap(survey => survey.electricityBillFiles as string[]);
 
     // Delete files from S3
     if (filesToDelete.length > 0) {
       const deletePromises = filesToDelete.map(url => {
-        const key = new URL(url).pathname.substring(1);
+        const key = new URL(url as string).pathname.substring(1);
         return deleteFileFromS3(key);
       });
       await Promise.all(deletePromises);

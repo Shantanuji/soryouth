@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -81,7 +81,7 @@ model Lead {
   dropReason        String? @default("Not Dropped")// Corresponds to DropReasonType
   clientType        String? // Corresponds to ClientType
   totalDealValue    Float?
-  electricityBillUrls String[] @default([]) 
+  electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility 
   followUpCount     Int @default(0)
   notes             String?
 
@@ -120,7 +120,7 @@ model DroppedLead {
   address            String?
   priority           String?
   clientType         String?
-  electricityBillUrls String[] @default([])
+  electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
   dropReason         String
   dropComment        String?
   droppedAt          DateTime   @default(now())
@@ -157,7 +157,7 @@ model Client {
   address           String?
   clientType        String?
   notes             String?
-  electricityBillUrls String[] @default([])
+  electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
   followUpCount Int @default(0)
   followUps          FollowUp[]
   proposals      Proposal[]
@@ -325,7 +325,7 @@ model SiteSurvey {
   discom              String
   sanctionedLoad      String?
   remark              String?
-  electricityBillFiles String[] @default([])
+  electricityBillFiles Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -371,7 +371,7 @@ model Expense {
   date         DateTime  @map("date")
   endDate      DateTime? @map("end_date")
   category     String
-  amount       Decimal   @db.Decimal(10, 2)
+  amount       Decimal
   description  String
   receiptUrl   String?   @map("receipt_url")
   status       String    @default("Pending") // Pending, Approved, Rejected

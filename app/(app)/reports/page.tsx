@@ -1,11 +1,11 @@
-
+﻿
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart3, Phone, ListChecks, Users, ChevronRight, Ticket, ClipboardCheck, ShieldCheck, Handshake, Download } from 'lucide-react'; // Assuming a generic icon for reports
 
 const reportItems = [
-  { title: 'Export Prospects Report', description: 'Export Leads or Clients data to an Excel file.', href: '/reports/prospects-report', icon: Download, bgClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  { title: 'Export Prospects Report', description: 'Export Leads or Clients data to an Excel file.', href: '/reports/prospects-report', icon: Download, bgClass: "bg-primary/10 text-primary dark:text-primary" },
   { title: 'Follow-up report', description: 'Follow-up calls report in selected period of time', href: '/reports/follow-up-report', icon: ListChecks, bgClass: "bg-primary/10 text-primary" },
   { title: 'Follow-up dispositions', description: 'Follow-up calls disposition in selected period of time', href: '/reports/follow-up-dispositions', icon: Users, bgClass: "bg-primary/10 text-primary" },
   { title: 'Task report', description: 'Task report in selected period of time', href: '/reports/task-report', icon: ClipboardCheck, bgClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
@@ -52,3 +52,4 @@ export default function ReportsPage() {
 }
 
     
+

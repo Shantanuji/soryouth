@@ -78,7 +78,7 @@ export type DealPipelineType = keyof typeof DEAL_PIPELINES;
 export type DealStage = typeof ALL_DEAL_STAGES[number];
 
 export const USER_ROLES = ['Admin', 'TechnoSales', 'Designing', 'Procurement', 'ProjectManager', 'LiasoningExecutive', 'OperationAndMaintainance'] as const;
-export const CLIENT_TYPES = ['Individual/Bungalow', 'Housing Society', 'Commercial', 'Industrial', 'Other'] as const;
+export const CLIENT_TYPES = ['Individual/Bungalow', 'Housing Society', 'Commercial', 'Industrial', 'Amc', 'Other'] as const;
 export const LEAD_PRIORITY_OPTIONS = ['Hot', 'High', 'Medium', 'Average', 'Low'] as const;
 export const CLIENT_PRIORITY_OPTIONS = ['Hot', 'Average'] as const;
 export const USER_OPTIONS = ['Mayur', 'Sales Rep A', 'Sales Rep B', 'Admin', 'System', 'Kanchan Nikam', 'tejas', 'MAYUR', 'Prasad mudholkar', 'Ritesh'] as const;

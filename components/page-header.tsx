@@ -6,28 +6,49 @@ interface PageHeaderProps {
   description?: string | React.ReactNode;
   icon?: LucideIcon;
   actions?: React.ReactNode;
+  breadcrumbs?: string[];
 }
 
-export function PageHeader({ title, description, icon: Icon, actions }: PageHeaderProps) {
+/**
+ * PageHeader — Dhonu page-title-head pattern
+ * Left: h4.page-main-title + optional breadcrumbs (ol.breadcrumb)
+ * Right: optional description text
+ * Below title area: actions row
+ */
+export function PageHeader({ title, description, icon: Icon, actions, breadcrumbs }: PageHeaderProps) {
   return (
-    <div className="mb-6 flex flex-col gap-1 w-full">
-      {/* Dhonu Breadcrumbs Row */}
-      <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-1">
+    <div className="mb-5 w-full">
+      {/* Dhonu page-title-head row: title left, breadcrumb right */}
+      <div className="dhonu-page-title-head">
         <div>
-          <h1 className="text-base font-extrabold text-foreground tracking-tight">{title}</h1>
+          <h1 className="dhonu-page-main-title">
+            {Icon && <Icon className="inline-block h-4 w-4 mr-2 opacity-70 -mt-0.5" />}
+            {title}
+          </h1>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground/80 uppercase tracking-wider">
-          <span>Soryouth</span>
-          <span>&gt;</span>
-          <span>CRM</span>
-          <span>&gt;</span>
-          <span className="text-foreground/85">{title}</span>
-        </div>
+        {/* Breadcrumb — right aligned */}
+        <nav aria-label="breadcrumb">
+          <ol className="dhonu-breadcrumb">
+            <li>Soryouth</li>
+            {breadcrumbs && breadcrumbs.map((crumb, i) => (
+              <React.Fragment key={i}>
+                <li className="dhonu-breadcrumb-sep">›</li>
+                <li className={i === breadcrumbs.length - 1 ? 'dhonu-breadcrumb-active' : ''}>{crumb}</li>
+              </React.Fragment>
+            ))}
+            {!breadcrumbs && (
+              <>
+                <li className="dhonu-breadcrumb-sep">›</li>
+                <li className="dhonu-breadcrumb-active">{title}</li>
+              </>
+            )}
+          </ol>
+        </nav>
       </div>
-      
-      {/* Actions and description row */}
+
+      {/* Actions and description row — below title line */}
       {(description || actions) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
           {description && (
             <div className="text-xs text-muted-foreground font-medium">
               {typeof description === 'string' ? <p>{description}</p> : description}

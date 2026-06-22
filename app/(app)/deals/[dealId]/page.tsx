@@ -533,7 +533,7 @@ export default function DealDetailsPage() {
                         <div><Label htmlFor="taskTime">Task time</Label><Input type="time" id="taskTime" value={taskTime} onChange={e => setTaskTime(e.target.value)}/></div>
                     </div>
                 </div>
-                <Button onClick={handleSaveActivity} className="w-full bg-green-600 hover:bg-green-700" disabled={isFormPending}>
+                <Button onClick={handleSaveActivity} className="w-full bg-primary hover:bg-primary/90" disabled={isFormPending}>
                   {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Save
                 </Button>
               </CardContent>
@@ -564,7 +564,7 @@ export default function DealDetailsPage() {
                             </Badge>
                             {activity.followupOrTask === 'Task' ? (
                                activity.taskStatus === 'Closed' ? (
-                                  <Badge className="bg-green-100 text-green-800 border-transparent hover:bg-green-200">
+                                  <Badge className="bg-primary/10 text-primary border-transparent hover:bg-primary/20">
                                       <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
                                   </Badge>
                                 ) : (

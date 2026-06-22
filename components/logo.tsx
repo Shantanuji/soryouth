@@ -1,9 +1,8 @@
 'use client';
 
-import { AppLogoIcon } from '@/components/app-logo-icon';
+import Image from 'next/image';
 import { APP_NAME } from '@/lib/constants';
 import { useSidebar } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface LogoProps {
@@ -12,23 +11,49 @@ interface LogoProps {
 }
 
 export function Logo({ className, iconOnly = false }: LogoProps) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state } = useSidebar();
+  
+  const isCollapsed = state === 'collapsed';
 
   return (
-    <Button
-      variant="ghost"
+    <button
+      onClick={toggleSidebar}
       className={cn(
-        "flex h-auto w-auto items-center justify-start p-0 text-left hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
+        "flex h-auto items-center justify-center gap-2 p-0 bg-transparent border-0 cursor-pointer focus-visible:outline-none transition-transform hover:scale-[1.02] active:scale-[0.98]",
         className
       )}
-      onClick={toggleSidebar}
+      aria-label="Toggle Sidebar"
     >
-      <AppLogoIcon className="h-6 w-6 text-primary" />
-      {!iconOnly && (
-        <span className="ml-2 truncate text-lg font-extrabold tracking-wider uppercase text-primary group-data-[collapsible=icon]:hidden">
-          {APP_NAME}
-        </span>
+      {isCollapsed || iconOnly ? (
+        <div className="h-10 w-10 flex items-center justify-center shrink-0">
+          <Image
+            src="/assets/images/logo-icon.png"
+            alt={APP_NAME}
+            width={40}
+            height={40}
+            className="object-contain h-10 w-10"
+          />
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-11 shrink-0 w-full">
+          <Image
+            src="/assets/images/logo-light.png"
+            alt={APP_NAME}
+            width={180}
+            height={44}
+            className="object-contain h-11 w-auto dark:hidden"
+            priority
+          />
+          <Image
+            src="/assets/images/logo-dark.png"
+            alt={APP_NAME}
+            width={180}
+            height={44}
+            className="object-contain h-11 w-auto hidden dark:block"
+            priority
+          />
+        </div>
       )}
-    </Button>
+    </button>
   );
 }

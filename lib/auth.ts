@@ -3,7 +3,6 @@ import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
-import prisma from './prisma';
 import type { ViewPermission } from '@/types';
 
 const secretKey = process.env.JWT_SECRET;
@@ -51,7 +50,25 @@ export async function verifySession() {
   if (!session?.userId) {
     return null;
   }
+  
   return { isAuth: true, userId: session.userId, name: session.name, email: session.email, role: session.role, viewPermission: session.viewPermission };
+}
+
+export async function verifyServerSession() {
+  const session = await verifySession();
+  if (!session) return null;
+
+  // In Node.js environments (Server Actions), verify against the DB to prevent Foreign Key errors
+  // after a database reset
+  const prisma = (await import('./prisma')).default;
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { id: true, name: true, email: true, role: true, viewPermission: true }
+  });
+
+  if (!user) return null;
+
+  return { isAuth: true, userId: user.id, name: user.name, email: user.email, role: user.role, viewPermission: user.viewPermission };
 }
 
 export async function deleteSession() {

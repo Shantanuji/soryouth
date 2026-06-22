@@ -62,6 +62,10 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        /* Soryouth Brand tokens */
+        'brand-blue':   'hsl(var(--brand-blue))',
+        'brand-orange': 'hsl(var(--brand-orange))',
+        'brand-navy':   'hsl(var(--brand-navy))',
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',

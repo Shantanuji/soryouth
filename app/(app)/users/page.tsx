@@ -1,4 +1,4 @@
-
+﻿
 
 'use client';
 
@@ -194,7 +194,7 @@ export default function ManageUsersPage() {
                                   Edit User
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                  {user.isActive ? <UserX className="mr-2 h-3.5 w-3.5 text-rose-500" /> : <UserCheck className="mr-2 h-3.5 w-3.5 text-emerald-500" />}
+                                  {user.isActive ? <UserX className="mr-2 h-3.5 w-3.5 text-rose-500" /> : <UserCheck className="mr-2 h-3.5 w-3.5 text-primary" />}
                                   <span>{user.isActive ? 'Make Inactive' : 'Make Active'}</span>
                               </DropdownMenuItem>
                                <DropdownMenuItem onClick={() => handleToggleViewPermission(user)}>
@@ -260,3 +260,4 @@ export default function ManageUsersPage() {
     </>
   );
 }
+

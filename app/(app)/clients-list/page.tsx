@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 import React, { useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
@@ -383,7 +383,7 @@ export default function ClientsListPage() {
                 </Button>
               </>
             )}
-            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleAddClient} disabled={isPending}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={handleAddClient} disabled={isPending}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Client
             </Button>
              <DropdownMenu>
@@ -603,3 +603,4 @@ export default function ClientsListPage() {
     </>
   );
 }
+

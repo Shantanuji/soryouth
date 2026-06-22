@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -194,7 +194,7 @@ export default function ViewExpensesPage() {
                                             {expense.receiptUrl && <Button onClick={() => setReceiptToPreview(expense.receiptUrl!)} variant="ghost" size="icon" title="View Receipt"><Eye className="h-4 w-4" /></Button>}
                                             {expense.status === 'Pending' && (
                                                 <>
-                                                <Button onClick={() => handleUpdateStatus(expense.id, 'Approved')} variant="ghost" size="icon" title="Approve" disabled={isUpdating}><CheckCircle className="h-4 w-4 text-green-600"/></Button>
+                                                <Button onClick={() => handleUpdateStatus(expense.id, 'Approved')} variant="ghost" size="icon" title="Approve" disabled={isUpdating}><CheckCircle className="h-4 w-4 text-primary"/></Button>
                                                 <Button onClick={() => handleUpdateStatus(expense.id, 'Rejected')} variant="ghost" size="icon" title="Reject" disabled={isUpdating}><XCircle className="h-4 w-4 text-destructive"/></Button>
                                                 </>
                                             )}
@@ -238,3 +238,4 @@ export default function ViewExpensesPage() {
     </>
   );
 }
+

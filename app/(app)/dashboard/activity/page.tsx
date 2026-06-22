@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -94,7 +94,7 @@ export default function ActivityPage() {
     });
     return [
       { type: 'Calls', count: stats.Call, Icon: Phone, color: 'bg-blue-500 dark:bg-blue-600' },
-      { type: 'SMS', count: stats.SMS, Icon: MessageSquare, color: 'bg-green-500 dark:bg-green-600' },
+      { type: 'SMS', count: stats.SMS, Icon: MessageSquare, color: 'bg-primary dark:bg-primary/90' },
       { type: 'Email', count: stats.Email, Icon: Mail, color: 'bg-red-500 dark:bg-red-600' },
       { type: 'Visits', count: stats.Visit, Icon: Users, color: 'bg-yellow-500 dark:bg-yellow-600' },
       { type: 'Meetings', count: stats.Meeting, Icon: Users, color: 'bg-purple-500 dark:bg-purple-600' },
@@ -312,3 +312,4 @@ export default function ActivityPage() {
     </div>
   );
 }
+

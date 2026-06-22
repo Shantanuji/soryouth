@@ -447,7 +447,7 @@ const backToListUrl = `/dropped-leads-list?${searchParams.toString()}`;
                                 <Badge variant="outline" className="capitalize bg-slate-800 text-white border-transparent hover:bg-slate-700">{activity.leadStageAtTimeOfFollowUp}</Badge>
                               )}
                               {activity.followupOrTask === 'Task' ? (
-                                <Badge className="bg-green-600 text-white border-transparent hover:bg-green-700">
+                                <Badge className="bg-primary text-white border-transparent hover:bg-primary/90">
                                   Task Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
                                 </Badge>
                               ) : (

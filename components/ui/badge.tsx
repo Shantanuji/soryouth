@@ -22,7 +22,7 @@ const badgeVariants = cva(
         softDestructive:
           "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20",
         softSuccess:
-          "border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20",
+          "border-transparent bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20",
         softWarning:
           "border-transparent bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20",
         softInfo:

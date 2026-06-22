@@ -13,7 +13,7 @@ import { DialogTitle } from '@/components/ui/dialog';
 const ResultIcon = ({ type }: { type: SearchResult['type'] }) => {
   switch (type) {
     case 'Lead': return <User className="mr-2 h-4 w-4 text-blue-500" />;
-    case 'Client': return <Briefcase className="mr-2 h-4 w-4 text-green-500" />;
+    case 'Client': return <Briefcase className="mr-2 h-4 w-4 text-primary" />;
     case 'Dropped': return <UserX className="mr-2 h-4 w-4 text-red-500" />;
     case 'Inactive': return <Archive className="mr-2 h-4 w-4 text-gray-500" />;
     default: return <User className="mr-2 h-4 w-4" />;
@@ -65,7 +65,7 @@ export function UniversalSearch() {
         <span className="flex-grow pl-3 text-xs text-muted-foreground select-none">
           Quick Search...
         </span>
-        <div className="h-full px-3 bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0">
+        <div className="h-full px-3 bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 hover:bg-primary/90 active:bg-primary/80 transition-colors">
           <Search className="h-3.5 w-3.5" />
         </div>
       </div>

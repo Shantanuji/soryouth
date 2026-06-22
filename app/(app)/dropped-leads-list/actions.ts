@@ -230,7 +230,7 @@ export async function reactivateLead(droppedLeadId: string): Promise<{ success: 
                     address: droppedLead.address,
                     priority: droppedLead.priority,
                     clientType: droppedLead.clientType,
-                    electricityBillUrls: droppedLead.electricityBillUrls,
+                    electricityBillUrls: droppedLead.electricityBillUrls as Prisma.InputJsonValue,
                     dropReason: droppedLead.dropReason,
                     createdById: droppedLead.createdById,
                     assignedToId: droppedLead.assignedToId,

@@ -315,7 +315,7 @@ export function TaskNotifications() {
                                 </Badge>
                                 {task.type === 'general' ? (
                                     <div className="flex gap-1">
-                                        <Button onClick={() => handleUpdateStatus(task.id, 'Completed')} variant="ghost" size="icon" title="Mark as Completed" disabled={isUpdating}><CheckCircle2 className="h-5 w-5 text-green-600"/></Button>
+                                        <Button onClick={() => handleUpdateStatus(task.id, 'Completed')} variant="ghost" size="icon" title="Mark as Completed" disabled={isUpdating}><CheckCircle2 className="h-5 w-5 text-primary"/></Button>
                                         <Button onClick={() => handleUpdateStatus(task.id, 'In Progress')} variant="ghost" size="icon" title="Mark as In Progress" disabled={isUpdating}><Play className="h-5 w-5 text-blue-600"/></Button>
                                         <Button onClick={() => openFailureDialog(task.id)} variant="ghost" size="icon" title="Mark as Failed" disabled={isUpdating}><ThumbsDown className="h-5 w-5 text-red-600"/></Button>
                                     </div>

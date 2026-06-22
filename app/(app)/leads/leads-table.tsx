@@ -5,18 +5,8 @@ import type { Lead, Client, DroppedLead } from '@/types';
 import React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit2, Trash2, MoreVertical, ArrowUpDown, UsersRound } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +34,7 @@ interface LeadsTableProps<T extends Item> {
   items: T[];
   viewType: 'active' | 'dropped' | 'client';
   onEdit?: (item: T) => void;
+  onViewDetails?: (item: T) => void;
   onDelete?: (itemId: string) => void;
   sortConfig?: { key: keyof T; direction: 'ascending' | 'descending' } | null;
   requestSort?: (key: keyof T) => void;
@@ -67,8 +58,49 @@ const formatDate = (dateString?: string | null) => {
   }
 };
 
-export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, sortConfig, requestSort, columnVisibility, selectedIds, setSelectedIds, allFilteredIds, currentPage = 1}: LeadsTableProps<T>) {
+// -------------------------------------------------------
+// Dhonu badge-soft-* helper functions
+// -------------------------------------------------------
+const getStatusBadgeClass = (status?: string | null): string => {
+  if (!status) return 'badge-soft-secondary';
+  const s = status.toLowerCase();
+  if (['lost', 'dropped', 'inactive', 'expired'].includes(s)) return 'badge-soft-danger';
+  if (['deal done', 'completed', 'active', 'agreement', 'installer', 'commissioning', 'installation', 'handover', 'procurement'].includes(s)) return 'badge-soft-success';
+  if (['fresher', 'new lead', 'new amc'].includes(s)) return 'badge-soft-primary';
+  return 'badge-soft-info';
+};
 
+const getSourceBadgeClass = (source?: string | null): string => {
+  if (!source) return 'badge-soft-secondary';
+  const s = source.toLowerCase();
+  if (s.includes('facebook')) return 'badge-soft-primary';
+  if (s.includes('website') || s.includes('online')) return 'badge-soft-info';
+  if (s.includes('referral')) return 'badge-soft-success';
+  return 'badge-soft-secondary';
+};
+
+const getPriorityBadgeClass = (priority?: string | null): string => {
+  if (!priority) return 'badge-soft-secondary';
+  const p = priority.toLowerCase();
+  if (['hot', 'high'].includes(p)) return 'badge-soft-danger';
+  if (p === 'medium') return 'badge-soft-warning';
+  return 'badge-soft-info';
+};
+
+export function LeadsTable<T extends Item>({
+  items,
+  viewType,
+  onEdit,
+  onViewDetails,
+  onDelete,
+  sortConfig,
+  requestSort,
+  columnVisibility,
+  selectedIds,
+  setSelectedIds,
+  allFilteredIds,
+  currentPage = 1,
+}: LeadsTableProps<T>) {
   const searchParams = useSearchParams();
 
   const handleRowClick = () => {
@@ -76,39 +108,13 @@ export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, 
     sessionStorage.setItem('navigation_ids', JSON.stringify(itemIdsOnCurrentPage));
   };
 
-  const getSourceBadgeVariant = (source?: string | null) => {
-    if (!source) return 'outline';
-    const lowerSource = source.toLowerCase();
-    if (lowerSource.includes('facebook')) return 'softPrimary';
-    if (lowerSource.includes('website') || lowerSource.includes('online')) return 'softSecondary';
-    if (lowerSource.includes('referral')) return 'softSuccess';
-    return 'softInfo';
-  };
-
-  const getStatusBadgeVariant = (status?: string | null) => {
-    if (!status) return 'outline';
-    const lowerStatus = status.toLowerCase();
-    if (['lost', 'dropped', 'inactive', 'expired'].includes(lowerStatus)) return 'softDestructive';
-    if (['deal done', 'completed', 'active', 'agreement', 'installer', 'commissioning', 'installation', 'handover', 'procurement'].includes(lowerStatus)) return 'softSuccess';
-    if (['fresher', 'new lead', 'new amc'].includes(lowerStatus)) return 'softPrimary';
-    return 'softInfo';
-  };
-
-  const getPriorityBadgeVariant = (priority?: string | null) => {
-    if (!priority) return 'outline';
-    const lowerPriority = priority.toLowerCase();
-    if (['hot', 'high'].includes(lowerPriority)) return 'softDestructive';
-    if (lowerPriority === 'medium') return 'softWarning';
-    return 'softInfo';
-  };
-
-  const getSortIndicator = (key: keyof T) => {
-    if (!requestSort || !sortConfig || sortConfig.key !== key) {
-      return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <i className="ri ri-arrow-up-down-line text-muted-foreground/60 ml-1" />;
     }
-    return sortConfig.direction === 'ascending' ?
-      <ArrowUpDown className="ml-1 h-3 w-3 transform rotate-0 text-primary" /> :
-      <ArrowUpDown className="ml-1 h-3 w-3 transform rotate-180 text-primary" />;
+    return sortConfig.direction === 'ascending'
+      ? <i className="ri ri-arrow-up-line text-primary ml-1" />
+      : <i className="ri ri-arrow-down-line text-primary ml-1" />;
   };
 
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
@@ -121,16 +127,19 @@ export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, 
     );
   };
 
-  const renderHeaderCell = (label: string, sortKey: string) => (
-    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">
+  const renderSortableHeader = (label: string, sortKey: string) => (
+    <th>
       {requestSort ? (
-        <Button variant="ghost" size="sm" className="px-1 py-0 h-auto text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-transparent hover:text-foreground" onClick={() => requestSort(sortKey as keyof T)}>
-          {label} {getSortIndicator(sortKey as keyof T)}
-        </Button>
+        <button
+          className="flex items-center text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+          onClick={() => requestSort(sortKey as keyof T)}
+        >
+          {label} {getSortIcon(sortKey)}
+        </button>
       ) : (
         label
       )}
-    </TableHead>
+    </th>
   );
 
   const renderRow = (item: T, index: number) => {
@@ -138,160 +147,201 @@ export function LeadsTable<T extends Item>({ items, viewType, onEdit, onDelete, 
                  viewType === 'dropped' ? `/dropped-leads/${item.id}` :
                  `/leads/${item.id}`;
     const href = `${baseHref}?${searchParams.toString()}`;
-    
+
     return (
-     <TableRow key={item.id} className="hover:bg-muted/10 border-b border-border/40 transition-colors" data-state={selectedIds.includes(item.id) ? 'selected' : undefined}>
-      <TableCell className="py-3.5">
-        <Checkbox 
-          id={`select-lead-${item.id}`} 
-          aria-label={`Select lead ${item.name}`} 
-          checked={selectedIds.includes(item.id)}
-          onCheckedChange={(checked) => handleSelectOne(item.id, !!checked)}
-          className="border-muted-foreground/45"
-        />
-      </TableCell>
-      <TableCell className="font-medium py-3.5">
-        <Link href={href} className="hover:underline text-primary font-semibold" onClick={handleRowClick}>
-          {item.name}
-        </Link>
-      </TableCell>
-      {(!columnVisibility || columnVisibility.email) && <TableCell className="py-3.5 text-xs text-muted-foreground">{item.email || '-'}</TableCell>}
-      {(!columnVisibility || columnVisibility.phone) && <TableCell className="py-3.5 text-xs font-medium">{item.phone || '-'}</TableCell>}
-      {(!columnVisibility || columnVisibility.status) && (
-        <TableCell className="py-3.5">
-          <Badge variant={getStatusBadgeVariant(item.status) as any} className="capitalize font-semibold text-[10px] tracking-wide px-2 py-0.5">
-            {item.status}
-          </Badge>
-        </TableCell>
-      )}
-      {viewType === 'dropped' && (!columnVisibility || columnVisibility.dropReason) && <TableCell className="py-3.5 text-xs">{(item as DroppedLead).dropReason || '-'}</TableCell>}
-      {(!columnVisibility || columnVisibility.lastCommentText) && (
-        <TableCell className="py-3.5 text-xs">
-          <div className="font-medium truncate max-w-[200px]">{item.lastCommentText || '-'}</div>
-          {item.lastCommentDate && <div className="text-[10px] text-muted-foreground mt-0.5">{formatDate(item.lastCommentDate)}</div>}
-        </TableCell>
-      )}
-      {(viewType === 'active' || viewType === 'client') && (!columnVisibility || columnVisibility.nextFollowUpDate) && (
-        <TableCell className="py-3.5 text-xs text-muted-foreground">
-          {(item as Lead | Client).nextFollowUpDate ? `${formatDate((item as Lead | Client).nextFollowUpDate)} ${(item as Lead | Client).nextFollowUpTime || ''}`.trim() : '-'}
-        </TableCell>
-      )}
-      {(!columnVisibility || columnVisibility.followupCount) && <TableCell className="py-3.5 text-center text-xs font-semibold">{item.followupCount || 0}</TableCell>}
-      {viewType === 'active' && (!columnVisibility || columnVisibility.calls) && <TableCell className="py-3.5 text-center text-xs">{0}</TableCell>}
-      {(!columnVisibility || columnVisibility.kilowatt) && <TableCell className="py-3.5 text-xs font-semibold">{item.kilowatt !== undefined ? `${item.kilowatt} kW` : '-'}</TableCell>}
-      {viewType === 'active' && (!columnVisibility || columnVisibility.source) && (
-        <TableCell className="py-3.5">
-          {(item as Lead).source ? (
-            <Badge variant={getSourceBadgeVariant((item as Lead).source) as any} className="font-semibold text-[10px] tracking-wide px-2 py-0.5">
-              {(item as Lead).source}
-            </Badge>
-          ) : (
-            '-'
-          )}
-        </TableCell>
-      )}
-      {(!columnVisibility || columnVisibility.priority) && (
-        <TableCell className="py-3.5">
-          {item.priority ? (
-            <Badge variant={getPriorityBadgeVariant(item.priority) as any} className="capitalize font-semibold text-[10px] tracking-wide px-2 py-0.5">
-              {item.priority}
-            </Badge>
-          ) : (
-            '-'
-          )}
-        </TableCell>
-      )}
-      {(!columnVisibility || columnVisibility.assignedTo) && <TableCell className="py-3.5 text-xs font-medium">{item.assignedTo || '-'}</TableCell>}
-      
-      {onEdit && onDelete && (
-        <TableCell className="text-right py-3.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-7 w-7 p-0 rounded-circle hover:bg-muted">
-                <span className="sr-only">Open menu</span>
-                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+      <tr key={item.id} data-state={selectedIds.includes(item.id) ? 'selected' : undefined}>
+        <td>
+          <Checkbox
+            id={`select-lead-${item.id}`}
+            aria-label={`Select lead ${item.name}`}
+            checked={selectedIds.includes(item.id)}
+            onCheckedChange={(checked) => handleSelectOne(item.id, !!checked)}
+            className="border-muted-foreground/45"
+          />
+        </td>
+        <td>
+          <div className="flex flex-col">
+            <Link
+              href={href}
+              className="font-semibold text-sm text-primary hover:underline underline-offset-2"
+              onClick={(e) => {
+                if (onViewDetails) {
+                  e.preventDefault();
+                  onViewDetails(item);
+                } else {
+                  handleRowClick();
+                }
+              }}
+            >
+              {item.name}
+            </Link>
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+              {item.phone && (
+                <span className="flex items-center gap-1">
+                  <i className="ri-phone-fill text-muted-foreground/70" /> {item.phone}
+                </span>
+              )}
+              {item.email && (
+                <span className="flex items-center gap-1">
+                  <i className="ri-mail-fill text-muted-foreground/70" /> {item.email}
+                </span>
+              )}
+            </div>
+          </div>
+        </td>
+        {(!columnVisibility || columnVisibility.status) && (
+          <td>
+            <span className={`${getStatusBadgeClass(item.status)} capitalize`}>
+              {item.status}
+            </span>
+          </td>
+        )}
+        {viewType === 'dropped' && (!columnVisibility || columnVisibility.dropReason) && (
+          <td>{(item as DroppedLead).dropReason || '-'}</td>
+        )}
+        {(!columnVisibility || columnVisibility.lastCommentText) && (
+          <td>
+            <div className="font-medium truncate max-w-[200px]">{item.lastCommentText || '-'}</div>
+            {item.lastCommentDate && (
+              <div className="text-[10px] text-muted-foreground mt-0.5">{formatDate(item.lastCommentDate)}</div>
+            )}
+          </td>
+        )}
+        {(viewType === 'active' || viewType === 'client') && (!columnVisibility || columnVisibility.nextFollowUpDate) && (
+          <td className="text-muted-foreground">
+            {(item as Lead | Client).nextFollowUpDate
+              ? `${formatDate((item as Lead | Client).nextFollowUpDate)} ${(item as Lead | Client).nextFollowUpTime || ''}`.trim()
+              : '-'}
+          </td>
+        )}
+        {(!columnVisibility || columnVisibility.followupCount) && (
+          <td className="text-center font-semibold">{item.followupCount || 0}</td>
+        )}
+        {viewType === 'active' && (!columnVisibility || columnVisibility.calls) && (
+          <td className="text-center">0</td>
+        )}
+        {(!columnVisibility || columnVisibility.kilowatt) && (
+          <td className="font-semibold">{item.kilowatt !== undefined ? `${item.kilowatt} kW` : '-'}</td>
+        )}
+        {viewType === 'active' && (!columnVisibility || columnVisibility.source) && (
+          <td>
+            {(item as Lead).source ? (
+              <span className={getSourceBadgeClass((item as Lead).source)}>
+                {(item as Lead).source}
+              </span>
+            ) : '-'}
+          </td>
+        )}
+        {(!columnVisibility || columnVisibility.priority) && (
+          <td>
+            {item.priority ? (
+              <span className={`${getPriorityBadgeClass(item.priority)} capitalize`}>
+                {item.priority}
+              </span>
+            ) : '-'}
+          </td>
+        )}
+        {(!columnVisibility || columnVisibility.assignedTo) && (
+          <td className="font-medium">{item.assignedTo || '-'}</td>
+        )}
+
+        {onEdit && onDelete && (
+          <td className="text-right">
+            <div className="flex items-center justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                onClick={() => onEdit(item)}
+                title="Edit Lead"
+              >
+                <i className="ri-edit-2-line text-lg" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(item)}>
-                <Edit2 className="mr-2 h-3.5 w-3.5" /> Edit
-              </DropdownMenuItem>
+
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30">
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                  </DropdownMenuItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+                    title="Delete Lead"
+                  >
+                    <i className="ri-delete-bin-line text-lg" />
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete "{item.name}".
+                      This action cannot be undone. This will permanently delete &quot;{item.name}&quot;.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDelete(item.id)} className={buttonVariants({ variant: "destructive" })}>
+                    <AlertDialogAction
+                      onClick={() => onDelete(item.id)}
+                      className={buttonVariants({ variant: "destructive" })}
+                    >
                       Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </TableCell>
-      )}
-     </TableRow>
+            </div>
+          </td>
+        )}
+      </tr>
     );
   };
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-sm border border-border/80 overflow-hidden">
+      {/* Dhonu card with borderless card-header and dhonu-table */}
+      <Card className="shadow-sm border-0 overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table className="w-full align-middle mb-0">
-              <TableHeader className="bg-muted/15 border-b border-border/60">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[50px] py-3">
+            <table className="dhonu-table">
+              <thead>
+                <tr>
+                  <th className="w-[44px]">
                     <Checkbox
                       id="selectAll"
                       aria-label="Select all items"
-                      checked={
-                        items.length > 0 && selectedIds.length === items.length
-                      }
+                      checked={items.length > 0 && selectedIds.length === items.length}
                       onCheckedChange={(checked) => handleSelectAll(!!checked)}
                       className="border-muted-foreground/45"
                     />
-                  </TableHead>
-                  {renderHeaderCell('Name', 'name')}
-                  {(!columnVisibility || columnVisibility.email) && renderHeaderCell('Email', 'email')}
-                  {(!columnVisibility || columnVisibility.phone) && renderHeaderCell('Mobile no.', 'phone')}
-                  {(!columnVisibility || columnVisibility.status) && renderHeaderCell('Stage', 'status')}
-                  {viewType === 'dropped' && (!columnVisibility || columnVisibility.dropReason) && renderHeaderCell('Drop Reason', 'dropReason')}
-                  {(!columnVisibility || columnVisibility.lastCommentText) && renderHeaderCell('Last comment', 'lastCommentText')}
-                  {(viewType === 'active' || viewType === 'client') && (!columnVisibility || columnVisibility.nextFollowUpDate) && renderHeaderCell('Next follow-up', 'nextFollowUpDate')}
-                  {(!columnVisibility || columnVisibility.followupCount) && renderHeaderCell('Followups', 'followupCount')}
-                  {viewType === 'active' && (!columnVisibility || columnVisibility.calls) && <TableHead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap py-3">Calls</TableHead>}
-                  {(!columnVisibility || columnVisibility.kilowatt) && renderHeaderCell('Kilowatt', 'kilowatt')}
-                  {viewType === 'active' && (!columnVisibility || columnVisibility.source) && renderHeaderCell('Source', 'source')}
-                  {(!columnVisibility || columnVisibility.priority) && renderHeaderCell('Priority', 'priority')}
-                  {(!columnVisibility || columnVisibility.assignedTo) && renderHeaderCell('Assigned To', 'assignedTo')}
-                  {onEdit && onDelete && <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground py-3">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-border/40">
+                  </th>
+                  {renderSortableHeader('Contact Info', 'name')}
+                  {(!columnVisibility || columnVisibility.status) && renderSortableHeader('Stage', 'status')}
+                  {viewType === 'dropped' && (!columnVisibility || columnVisibility.dropReason) && renderSortableHeader('Drop Reason', 'dropReason')}
+                  {(!columnVisibility || columnVisibility.lastCommentText) && renderSortableHeader('Last comment', 'lastCommentText')}
+                  {(viewType === 'active' || viewType === 'client') && (!columnVisibility || columnVisibility.nextFollowUpDate) && renderSortableHeader('Next follow-up', 'nextFollowUpDate')}
+                  {(!columnVisibility || columnVisibility.followupCount) && renderSortableHeader('Followups', 'followupCount')}
+                  {viewType === 'active' && (!columnVisibility || columnVisibility.calls) && <th>Calls</th>}
+                  {(!columnVisibility || columnVisibility.kilowatt) && renderSortableHeader('Kilowatt', 'kilowatt')}
+                  {viewType === 'active' && (!columnVisibility || columnVisibility.source) && renderSortableHeader('Source', 'source')}
+                  {(!columnVisibility || columnVisibility.priority) && renderSortableHeader('Priority', 'priority')}
+                  {(!columnVisibility || columnVisibility.assignedTo) && renderSortableHeader('Assigned To', 'assignedTo')}
+                  {onEdit && onDelete && <th className="text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
                 {items.map(renderRow)}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Empty state — Dhonu style */}
       {items.length === 0 && (
-        <div className="text-center text-muted-foreground py-12 bg-card border border-border/80 rounded-xl shadow-sm">
-            <UsersRound className="mx-auto h-10 w-10 text-muted-foreground/60 mb-3" />
-            <h3 className="text-base font-bold text-foreground">No items found.</h3>
-            <p className="text-xs text-muted-foreground mt-1">Try adjusting your filters or add a new item.</p>
+        <div className="text-center py-12 bg-card border-0 rounded-xl shadow-sm">
+          <div className="avatar-circle-primary mx-auto mb-3">
+            <i className="ri ri-group-line text-xl" />
+          </div>
+          <h3 className="text-sm font-bold text-foreground">No items found.</h3>
+          <p className="text-xs text-muted-foreground mt-1">Try adjusting your filters or add a new item.</p>
         </div>
       )}
     </div>

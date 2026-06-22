@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
@@ -321,7 +321,7 @@ export default function BatchProposalsPage() {
             <div className="overflow-x-auto rounded-md border">
               <Table className="min-w-full text-xs">
                 <TableHeader><TableRow>
-                  {['Customer', 'Client Name', 'Client Type', 'Contact Person', 'Location', 'Capacity (kW)', 'Module Type', 'Module Wattage', 'DCR Status', 'Inv. Rating (kW)', 'Inv. Qty', 'Rate/Watt (₹)', 'Unit Rate (₹)', 'Actions'].map(h => <TableHead key={h} className="p-2 whitespace-nowrap">{h}</TableHead>)}
+                  {['Customer', 'Client Name', 'Client Type', 'Contact Person', 'Location', 'Capacity (kW)', 'Module Type', 'Module Wattage', 'DCR Status', 'Inv. Rating (kW)', 'Inv. Qty', 'Rate/Watt (â‚¹)', 'Unit Rate (â‚¹)', 'Actions'].map(h => <TableHead key={h} className="p-2 whitespace-nowrap">{h}</TableHead>)}
                 </TableRow></TableHeader>
                 <TableBody>
                   {fields.map((item, index) => {
@@ -370,7 +370,7 @@ export default function BatchProposalsPage() {
                             <div key={i} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
                                 <div className="flex items-center gap-2">
                                     {p.status === 'generating' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                                    {p.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                    {p.status === 'success' && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                     {p.status === 'error' && <XCircle className="h-4 w-4 text-destructive" />}
                                     <div>
                                       <span className="text-sm">{p.name}</span>
@@ -404,3 +404,4 @@ export default function BatchProposalsPage() {
     </>
   );
 }
+

@@ -283,8 +283,8 @@ export async function deleteClient(id: string): Promise<{ success: boolean }> {
         }
       });
 
-      if (client.electricityBillUrls && client.electricityBillUrls.length > 0) {
-            client.electricityBillUrls.forEach(url => {
+      if (client.electricityBillUrls && Array.isArray(client.electricityBillUrls) && client.electricityBillUrls.length > 0) {
+            (client.electricityBillUrls as string[]).forEach(url => {
                 try {
                     const billKey = new URL(url).pathname.substring(1);
                     s3DeletePromises.push(deleteFileFromS3(billKey).catch(e => console.error(`Failed to delete S3 object ${billKey}:`, e)));
@@ -437,7 +437,7 @@ export async function convertClientToLead(clientId: string): Promise<{ success: 
           kilowatt: client.kilowatt,
           address: client.address,
           clientType: client.clientType,
-          electricityBillUrls: client.electricityBillUrls,
+          electricityBillUrls: client.electricityBillUrls as Prisma.InputJsonValue,
           nextFollowUpDate: client.nextFollowUpDate,
           nextFollowUpTime: client.nextFollowUpTime,
           lastCommentText: client.followUps[0]?.comment ?? `Reactivated from Client (Status: ${client.status})`,
