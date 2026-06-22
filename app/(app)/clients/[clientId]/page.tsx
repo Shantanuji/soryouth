@@ -685,7 +685,7 @@ export default function ClientDetailsPage() {
   return (
     <div className="flex flex-col h-full -mx-5 sm:-mx-6 -mt-5 sm:-mt-6">
       {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
-      <div className="flex justify-between items-center p-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex justify-between items-center px-6 py-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">Client Details</h1>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl())}>

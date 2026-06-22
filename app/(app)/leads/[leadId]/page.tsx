@@ -620,8 +620,8 @@ export default function LeadDetailsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {fromTask && <TaskCompletionToast taskId={fromTask} />}
-      <div className="flex justify-between items-center p-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
+      {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
+      <div className="flex justify-between items-center px-6 py-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
         <h1 className="text-xl font-semibold font-headline">Lead Details</h1>
         <div className="flex flex-wrap justify-center gap-2">
             <AlertDialog open={isDropDialogOpen} onOpenChange={setIsDropDialogOpen}>
