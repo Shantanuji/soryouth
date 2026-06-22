@@ -217,173 +217,196 @@ export default function TicketsPage() {
         icon={Ticket}
         actions={
             <div className="flex items-center gap-2">
-                 {selectedTicketIds.length > 0 ? (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedTicketIds.length}) Closed
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Selected Tickets?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete the {selectedTicketIds.length} selected tickets that are marked as 'Closed'. This action cannot be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleBulkDelete} disabled={isDeleting}>
-                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                    Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                 ) : (
-                    <Button variant="outline" size="sm" onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}>
-                        <Filter className="mr-2 h-4 w-4" />
-                        <span>{isFilterSidebarOpen ? 'Hide' : 'Show'} Filters</span>
+         {selectedTicketIds.length > 0 && (
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="rounded-lg">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedTicketIds.length}) Closed
                     </Button>
-                 )}
-                <Button size="sm" onClick={() => setIsFormOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create Ticket
-                </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Selected Tickets?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the {selectedTicketIds.length} selected tickets that are marked as 'Closed'. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} disabled={isDeleting} className="bg-rose-600 hover:bg-rose-700 text-white">
+                            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+         )}
+        <Button size="sm" onClick={() => setIsFormOpen(true)} className="rounded-lg">
+            <PlusCircle className="mr-2 h-4 w-4" /> Create Ticket
+        </Button>
             </div>
         }
       />
-      <div className="flex gap-6 h-full">
-        <main className="flex-1 space-y-4 transition-all duration-300">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">All Tickets</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                         <Checkbox
-                            onCheckedChange={handleSelectAll}
-                            checked={selectedTicketIds.length > 0 && selectedTicketIds.length === filteredTickets.filter(t => t.status === 'Closed').length}
-                            aria-label="Select all closed tickets"
-                        />
-                      </TableHead>
-                      <TableHead>Ticket ID</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+      {/* Top Filter Bar */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 mt-4">
+        {/* Status Quick Filters */}
+        <div className="flex items-center p-1.5 bg-muted/50 rounded-xl border border-border/50">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleFilterChange('status', 'all')} 
+            className={cn("rounded-lg px-4", filters.status === 'all' ? "bg-background shadow-sm hover:bg-background" : "hover:bg-transparent text-muted-foreground")}
+          >
+            All
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleFilterChange('status', 'Open')} 
+            className={cn("rounded-lg px-4", filters.status === 'Open' ? "bg-background shadow-sm hover:bg-background" : "hover:bg-transparent text-muted-foreground")}
+          >
+            Open <Badge variant="outline" className="ml-2 bg-transparent">{statusCounts.Open}</Badge>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleFilterChange('status', 'On Hold')} 
+            className={cn("rounded-lg px-4", filters.status === 'On Hold' ? "bg-background shadow-sm hover:bg-background" : "hover:bg-transparent text-muted-foreground")}
+          >
+            Hold <Badge variant="outline" className="ml-2 bg-transparent">{statusCounts['On Hold']}</Badge>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleFilterChange('status', 'Closed')} 
+            className={cn("rounded-lg px-4", filters.status === 'Closed' ? "bg-background shadow-sm hover:bg-background" : "hover:bg-transparent text-muted-foreground")}
+          >
+            Closed <Badge variant="outline" className="ml-2 bg-transparent">{statusCounts.Closed}</Badge>
+          </Button>
+        </div>
+
+        {/* Dropdown Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+           <Button 
+              variant="outline" 
+              onClick={() => handleFilterChange('isOverdue', !filters.isOverdue)} 
+              className={cn("rounded-xl border-border/50 transition-colors", filters.isOverdue && "bg-rose-500/10 text-rose-600 border-rose-500/30 hover:bg-rose-500/20 hover:text-rose-700")}
+           >
+             <Filter className="mr-2 h-4 w-4" />
+             {filters.isOverdue ? 'Showing Overdue' : 'Show Overdue'}
+           </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date"
+                variant={"outline"}
+                className={cn("w-[180px] justify-start text-left font-normal rounded-xl bg-card border-border/50", !filters.dueDate && "text-muted-foreground")}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                {filters.dueDate ? format(filters.dueDate, 'PPP') : "Filter by Date"}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={filters.dueDate} onSelect={(d) => handleFilterChange('dueDate', d || undefined)} initialFocus/>
+            </PopoverContent>
+          </Popover>
+
+          <Select value={filters.priority} onValueChange={(v) => handleFilterChange('priority', v)}>
+             <SelectTrigger className="w-[140px] rounded-xl bg-card border-border/50">
+                <SelectValue placeholder="Priority" />
+             </SelectTrigger>
+             <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                {TICKET_PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+             </SelectContent>
+          </Select>
+
+          <Select value={filters.assignedToId} onValueChange={(v) => handleFilterChange('assignedToId', v)}>
+             <SelectTrigger className="w-[180px] rounded-xl bg-card border-border/50">
+                 <div className="flex items-center gap-2"><UserCircle className="h-4 w-4 text-primary"/><span className="truncate">{filters.assignedToId === 'all' ? 'All Users' : filters.assignedToId === 'unassigned' ? 'Unassigned' : users.find(u => u.id === filters.assignedToId)?.name || 'Select'}</span></div>
+             </SelectTrigger>
+             <SelectContent>
+                <SelectItem value="all">All users</SelectItem>
+                {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+             </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl shadow-sm overflow-hidden h-full">
+        <div className="p-4 border-b border-border/50 bg-muted/20">
+            <h3 className="text-sm font-semibold text-foreground">All Tickets ({filteredTickets.length})</h3>
+        </div>
+        <div className="p-0">
+            {isLoading ? (
+            <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : (
+            <Table>
+                <TableHeader className="bg-muted/30">
+                <TableRow>
+                    <TableHead className="w-12 px-4">
+                        <Checkbox
+                        onCheckedChange={handleSelectAll}
+                        checked={selectedTicketIds.length > 0 && selectedTicketIds.length === filteredTickets.filter(t => t.status === 'Closed').length}
+                        aria-label="Select all closed tickets"
+                    />
+                    </TableHead>
+                    <TableHead>Ticket ID</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {filteredTickets.length === 0 ? (
+                    <TableRow><TableCell colSpan={9} className="text-center h-32 text-muted-foreground">No tickets match your filters.</TableCell></TableRow>
+                ) : (
+                    filteredTickets.map((ticket) => (
+                    <TableRow key={ticket.id} data-state={selectedTicketIds.includes(ticket.id) && "selected"} className="hover:bg-muted/40 transition-colors">
+                            <TableCell className="px-4">
+                            <Checkbox
+                                checked={selectedTicketIds.includes(ticket.id)}
+                                onCheckedChange={(checked) => handleSelectOne(ticket.id, !!checked)}
+                                aria-label={`Select ticket ${ticket.id.slice(-6)}`}
+                                disabled={ticket.status !== 'Closed'}
+                            />
+                        </TableCell>
+                        <TableCell className="font-medium text-xs text-muted-foreground">#{ticket.id.slice(-6)}</TableCell>
+                        <TableCell className="font-semibold text-foreground max-w-[200px] truncate">{ticket.subject}</TableCell>
+                        <TableCell>
+                            <Link href={`/clients/${ticket.clientId}`} className="font-medium hover:underline text-primary">{ticket.clientName}</Link>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant={getPriorityBadgeVariant(ticket.priority)} className="uppercase text-[10px] tracking-wider py-0.5">{ticket.priority}</Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant="outline" className={cn("text-[10px] uppercase font-bold tracking-wider py-0.5", ticket.status === 'Open' ? 'text-blue-500 border-blue-200 bg-blue-500/10' : ticket.status === 'On Hold' ? 'text-orange-500 border-orange-200 bg-orange-500/10' : 'text-zinc-500 border-zinc-200 bg-zinc-500/10')}>{ticket.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{format(new Date(ticket.dueDate), 'dd MMM, yyyy')}</TableCell>
+                        <TableCell className="text-xs font-medium">{ticket.assignedTo?.name || <span className="text-muted-foreground italic">Unassigned</span>}</TableCell>
+                            <TableCell className="text-right">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-background"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                    <DropdownMenuItem onClick={() => handleStatusChangeRequest(ticket.id, 'Open')} className="text-xs font-medium">Mark as Open</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleStatusChangeRequest(ticket.id, 'On Hold')} className="text-xs font-medium">Mark as On Hold</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleStatusChangeRequest(ticket.id, 'Closed')} className="text-xs font-medium text-primary">Mark as Closed</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTickets.length === 0 ? (
-                        <TableRow><TableCell colSpan={9} className="text-center h-24">No tickets found.</TableCell></TableRow>
-                    ) : (
-                        filteredTickets.map((ticket) => (
-                        <TableRow key={ticket.id} data-state={selectedTicketIds.includes(ticket.id) && "selected"}>
-                             <TableCell>
-                                <Checkbox
-                                    checked={selectedTicketIds.includes(ticket.id)}
-                                    onCheckedChange={(checked) => handleSelectOne(ticket.id, !!checked)}
-                                    aria-label={`Select ticket ${ticket.id.slice(-6)}`}
-                                    disabled={ticket.status !== 'Closed'}
-                                />
-                            </TableCell>
-                            <TableCell className="font-medium">#{ticket.id.slice(-6)}</TableCell>
-                            <TableCell>{ticket.subject}</TableCell>
-                            <TableCell>
-                                <Link href={`/clients/${ticket.clientId}`} className="hover:underline text-primary">{ticket.clientName}</Link>
-                            </TableCell>
-                            <TableCell>
-                                <Badge variant={getPriorityBadgeVariant(ticket.priority)}>{ticket.priority}</Badge>
-                            </TableCell>
-                            <TableCell>{ticket.status}</TableCell>
-                            <TableCell>{format(new Date(ticket.dueDate), 'dd MMM, yyyy')}</TableCell>
-                            <TableCell>{ticket.assignedTo?.name || 'Unassigned'}</TableCell>
-                             <TableCell className="text-right">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleStatusChangeRequest(ticket.id, 'Open')}>Mark as Open</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChangeRequest(ticket.id, 'On Hold')}>Mark as On Hold</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChangeRequest(ticket.id, 'Closed')}>Mark as Closed</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                        ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </main>
-
-        <aside className={cn("w-64 flex-shrink-0 transition-all duration-300 ease-in-out", isFilterSidebarOpen ? 'ml-0' : '-ml-72 opacity-0')}>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Filter tickets by</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Due date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !filters.dueDate && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {filters.dueDate ? format(filters.dueDate, 'PPP') : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={filters.dueDate} onSelect={(d) => handleFilterChange('dueDate', d || undefined)} initialFocus/></PopoverContent>
-                </Popover>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <div className="space-y-1 text-sm">
-                    <div className="flex justify-between items-center cursor-pointer" onClick={() => handleFilterChange('status', 'Open')}><p>Open</p><Badge variant="outline">{statusCounts.Open}</Badge></div>
-                    <div className="flex justify-between items-center cursor-pointer" onClick={() => handleFilterChange('status', 'On Hold')}><p>Hold</p><Badge variant="outline">{statusCounts['On Hold']}</Badge></div>
-                    <div className="flex justify-between items-center cursor-pointer" onClick={() => handleFilterChange('status', 'Closed')}><p>Closed</p><Badge variant="outline">{statusCounts.Closed}</Badge></div>
-                    <div className="cursor-pointer" onClick={() => handleFilterChange('status', 'all')}>Show all</div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox id="overdue" checked={filters.isOverdue} onCheckedChange={(checked) => handleFilterChange('isOverdue', !!checked)} />
-                <Label htmlFor="overdue">Show Overdue</Label>
-              </div>
-
-              <div className="space-y-2">
-                 <Label>Priority</Label>
-                 <Select value={filters.priority} onValueChange={(v) => handleFilterChange('priority', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>
-                    <SelectItem value="all">Show all</SelectItem>
-                    {TICKET_PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                 </SelectContent></Select>
-              </div>
-
-               <div className="space-y-2">
-                 <Label>Users</Label>
-                 <Select value={filters.assignedToId} onValueChange={(v) => handleFilterChange('assignedToId', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>
-                    <SelectItem value="all">
-                        <div className="flex items-center gap-2">
-                            <UserCircle className="h-5 w-5"/>
-                            <div><p>All users</p><p className="text-xs text-muted-foreground">Tickets for all users</p></div>
-                        </div>
-                    </SelectItem>
-                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                 </SelectContent></Select>
-              </div>
-
-            </CardContent>
-          </Card>
-        </aside>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+            )}
+        </div>
       </div>
       <CreateTicketForm isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} onTicketCreated={refreshTickets} />
       {ticketForRemark && (
