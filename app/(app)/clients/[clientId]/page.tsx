@@ -36,6 +36,8 @@ import { DocumentCreationDialog } from '@/app/(app)/documents/document-creation-
 import { DocumentTemplateSelectionDialog } from '@/app/(app)/documents/document-template-selection-dialog';
 import { TaskCompletionToast } from '@/components/task-completion-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { sendCallNotification } from '@/lib/fcm';
 import { useSession } from '@/hooks/use-sessions';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -681,11 +683,10 @@ export default function ClientDetailsPage() {
     : 'Not set';
   
   return (
-    <>
-    {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-4 border-b bg-card sticky top-0 z-10">
-        <h1 className="text-xl font-semibold font-headline">{client.name}</h1>
+    <div className="flex flex-col h-full -mx-5 sm:-mx-6 -mt-5 sm:-mt-6">
+      {searchParams.get('from_task') && <TaskCompletionToast taskId={searchParams.get('from_task')!} />}
+      <div className="flex justify-between items-center p-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
+        <h1 className="text-xl font-semibold font-headline">Client Details</h1>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push(backToListUrl())}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Back to List
@@ -699,498 +700,567 @@ export default function ClientDetailsPage() {
         </div>
       </div>
 
-      <div className="flex-grow p-4 overflow-y-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-3 space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row justify-between items-center pb-2">
-                <CardTitle className="text-lg font-semibold">Client Information</CardTitle>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenEditForm} >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xl font-bold text-primary">{client.name}</p>
-                <p className="text-sm text-muted-foreground">{client.phone || 'No phone number'}</p>
-                <p className="text-xs text-muted-foreground">Client Since: {creationDateTime}</p>
-                <div>
-                  <Label htmlFor="client-stage" className="text-xs font-medium">Stage</Label>
-                  <Select value={client.status || ''} onValueChange={(value) => handleAttributeChange('status', value)} disabled={isUpdating}>
-                    <SelectTrigger id="client-stage" className="h-8 text-xs">
-                      <SelectValue placeholder="Select stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statuses.map(stage => <SelectItem key={stage.id} value={stage.name} className="text-xs">{stage.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                 <div>
-                  <Label htmlFor="client-priority" className="text-xs font-medium">Priority</Label>
-                  <Select value={client.priority || ''} onValueChange={(value) => handleAttributeChange('priority', value as ClientPriorityType)} disabled={isUpdating}>
-                    <SelectTrigger id="client-priority" className="h-8 text-xs">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CLIENT_PRIORITY_OPTIONS.map(p => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                 <div>
-                  <p className="text-xs font-medium">Next follow-up:</p>
-                  <p className="text-sm">{nextFollowUpDisplay}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-md">Communication</CardTitle>
-              </CardHeader>
-              <CardContent className="flex justify-around items-center">
-                <CallButton />
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageSquare className="h-5 w-5" /></Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><Mail className="h-5 w-5" /></Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" disabled><MessageCircle className="h-5 w-5" /></Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-md">Attributes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="client-kw" className="text-xs font-medium">Capacity (KW)</Label>
-                        <Input
-                            id="client-kw"
-                            key={`kw-${client.id}`}
-                            type="number"
-                            value={attributesState.kilowatt}
-                            onChange={(e) => setAttributesState(s => ({...s, kilowatt: e.target.value}))}
-                            className="h-8 text-xs"
-                            disabled={isUpdating}
-                        />
-                    </div>
-                    <div>
-                        <Label htmlFor="client-type" className="text-xs font-medium">Customer Type</Label>
-                        <Select value={attributesState.clientType} onValueChange={(value) => setAttributesState(s => ({...s, clientType: value}))} disabled={isUpdating}>
-                            <SelectTrigger id="client-type" className="h-8 text-xs">
-                                <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CLIENT_TYPES.map(p => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="client-source" className="text-xs font-medium">Source</Label>
-                      <Select value={attributesState.source} onValueChange={(value) => setAttributesState(s => ({...s, source: value}))} disabled={isUpdating}>
-                        <SelectTrigger id="client-source" className="h-8 text-xs">
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sources.map(source => <SelectItem key={source.id} value={source.name} className="text-xs">{source.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button className="w-full text-xs h-8" onClick={handleUpdateAttributes} disabled={isUpdating}>
-                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-2"/> : <Save className="h-3 w-3 mr-2" />} Update Attributes
-                    </Button>
-                </CardContent>
-            </Card>
+      <div className="flex-grow flex flex-col bg-muted/20 overflow-hidden">
+        
+        {/* CORPORATE HEADER PANEL */}
+        <div className="bg-card border-b shadow-sm px-6 py-4 shrink-0 z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-md">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {client.status !== 'Inactive' && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="w-full" disabled={isStatusChanging}>
-                        <UserX className="mr-2 h-4 w-4" /> Make Inactive
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Make Client Inactive?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will move "{client.name}" to the inactive clients list. You can reactivate them later. Are you sure?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleSetClientStatus('Inactive')} disabled={isStatusChanging}>
-                          {isStatusChanging ? "Updating..." : "Yes, Make Inactive"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-                 {client.status === 'Inactive' && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full" disabled={isStatusChanging}>
-                        <UserCircle2 className="mr-2 h-4 w-4" /> Make Active
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Make Client Active?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will move "{client.name}" back to the active clients list with the stage 'Fresher'. Are you sure?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleSetClientStatus('Fresher')} disabled={isStatusChanging}>
-                           {isStatusChanging ? "Updating..." : "Yes, Make Active"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full" disabled={isConverting}>
-                      <Repeat className="mr-2 h-4 w-4" /> Convert to Lead
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Convert Client to Lead?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will move "{client.name}" back to the leads list. This action can be reversed later. Are you sure?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleConvertToLead} disabled={isConverting}>
-                        {isConverting ? "Converting..." : "Yes, Convert"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                <Button onClick={handleCreateNewProposal} className="w-full" size="sm"><FileText className="mr-2 h-4 w-4" /> Create Proposal</Button>
-                <Button onClick={() => handleCreateNewDocument('Purchase Order')} className="w-full" variant="outline" size="sm"><ShoppingCart className="mr-2 h-4 w-4" /> Create Purchase Order</Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-6 space-y-6">
-             <Card>
-              <CardHeader><CardTitle>New Activity</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                  <div className="sm:col-span-1">
-                    <Select value={activityType} onValueChange={(val) => setActivityType(val as FollowUpType)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{FOLLOW_UP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-1"><Input type="date" value={activityDate} onChange={e => setActivityDate(e.target.value)} /></div>
-                  <div className="sm:col-span-1"><Input type="time" value={activityTime} onChange={e => setActivityTime(e.target.value)} /></div>
+            {/* Identity */}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1.5">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">{client.name}</h1>
+                <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">{client.status || 'Active'}</Badge>
+                {client.priority && <Badge variant="outline" className="text-muted-foreground">{client.priority}</Badge>}
+              </div>
+              <div className="flex items-center gap-5 text-sm text-muted-foreground font-medium">
+                {client.phone && <span className="flex items-center gap-1.5"><Phone className="h-4 w-4" /> {client.phone}</span>}
+                {client.kilowatt && <span className="flex items-center gap-1.5"><i className="ri-flashlight-fill text-amber-500" /> {client.kilowatt} kW</span>}
+                <span className="flex items-center gap-1.5"><i className="ri-calendar-line" /> Created {creationDateTime}</span>
+              </div>
+            </div>
+            
+            {/* Quick Stats & Assignment */}
+            <div className="flex items-center gap-6 md:border-l border-border/50 md:pl-6">
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Deal Value</p>
+                <p className="text-lg font-bold flex items-center text-foreground"><IndianRupee className="h-3.5 w-3.5 mr-0.5 text-muted-foreground"/> {client.totalDealValue?.toLocaleString('en-IN') || 0}</p>
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Created By</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Avatar className="h-6 w-6 border bg-muted"><AvatarFallback className="text-[10px] text-muted-foreground">{client.createdBy?.charAt(0) || 'S'}</AvatarFallback></Avatar>
+                  <span className="text-sm font-semibold">{client.createdBy || 'System'}</span>
                 </div>
-                <RadioGroup value={activityStatus} onValueChange={(value) => setActivityStatus(value as FollowUpStatus)} className="flex flex-wrap gap-x-4 gap-y-2">
-                    {FOLLOW_UP_STATUSES.map(status => (<div key={status} className="flex items-center space-x-2"><RadioGroupItem value={status} id={`activity-status-${status}`} /><Label htmlFor={`activity-status-${status}`} className="text-sm font-normal">{status}</Label></div>))}
-                </RadioGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="activityClientStage">Client Stage</Label>
-                    <Select value={activityClientStage} onValueChange={(val) => setActivityClientStage(val as ClientStatusType)}><SelectTrigger id="activityClientStage"><SelectValue placeholder="Select stage" /></SelectTrigger><SelectContent>{statuses.map(stage => <SelectItem key={stage.id} value={stage.name}>{stage.name}</SelectItem>)}</SelectContent></Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="activityComment">Activity Comment</Label>
-                  <Textarea id="activityComment" placeholder="Enter comment..." value={activityComment} onChange={e => setActivityComment(e.target.value)} />
-                </div>
-                <Separator />
-                <div>
-                    <h3 className="text-md font-semibold mb-2">Schedule new task</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <Label htmlFor="taskForUser">Task for</Label>
-                            <Select value={taskForUser} onValueChange={(val) => setTaskForUser(val)}><SelectTrigger id="taskForUser"><SelectValue placeholder="Select user" /></SelectTrigger><SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent></Select>
-                        </div>
-                        <div><Label htmlFor="taskDate">Task date</Label><Input type="date" id="taskDate" value={taskDate} onChange={e => setTaskDate(e.target.value)}/></div>
-                        <div><Label htmlFor="taskTime">Task time</Label><Input type="time" id="taskTime" value={taskTime} onChange={e => setTaskTime(e.target.value)}/></div>
-                    </div>
-                </div>
-                <Button onClick={handleSaveActivity} className="w-full bg-primary hover:bg-primary/90" disabled={isFormPending}>
-                  {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Save
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Activity History ({client.followupCount || 0})</CardTitle></CardHeader>
-              <CardContent>
-                {isActivitiesLoading ? (
-                   <div className="flex items-center justify-center p-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-                ) : activities.length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    {activities.map(activity => (
-                      <div key={activity.id} className="flex items-start gap-4 p-3 border rounded-md">
-                        <Avatar className="h-9 w-9 border mt-1">
-                           <ActivityIcon type={activity.type} className="h-full w-full p-2 text-muted-foreground" />
-                        </Avatar>
-                        <div className="flex-1 space-y-1.5">
-                          <p className="text-sm font-semibold">
-                              {activity.comment || (activity.followupOrTask === 'Task' ? 'Task Scheduled' : 'Activity Logged')}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(parseISO(activity.createdAt), 'dd-MM-yyyy p')} by {activity.createdBy || 'System'}
-                          </p>
-                          <div className="flex items-center gap-2 flex-wrap pt-1">
-                            <Badge variant="secondary" className="capitalize bg-teal-100 text-teal-800 border-transparent hover:bg-teal-200">
-                               {activity.type}
-                            </Badge>
-                            {activity.leadStageAtTimeOfFollowUp && (
-                              <Badge variant="outline" className="capitalize bg-slate-800 text-white border-transparent hover:bg-slate-700">{activity.leadStageAtTimeOfFollowUp}</Badge>
-                            )}
-                              {activity.followupOrTask === 'Task' ? (
-                                activity.taskStatus === 'Closed' ? (
-                                    <Badge className="bg-primary/10 text-primary border-transparent hover:bg-primary/20">
-                                      <CheckCircle className="mr-1.5 h-3.5 w-3.5"/> Completed: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} : {activity.taskTime || ''}
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200">
-                                      Task For: {activity.taskForUser} Due: {activity.taskDate ? format(parseISO(activity.taskDate), 'dd-MM-yyyy') : ''} {activity.taskTime || ''}
-                                    </Badge>
-                                  )
-                                ) : (
-                                  <Badge variant="outline" className="bg-slate-800 text-white border-transparent hover:bg-slate-700">Followup</Badge>
-                                )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-center text-muted-foreground py-6">No activity history yet.</p>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <ClipboardEdit className="h-5 w-5 text-primary" />
-                        Site Survey History
-                    </CardTitle>
-                    <CardDescription>All surveys conducted for this client.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {surveys.length === 0 ? (
-                        <p className="text-sm text-center text-muted-foreground py-4">No surveys found.</p>
-                    ) : (
-                        <Accordion type="single" collapsible className="w-full">
-                            {surveys.map(survey => (
-                                <AccordionItem value={survey.id} key={survey.id}>
-                                    <AccordionTrigger>
-                                        <div className="flex justify-between w-full pr-4">
-                                            <span>Survey No: {survey.surveyNumber.slice(-8)}</span>
-                                            <span className="text-muted-foreground text-sm">{format(parseISO(survey.date), 'dd MMM, yyyy')}</span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="p-1">
-                                       <div className="text-xs space-y-3 p-3 border rounded-md">
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                                <div><strong>Surveyor:</strong> {survey.surveyorName}</div>
-                                                <div><strong>Category:</strong> {survey.consumerCategory}</div>
-                                                <div><strong>Roof Type:</strong> {survey.roofType}</div>
-                                                <div><strong>Building Height:</strong> {survey.buildingHeight}</div>
-                                                <div><strong>Shadow-Free Area:</strong> {survey.shadowFreeArea}</div>
-                                                <div><strong>DISCOM:</strong> {survey.discom}</div>
-                                                <div><strong>Sanctioned Load:</strong> {survey.sanctionedLoad || 'N/A'}</div>
-                                                <div><strong>Meter Phase:</strong> {survey.meterPhase || 'N/A'}</div>
-                                                <div><strong>No. of Meters:</strong> {survey.numberOfMeters}</div>
-                                                <div><strong>Meter Rating:</strong> {survey.meterRating || 'N/A'}</div>
-                                                <div><strong>Avg. Bill (₹):</strong> {survey.electricityAmount?.toLocaleString('en-IN') || 'N/A'}</div>
-                                            </div>
-                                            {survey.remark && (
-                                                <div className="pt-1">
-                                                    <strong className="font-semibold">Remark:</strong>
-                                                    <p className="p-2 bg-muted rounded-md mt-1 text-xs">{survey.remark}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                    )}
-                </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-3 space-y-6">
-            <Card>
-              <CardContent className="pt-6 space-y-1">
-                <div className="flex items-center gap-2">
-                   <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${client.assignedTo?.charAt(0) || 'U'}`} data-ai-hint="user avatar" /><AvatarFallback>{client.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
-                   <Select
-                      value={assignedToState}
-                      onValueChange={(value) => setAssignedToState(value)}
-                      disabled={isUpdating}
-                    >
-                      <SelectTrigger className="h-9 text-sm flex-grow">
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Assigned To</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Avatar className="h-6 w-6 border bg-muted"><AvatarFallback className="text-[10px] text-muted-foreground">{client.assignedTo?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                  <Select value={client.assignedTo || ''} onValueChange={(value) => handleAttributeChange('assignedTo', value)} disabled={isUpdating}>
+                      <SelectTrigger className="h-6 border-0 bg-transparent p-0 w-auto shadow-none text-sm font-semibold focus:ring-0 [&>svg]:hidden hover:underline">
                         <SelectValue placeholder="Unassigned" />
                       </SelectTrigger>
-                      <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name} className="text-sm">{user.name}</SelectItem>)}</SelectContent>
-                    </Select>
+                      <SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
-                <div className="flex justify-between items-center ml-10">
-                    <p className="text-xs text-muted-foreground">Assigned to</p>
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={handleUpdateAssignedTo} disabled={isUpdating}>
-                        Update
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 md:border-l border-border/50 md:pl-6">
+               <CallButton />
+               <Button variant="outline" className="h-9 px-3 font-medium bg-background" onClick={handleOpenEditForm}>
+                 <Edit className="h-4 w-4 mr-2"/> Edit Profile
+               </Button>
+               <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="default" className="h-9 px-4 font-medium shadow-sm bg-blue-600 hover:bg-blue-700 text-white" disabled={isUpdating}>
+                      <Repeat className="mr-2 h-4 w-4" /> Quick Actions
                     </Button>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 space-y-1">
-                 <div className="flex items-center gap-2">
-                   <Avatar className="h-8 w-8"><AvatarImage src={`https://placehold.co/40x40.png?text=${client.createdBy?.charAt(0) || 'S'}`} data-ai-hint="user avatar"/><AvatarFallback>{client.createdBy?.charAt(0) || 'S'}</AvatarFallback></Avatar>
-                  <p className="text-sm font-medium flex-grow bg-muted px-3 py-2 rounded-md h-9 flex items-center">{client.createdBy || 'System'}</p>
-                </div>
-                <p className="text-xs text-muted-foreground ml-10">Created by</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-primary/10 border-primary/20">
-                <CardContent className="pt-6 text-center">
-                    <p className="text-sm text-primary font-semibold">Total Deal Value</p>
-                    <p className="text-3xl font-bold text-primary flex items-center justify-center">
-                        <IndianRupee className="h-7 w-7 mr-1" />
-                        {client.totalDealValue?.toLocaleString('en-IN') || 0}
-                    </p>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-md">Deals History ({deals.length})</CardTitle>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsDealFormOpen(true)}>
-                        <PlusCircle className="h-4 w-4 text-muted-foreground" />
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 p-3 border border-border shadow-xl rounded-xl flex flex-col gap-2 bg-card">
+                    <div className="font-semibold text-[13px] mb-1 px-1">Quick Actions</div>
+                    <Button variant="ghost" className="justify-start shadow-sm font-medium h-10" onClick={handleCreateNewProposal}>
+                      <FileText className="mr-2 h-4 w-4" /> Create Proposal
                     </Button>
-                </CardHeader>
-                <CardContent>
-                    {deals.length > 0 ? (
-                        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    <Button variant="ghost" className="justify-start shadow-sm font-medium h-10" onClick={() => handleCreateNewDocument('Purchase Order')}>
+                      <ShoppingCart className="mr-2 h-4 w-4" /> Create Purchase Order
+                    </Button>
+                    <Separator className="my-1"/>
+                    {client.status !== 'Inactive' ? (
+                       <Button variant="ghost" className="justify-start shadow-sm font-medium h-10 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleSetClientStatus('Inactive')} disabled={isStatusChanging}>
+                        <UserX className="mr-2 h-4 w-4" /> Make Inactive
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" className="justify-start shadow-sm font-medium h-10" onClick={() => handleSetClientStatus('Fresher')} disabled={isStatusChanging}>
+                        <UserCircle2 className="mr-2 h-4 w-4" /> Make Active
+                      </Button>
+                    )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" className="justify-start shadow-sm font-medium h-10" disabled={isConverting}>
+                          <Repeat className="mr-2 h-4 w-4" /> Convert to Lead
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Convert Client to Lead?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will move "{client.name}" back to the leads list. This action can be reversed later. Are you sure?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleConvertToLead} disabled={isConverting}>
+                            {isConverting ? "Converting..." : "Yes, Convert"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN WORKSPACE */}
+        <div className="flex-grow overflow-hidden p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start h-full">
+            
+            {/* LEFT COLUMN: Activity Logging & Form */}
+            <div className="lg:col-span-5 h-full overflow-y-auto scrollbar-none pb-4">
+              <Card className="shadow-sm border-border/50 h-full flex flex-col">
+                <Tabs defaultValue="activity-followup" className="w-full h-full flex flex-col overflow-hidden">
+                  <CardHeader className="pb-0 border-b px-2 pt-2 bg-muted/10 rounded-t-xl shrink-0">
+                    <TabsList className="h-10 bg-transparent border-b-0 w-full justify-start overflow-x-auto rounded-none p-0">
+                      <TabsTrigger value="activity-followup" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">Activity & Follow-up</TabsTrigger>
+                      <TabsTrigger value="client-details" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">Client Details</TabsTrigger>
+                    </TabsList>
+                  </CardHeader>
+                  <CardContent className="p-0 flex-grow overflow-y-auto scrollbar-none relative">
+                    
+                    <TabsContent value="activity-followup" className="m-0 h-full">
+                      <Tabs defaultValue="log" className="w-full p-5">
+                        <TabsList className="w-full bg-muted/50 mb-4 h-9">
+                          <TabsTrigger value="log" className="w-1/2 text-[12px] font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Log Activity</TabsTrigger>
+                          <TabsTrigger value="task" className="w-1/2 text-[12px] font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Schedule Task</TabsTrigger>
+                        </TabsList>
+                        <div className="bg-muted/10 p-4 border border-border/40 rounded-lg">
+                          
+                          <TabsContent value="log" className="m-0 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="activityType" className="text-[11px] font-bold uppercase text-muted-foreground">Type</Label>
+                                    <Select value={activityType} onValueChange={(val) => setActivityType(val as FollowUpType)}>
+                                        <SelectTrigger id="activityType" className="h-9 mt-1 bg-background"><SelectValue /></SelectTrigger>
+                                        <SelectContent>{FOLLOW_UP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label htmlFor="activityClientStage" className="text-[11px] font-bold uppercase text-muted-foreground">Stage Update</Label>
+                                    <Select value={activityClientStage} onValueChange={(val) => setActivityClientStage(val as ClientStatusType)}><SelectTrigger id="activityClientStage" className="h-9 mt-1 bg-background"><SelectValue placeholder="Current stage" /></SelectTrigger><SelectContent>{statuses.map(stage => <SelectItem key={stage.id} value={stage.name}>{stage.name}</SelectItem>)}</SelectContent></Select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 items-end">
+                                <div><Label className="text-[11px] font-bold uppercase text-muted-foreground block mb-1">Date</Label><Input type="date" className="h-9" value={activityDate} onChange={e => setActivityDate(e.target.value)} /></div>
+                                <div><Label className="text-[11px] font-bold uppercase text-muted-foreground block mb-1">Time</Label><Input type="time" className="h-9" value={activityTime} onChange={e => setActivityTime(e.target.value)} /></div>
+                            </div>
+                            <div>
+                              <Label className="text-[11px] font-bold uppercase text-muted-foreground block mb-1">Outcome / Notes</Label>
+                              <Textarea placeholder="What was discussed?" value={activityComment} onChange={e => setActivityComment(e.target.value)} className="resize-none h-20 bg-background" />
+                            </div>
+                            <Button onClick={handleSaveActivity} className="w-full font-semibold shadow-sm" disabled={isFormPending}>
+                              {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Save Activity Log
+                            </Button>
+                          </TabsContent>
+
+                          <TabsContent value="task" className="m-0 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="taskType" className="text-[11px] font-bold uppercase text-muted-foreground">Task Type</Label>
+                                <Select value={activityType} onValueChange={(val) => setActivityType(val as FollowUpType)}>
+                                    <SelectTrigger id="taskType" className="h-9 mt-1"><SelectValue /></SelectTrigger>
+                                    <SelectContent>{FOLLOW_UP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                  <Label htmlFor="taskForUser" className="text-[11px] font-bold uppercase text-muted-foreground">Assign To</Label>
+                                  <Select value={taskForUser} onValueChange={(val) => setTaskForUser(val)}><SelectTrigger id="taskForUser" className="h-9 mt-1"><SelectValue placeholder="Select user" /></SelectTrigger><SelectContent>{users.map(user => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}</SelectContent></Select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                                <div><Label htmlFor="taskDate" className="text-[11px] font-bold uppercase text-muted-foreground">Due Date</Label><Input type="date" id="taskDate" className="h-9 mt-1" value={taskDate} onChange={e => setTaskDate(e.target.value)}/></div>
+                                <div><Label htmlFor="taskTime" className="text-[11px] font-bold uppercase text-muted-foreground">Due Time</Label><Input type="time" id="taskTime" className="h-9 mt-1" value={taskTime} onChange={e => setTaskTime(e.target.value)}/></div>
+                            </div>
+                            <div>
+                              <Label htmlFor="taskComment" className="text-[11px] font-bold uppercase text-muted-foreground">Task Description</Label>
+                              <Textarea id="taskComment" placeholder="What needs to be done?" value={activityComment} onChange={e => setActivityComment(e.target.value)} className="resize-none mt-1 h-20" />
+                            </div>
+                            <Button onClick={handleSaveActivity} className="w-full font-semibold shadow-sm" disabled={isFormPending || !taskDate || !taskTime}>
+                              {isFormPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Schedule Task
+                            </Button>
+                          </TabsContent>
+                        </div>
+                      </Tabs>
+                    </TabsContent>
+
+                    <TabsContent value="client-details" className="m-0">
+                      <div className="px-5 pt-5 pb-5 space-y-5 relative">
+                        {isUpdating && <span className="absolute top-2 right-5 text-[10px] text-muted-foreground flex items-center font-medium bg-muted px-2 py-1 rounded-md"><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Saving</span>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                          <div>
+                              <Label htmlFor="client-source" className="text-xs font-semibold text-muted-foreground mb-1 block">Source</Label>
+                              <Select value={attributesState.source} onValueChange={(value) => setAttributesState(s => ({...s, source: value}))} disabled={isUpdating}>
+                                  <SelectTrigger id="client-source" className="h-8 text-sm bg-background">
+                                      <SelectValue placeholder="Select source" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {sources.map(source => <SelectItem key={source.id} value={source.name} className="text-sm">{source.name}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div>
+                              <Label htmlFor="client-type" className="text-xs font-semibold text-muted-foreground mb-1 block">Customer Type</Label>
+                              <Select value={attributesState.clientType} onValueChange={(value) => setAttributesState(s => ({...s, clientType: value}))} disabled={isUpdating}>
+                                  <SelectTrigger id="client-type" className="h-8 text-sm bg-background">
+                                      <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {CLIENT_TYPES.map(p => <SelectItem key={p} value={p} className="text-sm">{p}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div>
+                              <Label htmlFor="client-kw" className="text-xs font-semibold text-muted-foreground mb-1 block">Capacity (kW)</Label>
+                              <Input
+                                  id="client-kw"
+                                  key={`kw-${client.id}`}
+                                  type="number"
+                                  value={attributesState.kilowatt}
+                                  onChange={(e) => setAttributesState(s => ({...s, kilowatt: e.target.value}))}
+                                  className="h-8 text-sm bg-background"
+                                  disabled={isUpdating}
+                              />
+                          </div>
+                        </div>
+                        
+                        <div className="pt-2 flex justify-end">
+                            <Button onClick={handleUpdateAttributes} disabled={isUpdating} className="font-semibold shadow-sm">
+                                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />} Update Attributes
+                            </Button>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-border/50">
+                          <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Permanent Notes</Label>
+                          <Textarea 
+                            key={`notes-${client.id}`}
+                            placeholder="Type notes here..." 
+                            value={notesState}
+                            onChange={(e) => setNotesState(e.target.value)}
+                            disabled={isUpdating}
+                            className="min-h-[100px] text-sm bg-yellow-50 dark:bg-yellow-900/20 focus-visible:ring-1 resize-none" 
+                          />
+                        </div>
+                        
+                        <div className="pt-2 flex justify-end">
+                            <Button onClick={handleUpdateNotes} disabled={isUpdating} className="font-semibold shadow-sm">
+                                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />} Update Notes
+                            </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </CardContent>
+                </Tabs>
+              </Card>
+            </div>
+
+            {/* RIGHT COLUMN: History & Records Tabs */}
+            <div className="lg:col-span-7 h-full pb-4 flex flex-col">
+              <Card className="shadow-sm border-border/50 h-full flex flex-col">
+                <Tabs defaultValue="activity" className="w-full h-full flex flex-col overflow-hidden">
+                  <CardHeader className="pb-0 border-b px-2 pt-2 bg-muted/10 rounded-t-xl shrink-0">
+                    <TabsList className="h-10 bg-transparent border-b-0 w-full justify-start overflow-x-auto rounded-none p-0">
+                      <TabsTrigger value="activity" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">Activity History ({client.followupCount || 0})</TabsTrigger>
+                      <TabsTrigger value="deals" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">Deals History ({deals.length})</TabsTrigger>
+                      <TabsTrigger value="proposals" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">Proposals ({proposals.length})</TabsTrigger>
+                      <TabsTrigger value="surveys" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">Surveys ({surveys.length})</TabsTrigger>
+                      <TabsTrigger value="bills" className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 py-2 font-semibold text-[13px]">E-Bills ({client.electricityBillUrls?.length || 0})</TabsTrigger>
+                    </TabsList>
+                  </CardHeader>
+                  <CardContent className="p-0 flex-grow overflow-y-auto scrollbar-none relative">
+                    
+                    {/* Activity Tab */}
+                    <TabsContent value="activity" className="p-5 m-0 h-full">
+                      {isActivitiesLoading ? (
+                        <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                      ) : activities.length > 0 ? (
+                        <div className="relative pl-6 border-l-2 border-muted space-y-4 mt-2 ml-2">
+                          {activities.map((activity, index) => {
+                            const activityNumber = activities.length - index;
+                            return (
+                            <div key={activity.id} className="relative flex flex-col gap-1.5 p-3 border border-border/50 rounded-lg hover:bg-muted/10 transition-colors shadow-sm bg-background">
+                              {/* Circle on the line */}
+                              <div className="absolute -left-[33px] top-3 h-6 w-6 rounded-full border-[3px] border-background bg-primary shadow-sm z-10 flex items-center justify-center text-[10px] font-bold text-primary-foreground">
+                                 {activityNumber}
+                              </div>
+                              
+                              <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                  <ActivityIcon type={activity.type} className="h-3.5 w-3.5 text-primary" />
+                                  <span className="font-semibold text-[13px] text-foreground">{activity.type}</span>
+                                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider hidden sm:inline">
+                                    • {format(parseISO(activity.createdAt), 'dd MMM yyyy, p')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider sm:hidden">
+                                    {format(parseISO(activity.createdAt), 'dd MMM yyyy, p')}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <p className="text-[13px] text-foreground mt-0.5 font-medium leading-snug">
+                                  {activity.comment || (activity.followupOrTask === 'Task' ? 'Task Scheduled' : 'Activity Logged')}
+                              </p>
+                              
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                  {activity.leadStageAtTimeOfFollowUp && (
+                                    <Badge variant="outline" className="capitalize text-[9px] px-1.5 py-0 h-4 bg-background">{activity.leadStageAtTimeOfFollowUp}</Badge>
+                                  )}
+                                  {activity.followupOrTask === 'Task' ? (
+                                    activity.taskStatus === 'Closed' ? (
+                                        <Badge className="bg-primary/10 text-primary border-transparent hover:bg-primary/20 text-[9px] px-1.5 py-0 h-4">
+                                          <CheckCircle className="mr-1 h-2.5 w-2.5"/> Completed
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-orange-100 text-orange-800 border-transparent hover:bg-orange-200 text-[9px] px-1.5 py-0 h-4">
+                                          <LoaderPinwheel className="mr-1 h-2.5 w-2.5"/> Task For: {activity.taskForUser}
+                                        </Badge>
+                                      )
+                                    ) : null}
+                                    <span className="text-[9px] font-semibold text-muted-foreground uppercase ml-auto">By {activity.createdBy || 'System'}</span>
+                              </div>
+                            </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                            <MessageCircle className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm font-semibold text-foreground">No activity history yet.</p>
+                          <p className="text-xs text-muted-foreground mt-1 max-w-xs">Use the panel on the left to log your first call, message, or update for this client.</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Deals Tab */}
+                    <TabsContent value="deals" className="p-5 m-0 h-full">
+                       <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-sm font-semibold text-foreground">Deals History</h3>
+                          <Button variant="outline" size="sm" className="h-8 shadow-sm" onClick={() => setIsDealFormOpen(true)}>
+                              <PlusCircle className="mr-2 h-3.5 w-3.5" /> Add Deal
+                          </Button>
+                      </div>
+                      {deals.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                             {deals.map(deal => (
-                                <Link key={deal.id} href={`/deals/${deal.id}`} className="block">
-                                    <div className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50">
-                                        <div className="flex items-center gap-3">
-                                            <Handshake className="h-5 w-5 text-muted-foreground" />
-                                            <div>
-                                                <p className="font-semibold text-sm">{deal.pipeline} - {deal.dealFor || deal.stage}</p>
-                                                <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                                <Link key={deal.id} href={`/deals/${deal.id}`} className="block h-full">
+                                    <div className="p-3 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-background shadow-sm h-full flex flex-col justify-between">
+                                        <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                <Handshake className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-semibold text-sm truncate text-foreground">{deal.pipeline} - {deal.dealFor || deal.stage}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-muted">{deal.stage}</Badge>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-semibold text-sm flex items-center"><IndianRupee className="h-4 w-4 mr-0.5" />{deal.dealValue.toLocaleString('en-IN')}</p>
-                                            <p className="text-xs text-muted-foreground">{format(parseISO(deal.poWoDate), 'dd MMM yyyy')}</p>
+                                        <div className="flex justify-between items-end mt-3 pt-3 border-t border-border/30">
+                                            <div>
+                                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Deal Value</p>
+                                              <p className="font-bold text-sm flex items-center text-foreground"><IndianRupee className="h-3 w-3 mr-0.5" />{deal.dealValue.toLocaleString('en-IN')}</p>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground font-medium">{format(parseISO(deal.poWoDate), 'dd MMM yyyy')}</p>
                                         </div>
                                     </div>
                                 </Link>
                             ))}
                         </div>
-                    ) : (
-                         <div className="text-center p-2">
-                            <Button
-                                variant="outline"
-                                className="w-full h-16 border-dashed"
-                                onClick={() => setIsDealFormOpen(true)}
-                            >
-                                <PlusCircle className="h-6 w-6 text-muted-foreground" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border/50 rounded-xl bg-muted/5">
+                           <Handshake className="h-8 w-8 text-muted-foreground mb-3" />
+                           <p className="text-sm font-semibold text-foreground">No deals yet.</p>
+                           <p className="text-xs text-muted-foreground mt-1 mb-4">Create a deal for this client.</p>
+                           <Button variant="outline" size="sm" onClick={() => setIsDealFormOpen(true)}>
+                                <PlusCircle className="mr-2 h-3.5 w-3.5" /> Add Deal
                             </Button>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">E-Bills ({client.electricityBillUrls?.length || 0})</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                    {client.electricityBillUrls && client.electricityBillUrls.length > 0 ? (
-                       <div className="flex-wrap space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {client.electricityBillUrls.map((url, index) => (
-                                <div key={url} className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" className="flex-grow max-w-56 justify-start text-xs" onClick={() => setBillToPreview(url)}>
-                                      <Eye className="mr-2 h-4 w-4" /> 
-                                      <span className="truncate">View Bill {index + 1} ({url.split('-').pop()})</span>
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="destructive" size="icon" className="h-8 w-8" disabled={isDeletingBill}>
-                                          <Trash2 className="h-4 w-4"/>
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete this bill?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will permanently delete the uploaded bill file. This action cannot be undone.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteBill(url)}>Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
+                      )}
+                    </TabsContent>
+
+                    {/* Proposals Tab */}
+                    <TabsContent value="proposals" className="p-5 m-0 h-full">
+                       <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-sm font-semibold text-foreground">Proposals Generated</h3>
+                          <Button variant="outline" size="sm" className="h-8 shadow-sm" onClick={handleCreateNewProposal}>
+                              <PlusCircle className="mr-2 h-3.5 w-3.5" /> Generate New
+                          </Button>
+                      </div>
+                      {proposals.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {proposals.map(proposal => (
+                                <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="p-3 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-background shadow-sm cursor-pointer h-full flex flex-col justify-between">
+                                    <div className="flex items-start gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-sm truncate text-foreground">{proposal.proposalNumber}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-muted">{proposal.capacity} kW</Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-end mt-3 pt-3 border-t border-border/30">
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Value</p>
+                                          <p className="font-bold text-sm flex items-center text-foreground"><IndianRupee className="h-3 w-3 mr-0.5" />{proposal.finalAmount.toLocaleString('en-IN')}</p>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground font-medium">{format(parseISO(proposal.proposalDate), 'dd MMM yyyy')}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <div className="text-center text-xs text-muted-foreground p-2">No bills uploaded.</div>
-                    )}
-                    <div>
-                        <Label htmlFor="bill-upload" className={cn(buttonVariants({variant: "secondary", size: "sm"}), "w-full cursor-pointer")}>
-                            {isUploadingBill ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4"/>}
-                            {client.electricityBillUrls?.length ? 'Upload More Bills' : 'Upload Bills'}
-                        </Label>
-                        <Input id="bill-upload" type="file" multiple className="hidden" accept=".pdf,.png,.jpg,.jpeg" onChange={handleBillUpload} disabled={isUploadingBill}/>
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2 pt-4"><CardTitle className="text-md">Notes</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea 
-                  key={`notes-${client.id}`}
-                  placeholder="Add notes here..." 
-                  value={notesState}
-                  onChange={(e) => setNotesState(e.target.value)}
-                  disabled={isUpdating}
-                  className="min-h-[100px] bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800" 
-                />
-                <Button className="w-full text-xs h-8" onClick={handleUpdateNotes} disabled={isUpdating}>
-                    {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-2"/> : <Save className="h-3 w-3 mr-2" />} Update Notes
-                </Button>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardHeader><CardTitle>Proposal History ({proposals.length})</CardTitle></CardHeader>
-              <CardContent>
-                {proposals.length > 0 ? (
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {proposals.map(proposal => (
-                      <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <p className="font-semibold text-sm">{proposal.proposalNumber}</p>
-                            <p className="text-xs text-muted-foreground">Capacity: {proposal.capacity} kW</p>
-                          </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border/50 rounded-xl bg-muted/5">
+                           <FileText className="h-8 w-8 text-muted-foreground mb-3" />
+                           <p className="text-sm font-semibold text-foreground">No proposals created.</p>
+                           <p className="text-xs text-muted-foreground mt-1 mb-4">Generate a customized proposal for this client.</p>
+                           <Button variant="outline" size="sm" onClick={handleCreateNewProposal}>
+                                <PlusCircle className="mr-2 h-3.5 w-3.5" /> Generate Proposal
+                            </Button>
                         </div>
-                        <div className="text-right">
-                           <p className="font-semibold text-sm flex items-center"><IndianRupee className="h-4 w-4 mr-0.5" />{proposal.finalAmount.toLocaleString('en-IN')}</p>
-                           <p className="text-xs text-muted-foreground">{format(parseISO(proposal.proposalDate), 'dd MMM yyyy')}</p>
+                      )}
+                    </TabsContent>
+
+                    {/* Surveys Tab */}
+                    <TabsContent value="surveys" className="p-5 m-0 h-full">
+                      {surveys.length === 0 ? (
+                         <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border/50 rounded-xl bg-muted/5">
+                           <ClipboardEdit className="h-8 w-8 text-muted-foreground mb-3" />
+                           <p className="text-sm font-semibold text-foreground">No site surveys.</p>
+                           <p className="text-xs text-muted-foreground mt-1 max-w-xs">Site surveys conducted for this client will appear here.</p>
                         </div>
+                      ) : (
+                          <Accordion type="single" collapsible className="w-full space-y-2">
+                              {surveys.map(survey => (
+                                  <AccordionItem value={survey.id} key={survey.id} className="border border-border/50 rounded-lg px-3 shadow-sm bg-background">
+                                      <AccordionTrigger className="hover:no-underline py-3">
+                                          <div className="flex justify-between items-center w-full pr-4">
+                                              <div className="flex items-center gap-3">
+                                                <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                                                  <ClipboardEdit className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <div className="text-left">
+                                                  <p className="font-semibold text-sm text-foreground">Survey: {survey.surveyNumber.slice(-8)}</p>
+                                                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{survey.consumerCategory}</p>
+                                                </div>
+                                              </div>
+                                              <span className="text-xs font-medium text-muted-foreground">{format(parseISO(survey.date), 'dd MMM yyyy')}</span>
+                                          </div>
+                                      </AccordionTrigger>
+                                      <AccordionContent className="pt-2 pb-4">
+                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 pt-3 border-t border-border/30">
+                                              <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Surveyor</p>
+                                                <p className="text-sm font-medium">{survey.surveyorName}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Roof Type</p>
+                                                <p className="text-sm font-medium">{survey.roofType}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Shadow-Free Area</p>
+                                                <p className="text-sm font-medium">{survey.shadowFreeArea}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">DISCOM</p>
+                                                <p className="text-sm font-medium">{survey.discom}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">No. of Meters</p>
+                                                <p className="text-sm font-medium">{survey.numberOfMeters}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Avg Bill</p>
+                                                <p className="text-sm font-medium flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{survey.electricityAmount?.toLocaleString('en-IN') || 'N/A'}</p>
+                                              </div>
+                                          </div>
+                                          {survey.remark && (
+                                              <div className="mt-4 p-3 bg-muted/30 rounded-md border border-border/50">
+                                                  <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Remarks</p>
+                                                  <p className="text-xs text-foreground">{survey.remark}</p>
+                                              </div>
+                                          )}
+                                      </AccordionContent>
+                                  </AccordionItem>
+                              ))}
+                          </Accordion>
+                      )}
+                    </TabsContent>
+
+                    {/* Bills Tab */}
+                    <TabsContent value="bills" className="p-5 m-0 h-full">
+                       <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-sm font-semibold text-foreground">Electricity Bills</h3>
+                          <Label htmlFor="bill-upload" className={cn(buttonVariants({variant: "outline", size: "sm"}), "h-8 shadow-sm cursor-pointer")}>
+                              {isUploadingBill ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/> : <UploadCloud className="mr-2 h-3.5 w-3.5"/>}
+                              Upload Bill
+                          </Label>
+                          <Input id="bill-upload" type="file" multiple className="hidden" accept=".pdf,.png,.jpg,.jpeg" onChange={handleBillUpload} disabled={isUploadingBill}/>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                   <p className="text-sm text-center text-muted-foreground py-6">No proposals created for this client yet.</p>
-                )}
-              </CardContent>
-            </Card>
+                      
+                      {client.electricityBillUrls && client.electricityBillUrls.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {client.electricityBillUrls.map((url, index) => (
+                                <div key={url} className="flex items-center justify-between p-2 pl-3 border border-border/50 rounded-lg shadow-sm bg-background">
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                      <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                                          <i className="ri-flashlight-fill text-amber-500" />
+                                      </div>
+                                      <div className="min-w-0">
+                                          <p className="font-semibold text-sm truncate text-foreground">Bill Document {index + 1}</p>
+                                          <p className="text-[10px] text-muted-foreground truncate">{url.split('-').pop()}</p>
+                                      </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" onClick={() => setBillToPreview(url)}>
+                                        <Eye className="h-4 w-4 text-muted-foreground" /> 
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" disabled={isDeletingBill}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                              <AlertDialogTitle>Delete this bill?</AlertDialogTitle>
+                                              <AlertDialogDescription>This will permanently delete the uploaded bill file. This action cannot be undone.</AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => handleDeleteBill(url)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                            ))}
+                        </div>
+                      ) : (
+                         <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border/50 rounded-xl bg-muted/5">
+                           <UploadCloud className="h-8 w-8 text-muted-foreground mb-3" />
+                           <p className="text-sm font-semibold text-foreground">No electricity bills.</p>
+                           <p className="text-xs text-muted-foreground mt-1 max-w-xs mb-4">Upload electricity bills to keep a record for this client.</p>
+                            <Label htmlFor="bill-upload-center" className={cn(buttonVariants({variant: "outline", size: "sm"}), "shadow-sm cursor-pointer")}>
+                                <UploadCloud className="mr-2 h-3.5 w-3.5"/> Upload Bill
+                            </Label>
+                            <Input id="bill-upload-center" type="file" multiple className="hidden" accept=".pdf,.png,.jpg,.jpeg" onChange={handleBillUpload} disabled={isUploadingBill}/>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                  </CardContent>
+                </Tabs>
+              </Card>
+            </div>
+
           </div>
         </div>
       </div>
@@ -1267,6 +1337,5 @@ export default function ClientDetailsPage() {
         />
       )}
     </div>
-    </>
   );
 }
