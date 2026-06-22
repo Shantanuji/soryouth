@@ -687,10 +687,10 @@ export default function LeadDetailsPage() {
         </div>
       </div>
 
-      <div className="flex-grow flex flex-col bg-muted/20 overflow-hidden">
+      <div className="flex-grow flex flex-col bg-muted/20 overflow-hidden pt-4">
         
         {/* CORPORATE HEADER PANEL */}
-        <div className="bg-card border-b shadow-sm px-6 py-4 shrink-0 z-10">
+        <div className="bg-card border-y shadow-sm px-6 py-4 shrink-0 z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             
             {/* Identity */}
