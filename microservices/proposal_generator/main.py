@@ -147,6 +147,39 @@ def generate_proposal():
             if not os.path.exists(template_full_path):
                 return jsonify({"error": f"Template not found at provided path"}), 404
             
+            doc = DocxTemplate(template_full_path)
+            
+            # --- Graph Generation ---
+            raw_capacity = context.get('capacity')
+            raw_unit_rate = context.get('unit_rate')
+            
+            capacity_kw = 0
+            if raw_capacity:
+                try:
+                    capacity_kw = float(str(raw_capacity).replace(',', ''))
+                except (ValueError, TypeError):
+                    capacity_kw = 0
+
+            unit_rate = 0
+            if raw_unit_rate:
+                try:
+                    unit_rate = float(str(raw_unit_rate).replace(',', ''))
+                except (ValueError, TypeError):
+                    unit_rate = 0
+                    
+            if 'monthly_generation_chart' in doc.get_undeclared_template_variables():
+                monthly_chart_image = create_monthly_generation_chart(doc, capacity_kw)
+                if monthly_chart_image:
+                    context['monthly_generation_chart'] = monthly_chart_image
+            
+            if 'yearly_savings_chart' in doc.get_undeclared_template_variables():
+                yearly_savings_chart_image = create_yearly_savings_chart(doc, capacity_kw, unit_rate)
+                if yearly_savings_chart_image:
+                    context['yearly_savings_chart'] = yearly_savings_chart_image
+            # --- End Graph Generation ---
+
+            doc.render(context)
+
             temp_docx_path = os.path.join(temp_dir, 'output.docx')
             doc.save(temp_docx_path)
             
