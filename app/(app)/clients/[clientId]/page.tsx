@@ -1056,7 +1056,7 @@ export default function ClientDetailsPage() {
                                             <div className="min-w-0">
                                                 <p className="font-semibold text-sm truncate text-foreground">{deal.pipeline} - {deal.dealFor || deal.stage}</p>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-muted">{deal.stage}</Badge>
+                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground border-transparent">{deal.stage}</Badge>
                                                 </div>
                                             </div>
                                         </div>
@@ -1102,7 +1102,7 @@ export default function ClientDetailsPage() {
                                         <div className="min-w-0">
                                             <p className="font-semibold text-sm truncate text-foreground">{proposal.proposalNumber}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-muted">{proposal.capacity} kW</Badge>
+                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground border-transparent">{proposal.capacity} kW</Badge>
                                             </div>
                                         </div>
                                     </div>
