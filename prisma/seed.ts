@@ -9,7 +9,7 @@ async function main() {
   console.log('Seeding database...\n');
 
   // Default roles
-  const roles = ['Admin', 'TechnoSales', 'SiteSurveyor', 'AccountsManager'];
+  const roles = ['Admin', 'TechnoSales', 'SiteSurveyor', 'AccountsManager', 'Designing', 'Procurement', 'ProjectManager', 'LiasoningExecutive', 'OperationAndMaintainance'];
   for (const role of roles) {
     await prisma.customSetting.upsert({
       where: { type_name: { type: 'USER_ROLE', name: role } },
@@ -18,6 +18,61 @@ async function main() {
     });
   }
   console.log('✓ Roles seeded:', roles.join(', '));
+
+  // Lead Statuses (Stages)
+  const leadStatuses = ['Fresher', 'Requirement', 'Quotation', 'Negotiation', 'Closed Won', 'Closed Lost'];
+  for (const status of leadStatuses) {
+    await prisma.customSetting.upsert({
+      where: { type_name: { type: 'LEAD_STATUS', name: status } },
+      update: {},
+      create: { type: 'LEAD_STATUS', name: status },
+    });
+  }
+  console.log('✓ Lead Statuses seeded:', leadStatuses.join(', '));
+
+  // Lead Sources
+  const leadSources = ['Facebook', 'Google', 'Referral', 'Website', 'LinkedIn', 'Cold Call'];
+  for (const source of leadSources) {
+    await prisma.customSetting.upsert({
+      where: { type_name: { type: 'LEAD_SOURCE', name: source } },
+      update: {},
+      create: { type: 'LEAD_SOURCE', name: source },
+    });
+  }
+  console.log('✓ Lead Sources seeded:', leadSources.join(', '));
+
+  // Client Statuses
+  const clientStatuses = ['Fresher', 'Active', 'Installer', 'Completed', 'Deal Done'];
+  for (const status of clientStatuses) {
+    await prisma.customSetting.upsert({
+      where: { type_name: { type: 'CLIENT_STATUS', name: status } },
+      update: {},
+      create: { type: 'CLIENT_STATUS', name: status },
+    });
+  }
+  console.log('✓ Client Statuses seeded:', clientStatuses.join(', '));
+
+  // Document Types
+  const documentTypes = ['Purchase Order', 'Warranty Certificate', 'Work Completion Report', 'Net Metering Agreement', 'Annexure I', 'DCR Declaration', 'Other'];
+  for (const type of documentTypes) {
+    await prisma.customSetting.upsert({
+      where: { type_name: { type: 'DOCUMENT_TYPE', name: type } },
+      update: {},
+      create: { type: 'DOCUMENT_TYPE', name: type },
+    });
+  }
+  console.log('✓ Document Types seeded:', documentTypes.join(', '));
+
+  // Financial Document Types
+  const financialDocTypes = ['Quotation', 'Invoice', 'Proforma Invoice', 'Tax Invoice', 'Receipt', 'Other'];
+  for (const type of financialDocTypes) {
+    await prisma.customSetting.upsert({
+      where: { type_name: { type: 'FINANCIAL_DOCUMENT_TYPE', name: type } },
+      update: {},
+      create: { type: 'FINANCIAL_DOCUMENT_TYPE', name: type },
+    });
+  }
+  console.log('✓ Financial Document Types seeded:', financialDocTypes.join(', '));
 
   // Super Admin (protected — cannot be deleted from the app)
   const superAdminHash = await bcrypt.hash('Admin@1234', 10);
@@ -63,6 +118,7 @@ async function main() {
     });
     console.log(`✓ User created: ${u.name} (${u.email})`);
   }
+
 
   console.log('\n=== Database seeded successfully! ===');
   console.log('\nLogin credentials:');
