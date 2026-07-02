@@ -705,6 +705,39 @@ def format_indian(number, decimals=2):
 
 
 
+@app.route('/extract-placeholders', methods=['POST'])
+def extract_placeholders():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    if file:
+        try:
+            document = docx.Document(io.BytesIO(file.read()))
+            placeholders = set()
+            # Regex to find {{placeholder}}
+            pattern = re.compile(r'\{\{([^}]+)\}\}')
+            
+            for para in document.paragraphs:
+                matches = pattern.findall(para.text)
+                for match in matches:
+                    placeholders.add(f"{{{{{match}}}}}")
+            
+            for table in document.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        for para in cell.paragraphs:
+                            matches = pattern.findall(para.text)
+                            for match in matches:
+                                placeholders.add(f"{{{{{match}}}}}")
+
+            return jsonify({"success": True, "placeholders": sorted(list(placeholders))})
+        except Exception as e:
+            return jsonify({"error": f"Error processing file: {str(e)}"}), 500
+    return jsonify({"error": "File processing failed"}), 500
+
+
 @app.route('/generate', methods=['POST'])
 def generate_proposal():
     original_mplconfigdir = os.environ.get('MPLCONFIGDIR')
