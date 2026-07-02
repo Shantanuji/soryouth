@@ -75,10 +75,12 @@ async function main() {
   console.log('✓ Financial Document Types seeded:', financialDocTypes.join(', '));
 
   // Super Admin (protected — cannot be deleted from the app)
-  const superAdminHash = await bcrypt.hash('Admin@1234', 10);
+  const superAdminHash = await bcrypt.hash('adminpassword123', 10);
   await prisma.user.upsert({
     where: { email: SUPER_ADMIN_EMAIL },
-    update: {},
+    update: {
+      password: superAdminHash
+    },
     create: {
       name: 'Super Admin',
       email: SUPER_ADMIN_EMAIL,
@@ -94,7 +96,7 @@ async function main() {
 
   // Sample users
   const sampleUsers = [
-    { name: 'Mayur Deshmukh',   email: 'mayur@soryouth.com',   phone: '9876543210', role: 'Admin',          password: 'Mayur@123' },
+    { name: 'Mayur Deshmukh',   email: 'mayur@soryouth.com',   phone: '9876543210', role: 'TechnoSales',    password: 'password123' },
     { name: 'Kanchan Nikam',    email: 'kanchan@soryouth.com', phone: '9876543211', role: 'TechnoSales',    password: 'Kanchan@123' },
     { name: 'Prasad Mudholkar', email: 'prasad@soryouth.com',  phone: '9876543212', role: 'TechnoSales',    password: 'Prasad@123' },
     { name: 'Survey Team',      email: 'survey@soryouth.com',  phone: '9876543213', role: 'SiteSurveyor',   password: 'Survey@123' },
@@ -104,7 +106,10 @@ async function main() {
     const hash = await bcrypt.hash(u.password, 10);
     await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: {
+        password: hash,
+        role: u.role
+      },
       create: {
         name: u.name,
         email: u.email,
