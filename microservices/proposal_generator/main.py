@@ -17,8 +17,14 @@ from flask import Flask, request, jsonify
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Inches
 import docx # From python-docx
-import pythoncom
-from docx2pdf import convert as convert_to_pdf
+if platform.system() == 'Windows':
+    import pythoncom
+    from docx2pdf import convert as convert_to_pdf
+else:
+    pythoncom = None
+    convert_to_pdf = None
+
+
 
 app = Flask(__name__)
 
@@ -771,12 +777,17 @@ def generate_proposal():
             temp_pdf_path = os.path.join(temp_dir, 'output.pdf')
             
             try:
-                pythoncom.CoInitialize()
-                convert_to_pdf(temp_docx_path, temp_pdf_path)
+                if platform.system() == 'Windows':
+                    pythoncom.CoInitialize()
+                    convert_to_pdf(temp_docx_path, temp_pdf_path)
+                else:
+                    cmd = ['soffice', '--headless', '--convert-to', 'pdf', '--outdir', temp_dir, temp_docx_path]
+                    subprocess.run(cmd, check=True)
             except Exception as e:
-                return jsonify({"error": f"PDF conversion failed with MS Word. Error: {e}"}), 500
+                return jsonify({"error": f"PDF conversion failed. Error: {e}"}), 500
             finally:
-                pythoncom.CoUninitialize()
+                if platform.system() == 'Windows' and pythoncom:
+                    pythoncom.CoUninitialize()
 
             if not os.path.exists(temp_pdf_path):
                  return jsonify({"error": "PDF conversion failed. Output file not found."}), 500
