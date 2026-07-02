@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Soryouth Dialer",
+    "slug": "soryouth-dialer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.soryouth.dialer"
+    },
+    "android": {
+      "package": "com.soryouth.dialer",
+      "permissions": [
+        "android.permission.CALL_PHONE"
+      ]
+    }
+  }
+}
