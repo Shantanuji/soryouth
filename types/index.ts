@@ -115,6 +115,10 @@ export interface Client {
 export type CreateClientData = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'followupCount' | 'lastCommentText' | 'lastCommentDate' | 'nextFollowUpDate' | 'nextFollowUpTime' | 'electricityBillUrls' | 'totalDealValue'> & {
     electricityBillUrls?: string[];
     totalDealValue?: number;
+    lastCommentText?: string;
+    lastCommentDate?: string;
+    nextFollowUpDate?: string;
+    nextFollowUpTime?: string;
 };
 
 

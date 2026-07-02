@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import React, { useEffect, useMemo } from 'react';
 import { CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES } from '@/lib/constants';
+import { format, parseISO, isValid } from 'date-fns';
 
 const getClientSchema = (statuses: string[], sources: string[]) => z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -41,6 +42,9 @@ const getClientSchema = (statuses: string[], sources: string[]) => z.object({
   status: z.string().refine(val => statuses.includes(val), { message: "Please select a valid stage." }),
   source: z.string().optional().refine(val => !val || sources.includes(val), { message: "Please select a valid source." }),
   assignedTo: z.string().optional(),
+  lastCommentText: z.string().optional(),
+  nextFollowUpDate: z.string().optional().refine(val => !val || (isValid(parseISO(val))), { message: "Invalid date" }),
+  nextFollowUpTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), { message: "Invalid time (HH:MM)"}),
   kilowatt: z.coerce.number().min(0).optional(),
   address: z.string().optional(),
   priority: z.enum(CLIENT_PRIORITY_OPTIONS).optional(),
@@ -74,6 +78,9 @@ export function ClientForm({ isOpen, onClose, onSubmit, client, users, statuses,
       status: statuses.find(s => s.name === 'Deal Done')?.name || statuses[0]?.name,
       source: undefined,
       assignedTo: undefined,
+      lastCommentText: '',
+      nextFollowUpDate: '',
+      nextFollowUpTime: '',
       kilowatt: 0,
       address: '',
       priority: 'Average',
@@ -91,6 +98,9 @@ export function ClientForm({ isOpen, onClose, onSubmit, client, users, statuses,
           status: client.status,
           source: client.source || undefined,
           assignedTo: client.assignedTo || undefined,
+          lastCommentText: client.lastCommentText ?? '',
+          nextFollowUpDate: client.nextFollowUpDate ? format(parseISO(client.nextFollowUpDate), 'yyyy-MM-dd') : '',
+          nextFollowUpTime: client.nextFollowUpTime ?? '',
           kilowatt: client.kilowatt || 0,
           address: client.address || '',
           priority: client.priority || 'Average',
@@ -104,6 +114,9 @@ export function ClientForm({ isOpen, onClose, onSubmit, client, users, statuses,
             status: statuses.find(s => s.name === 'Deal Done')?.name || statuses[0]?.name,
             source: undefined,
             assignedTo: undefined,
+            lastCommentText: '',
+            nextFollowUpDate: '',
+            nextFollowUpTime: '',
             kilowatt: 0,
             address: '',
             priority: 'Average',
@@ -111,16 +124,26 @@ export function ClientForm({ isOpen, onClose, onSubmit, client, users, statuses,
         });
       }
     }
-  }, [client, form, isOpen, statuses]);
+  }, [client, form, isOpen, statusNames, statuses, sources]);
 
   const handleSubmit = (values: ClientFormValues) => {
-    const submissionData: Partial<Client> = { ...values };
+    const submissionData = {
+      ...values,
+      kilowatt: values.kilowatt ?? undefined,
+      lastCommentDate: values.lastCommentText ? format(new Date(), 'dd-MM-yyyy') : undefined,
+      nextFollowUpDate: values.nextFollowUpDate ? values.nextFollowUpDate : undefined,
+      nextFollowUpTime: values.nextFollowUpTime ? values.nextFollowUpTime : undefined,
+      clientType: values.clientType || undefined,
+    };
     if (client) {
-      onSubmit({ ...client, ...submissionData });
+      onSubmit({ ...client, ...submissionData } as Client);
     } else {
-      submissionData.electricityBillUrls = [];
-      submissionData.totalDealValue = 0;
-      onSubmit(submissionData as CreateClientData);
+      const createData = {
+        ...submissionData,
+        electricityBillUrls: [],
+        totalDealValue: 0,
+      };
+      onSubmit(createData as CreateClientData);
     }
   };
 
@@ -329,6 +352,50 @@ export function ClientForm({ isOpen, onClose, onSubmit, client, users, statuses,
                   )}
                 />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="lastCommentText"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Comment</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Enter last comment..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <FormField
+                control={form.control}
+                name="nextFollowUpDate"
+                render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                    <FormLabel>Next Follow-up Date</FormLabel>
+                    <FormControl>
+                        <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="nextFollowUpTime"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Time</FormLabel>
+                    <FormControl>
+                        <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
