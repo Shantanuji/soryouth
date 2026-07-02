@@ -1,0 +1,193 @@
+-447040
+9525
+0
+3543300
+1371600
+Date: 
+{{
+date_today
+}}
+0
+Date: 
+{{
+date_today
+}}
+3543300
+1600200
+Proposal No: 
+{{
+proposal_number
+}}
+0
+Proposal No: 
+{{
+proposal_number
+}}
+4457700
+7822565
+{{name}}
+0
+{{name}}
+-69215
+8524875
+{{capacity}}
+ kW
+0
+{{capacity}}
+ kW
+3915410
+8394700
+{{location}}
+0
+{{location}}
+3931920
+8770620
+{{phone}}
+0
+{{phone}}
+3886200
+9006840
+0
+3600450
+9486900
+Created By: 
+Prasad 
+Mudholkar
+0
+Created By: 
+Prasad 
+Mudholkar
+-455930
+0
+0
+-453390
+-2540
+0
+-453390
+-2954
+0
+-443865
+6985
+0
+-432656
+6985
+0
+-457200
+0
+0
+-457200
+0
+0
+-447262
+9939
+0
+4119
+230659
+0
+4724400
+1623060
+{{
+proposal_number
+}}
+0
+{{
+proposal_number
+}}
+1437640
+1623060
+{{name}}
+20000
+{{name}}
+1417320
+1882140
+{{location}}
+0
+{{location}}
+1403985
+2474595
+{{capacity}}
+20000
+{{capacity}}
+4808220
+1965960
+{
+{
+date_today
+}}
+0
+{
+{
+date_today
+}}
+2962275
+3638550
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R2C2:R4C2" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R2C2:R4C2" "" \a \p 
+4609465
+8536526
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R10C2:R10C3" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R10C2:R10C3" "" \a \p 
+4631055
+7424006
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R8C2:R8C3" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R8C2:R8C3" "" \a \p 
+4601431
+6917055
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R7C2:R7C3" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R7C2:R7C3" "" \a \p 
+4591271
+6470015
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R6C2:R6C3" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R6C2:R6C3" "" \a \p 
+4610956
+5972810
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R5C2:R5C3" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R5C2:R5C3" "" \a \p 
+4681330
+7981122
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R9C2:R9C3" "" \a \p 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R9C2:R9C3" "" \a \p 
+4611370
+3935730
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R5C2:R5C3" "" \a \p \* MERGEFORMAT 
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Commercial Offer!R5C2:R5C3" "" \a \p \* MERGEFORMAT 
+2703195
+3232371
+0
+4611591
+3237230
+0
+1086485
+621665
+Balance of System
+0
+Balance of System
+114300
+572770
+0
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!BOS!R2C1:R15C4" "" \a \p 
+4445
+{{capex_evaluation_sheet}}
+0
+{{capex_evaluation_sheet}}
+9939
+9939
+0
+4445
+{{monthly_generation_chart}}
+0
+{{monthly_generation_chart}}
+3323590
+{{yearly_savings_chart}}
+0
+{{yearly_savings_chart}}
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Project Scope!R1C1:R36C5" "" \a \p 
+ LINK Excel.SheetMacroEnabled.12 "C:\\Users\\LENOVO\\Desktop\\Proposal App\\Proposal_Automation_Template.xlsm!Term's & Conditions!R1C1:R29C3" "" \a \p 

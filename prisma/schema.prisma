@@ -26,11 +26,18 @@ model User {
   role      String   @default("TechnoSales")
   deviceId  String?  @unique
   isActive  Boolean  @default(true)
+  shiftHours Int      @default(8)
   viewPermission   ViewPermission @default(ASSIGNED)
+  profileImage     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   surveys   SiteSurvey[]
   attendances  Attendance[]
+  presenceStatus  String            @default("Offline") // "Online", "Offline"
+  lastSeen        DateTime?
+  lastKnownLocation String?
+  locationHistories LocationHistory[]
+  auditTimelines    AuditTimeline[]
 
 
   // Relations
@@ -505,4 +512,31 @@ model FinancialDocument {
 
   template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
   templateId String
+}
+
+model LocationHistory {
+  id        String   @id @default(cuid())
+  latitude  Float
+  longitude Float
+  address   String?
+  city      String?
+  timestamp DateTime @default(now())
+  device    String?
+  browser   String?
+  ip        String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@index([userId])
+}
+
+model AuditTimeline {
+  id        String   @id @default(cuid())
+  eventType String   // "Login", "PunchIn", "Logout", "LocationChanged", "PunchOut"
+  timestamp DateTime @default(now())
+  details   String?  // Optional description, e.g. browser, device
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@index([userId])
 }

@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/microservices\proposal_generator\venv
+/microservices/proposal_generator/venv
 /node_modules
 /.pnp
 .pnp.*
@@ -45,3 +45,23 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 /generated/prisma
+
+# SQLite databases (contain real user data — never commit)
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-shm
+prisma/*.db-wal
+
+# Temp/debug files
+error_log.txt
+db_check.js
+login_test.js
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyd
+
+# Archives
+*.zip
+

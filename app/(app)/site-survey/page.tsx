@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CONSUMER_CATEGORIES_OPTIONS, METER_PHASES, CONSUMER_LOAD_TYPES, ROOF_TYPES, DISCOM_OPTIONS } from '@/lib/constants';
 import type { ConsumerCategoryType, MeterPhaseType, ConsumerLoadType, RoofType, DiscomType, UserOptionType, Lead, Client, User, CustomSetting, CreateLeadData, CreateSiteSurveyData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from '@/hooks/use-sessions';
 import { format, isValid, parseISO } from 'date-fns';
 import { ClipboardEdit, IndianRupee, UploadCloud, ChevronsUpDown, Check, X, Loader2, PlusCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -124,6 +125,7 @@ const CustomerCombobox = ({ onSelect, customers }: { onSelect: (customer: Client
 
 export default function SiteSurveyPage() {
   const { toast } = useToast();
+  const session = useSession();
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
@@ -191,9 +193,16 @@ export default function SiteSurveyPage() {
         setLeadStatuses(fetchedLeadStatuses);
         setLeadSources(fetchedLeadSources);
         setIsDataLoading(false);
+        
+        if (session?.name) {
+            const currentUser = fetchedUsers.find(u => u.name === session.name);
+            if (currentUser) {
+                form.setValue('surveyorName', currentUser.name);
+            }
+        }
     }
     fetchData();
-  }, []);
+  }, [session?.name, form]);
 
   const handleCustomerSelect = (customer: Client | Lead) => {
     form.setValue('consumerName', customer.name);

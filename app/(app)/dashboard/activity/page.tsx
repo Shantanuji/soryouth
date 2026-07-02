@@ -128,13 +128,13 @@ export default function ActivityPage() {
     return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: `hsl(var(--chart-${(index % 5) + 1}))`})).filter(u => u.value > 0);
   }, [allFollowUps, users, selectedDate]);
   
-  const chartConfig = (data: {name: string, fill: string}[]) => useMemo(() => {
+  const chartConfig = (data: {name: string, fill: string}[]) => {
     const config: ChartConfig = {};
     data.forEach(item => {
         config[item.name] = { label: item.name, color: item.fill };
     });
     return config;
-  }, [data]);
+  };
   
   const handleInitiateCall = async (followUp: FollowUp) => {
     const phone = getCustomerPhone(followUp);

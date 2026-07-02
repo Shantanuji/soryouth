@@ -88,6 +88,23 @@ export function UserForm({ user, formAction, roles, isEditMode = false, isOpen =
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="shiftHours">Shift Duration (Hours)</Label>
+        <Select name="shiftHours" required defaultValue={(user?.shiftHours || 8).toString()}>
+          <SelectTrigger id="shiftHours">
+            <SelectValue placeholder="Select shift duration" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="2">2 Hours</SelectItem>
+            <SelectItem value="4">4 Hours</SelectItem>
+            <SelectItem value="6">6 Hours</SelectItem>
+            <SelectItem value="8">8 Hours</SelectItem>
+            <SelectItem value="9">9 Hours</SelectItem>
+            <SelectItem value="10">10 Hours</SelectItem>
+            <SelectItem value="12">12 Hours</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <SubmitButton isEditMode={isEditMode} />
     </form>
   );

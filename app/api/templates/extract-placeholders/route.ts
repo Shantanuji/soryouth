@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     pythonServiceFormData.append('file', file);
 
     const pythonServiceUrl = process.env.PYTHON_MICROSERVICE_URL
-      ? `${process.env.PYTHON_MICROSERVICE_URL}/extract-placeholders`
+      ? `${process.env.PYTHON_MICROSERVICE_URL.replace('/generate', '')}/extract-placeholders`
       : 'http://127.0.0.1:5001/extract-placeholders';
       
     const response = await fetch(pythonServiceUrl, {

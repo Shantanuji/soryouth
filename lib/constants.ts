@@ -37,6 +37,9 @@ import { format, parseISO, addDays, subDays } from 'date-fns';
 
 export const APP_NAME = "Soryouth";
 
+// The super admin account is protected — it can never be deleted via the UI.
+export const SUPER_ADMIN_EMAIL = "admin@soryouth.com";
+
 // Primary CRM Navigation for the main sidebar
 export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -56,8 +59,6 @@ export const NAV_ITEMS: NavItem[] = [
 export const TOOLS_NAV_ITEMS: NavItem[] = [
   { href: '/survey-list', label: 'Survey List', icon: ClipboardList },
   { href: '/site-survey', label: 'Survey Form', icon: MapPinnedIcon},
-  { href: '/expenses', label: 'Expenses', icon: Notebook },
-  { href: '/view-expenses', label: 'View Expenses', icon: ClipboardCheck },
   { href: '/attendance', label: 'Attendance', icon: CheckSquare },
   { href: '/survey-reports', label: 'Survey Reports', icon: MapPinnedIcon },
   { href: '/tickets', label: 'Tickets', icon: Ticket },
@@ -149,6 +150,8 @@ export const PLACEHOLDER_DEFINITIONS_PROPOSAL: PlaceholderGroup = {
   'Client Details': [
     { placeholder: '{{name}}', description: 'The full name of the client or company.' },
     { placeholder: '{{contact_person}}', description: 'The name of the main contact person.' },
+    { placeholder: '{{email}}', description: 'The email address of the client.' },
+    { placeholder: '{{phone}}', description: 'The phone/contact number of the client.' },
     { placeholder: '{{location}}', description: 'The primary address of the client/site.' },
     { placeholder: '{{client_type}}', description: 'Type of client (e.g., Residential).' },
   ],
@@ -185,6 +188,7 @@ export const PLACEHOLDER_DEFINITIONS_PROPOSAL: PlaceholderGroup = {
   'Charts & Graphs (Add to your template)': [
     { placeholder: '{{monthly_generation_chart}}', description: 'A bar chart showing estimated monthly energy production for the year.' },
     { placeholder: '{{yearly_savings_chart}}', description: 'A line chart projecting yearly savings over 30 years.' },
+    { placeholder: '{{capex_evaluation_sheet}}', description: 'Full Capex Model Evaluation Sheet — includes Project Specification, Plant Performance, O&M Cost, Accelerated Depreciation Benefits, ROI Calculation, and a complete 25-year Savings Projection table.' },
   ],
   'Date & Time': [
      { placeholder: '{{date_today}}', description: 'The current date when the document is generated.' },

@@ -188,6 +188,7 @@ export default function DayReportPage() {
       wonDealsDetails: pageFilteredWonDeals.slice(0, 5),
       userWiseSummary: userWiseSummaryData,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange, selectedUserFilter, allLeads, allDroppedLeads, allClients, allProposals, allUsers, allFollowUps]);
 
   useEffect(() => {

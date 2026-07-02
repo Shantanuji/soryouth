@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, CheckSquare, MapPin, CalendarIcon } from 'lucide-react';
 import { getAttendanceData } from './actions';
 import type { Attendance, User } from '@/types';
+import { AttendanceCard } from '@/components/attendance-card';
 import { Badge } from '@/components/ui/badge';
+import { useSession } from '@/hooks/use-sessions';
 import Link from 'next/link';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -44,6 +46,9 @@ export default function AttendancePage() {
         to: new Date(),
     });
 
+    const session = useSession();
+    const isAdmin = session?.role === 'Admin';
+
     useEffect(() => {
         const fetchRecords = async () => {
             setIsLoading(true);
@@ -55,13 +60,19 @@ export default function AttendancePage() {
         fetchRecords();
     }, []);
 
+    useEffect(() => {
+        if (session && session.role !== 'Admin') {
+            setSelectedUserId(session.userId);
+        }
+    }, [session]);
+
     const filteredRecords = useMemo(() => {
         return allRecords.filter(record => {
             const userMatch = selectedUserId === 'all' || record.userId === selectedUserId;
             
             let dateMatch = true;
             if (dateRange?.from) {
-                const punchInDate = parse(record.punchInTime, 'dd-MM-yyyy HH:mm:ss', new Date());
+                const punchInDate = parse(record.punchInTime, 'dd-MM-yyyy hh:mm:ss a', new Date());
                 const from = startOfDay(dateRange.from);
                 const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
                 dateMatch = isWithinInterval(punchInDate, { start: from, end: to });
@@ -78,10 +89,13 @@ export default function AttendancePage() {
                 description="View all user punch-in and punch-out records."
                 icon={CheckSquare}
             />
+            <div className="mb-6">
+                <AttendanceCard />
+            </div>
             <Card>
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                        <CardTitle>All Records</CardTitle>
+                        <CardTitle>{isAdmin ? 'All Records' : 'My Records'}</CardTitle>
                         <div className="flex flex-wrap gap-2">
                              <Popover>
                                 <PopoverTrigger asChild>
@@ -98,15 +112,17 @@ export default function AttendancePage() {
                                     <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2} showOutsideDays={false}/>
                                 </PopoverContent>
                             </Popover>
-                            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Select User" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Users</SelectItem>
-                                    {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            {isAdmin && (
+                                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="Select User" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Users</SelectItem>
+                                        {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                     </div>
                 </CardHeader>

@@ -29,9 +29,11 @@ export interface User {
   phone: string;
   role: UserRole;
   isActive: boolean;
+  shiftHours: number;
   createdAt: string;
   viewPermission: ViewPermission;
   deviceId?: string | null;
+  profileImage?: string | null;
 }
 
 export interface RolePermission {

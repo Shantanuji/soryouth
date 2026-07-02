@@ -8,7 +8,7 @@ import { hashPassword, verifySession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import type { User, UserRole, RolePermission, ViewPermission } from '@/types';
 import { getUserRoles } from '@/app/(app)/settings/actions';
-import { NAV_ITEMS, TOOLS_NAV_ITEMS } from '@/lib/constants';
+import { NAV_ITEMS, TOOLS_NAV_ITEMS, SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 function mapPrismaUserToUserType(prismaUser: any): User {
     return {
@@ -18,6 +18,8 @@ function mapPrismaUserToUserType(prismaUser: any): User {
       phone: prismaUser.phone,
       role: prismaUser.role,
       isActive: prismaUser.isActive,
+      shiftHours: prismaUser.shiftHours,
+      profileImage: prismaUser.profileImage,
       deviceId: prismaUser.deviceId,
       viewPermission: prismaUser.viewPermission,
       createdAt: prismaUser.createdAt.toISOString(),
@@ -29,6 +31,7 @@ const getUserSchema = (roles: string[]) => z.object({
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   role: z.string().refine(val => roles.includes(val), { message: "Please select a valid role." }),
+  shiftHours: z.coerce.number().min(1, { message: "Shift hours must be at least 1." }),
 });
 
 const getAddUserSchema = (roles: string[]) => getUserSchema(roles).extend({
@@ -64,7 +67,7 @@ export async function addUser(prevState: any, formData: FormData) {
     return { error: `Invalid fields: ${errorMessages}` };
   }
   
-  const { name, email, phone, password, role } = validatedFields.data;
+  const { name, email, phone, password, role, shiftHours } = validatedFields.data;
 
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -81,6 +84,7 @@ export async function addUser(prevState: any, formData: FormData) {
         phone,
         password: hashedPassword,
         role: role,
+        shiftHours: shiftHours,
         isActive: true, // New users are active by default
         viewPermission: 'ASSIGNED', // Default to only seeing assigned items
       },
@@ -178,6 +182,11 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; er
         return { success: false, error: 'You cannot delete your own account.' };
     }
 
+    const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (targetUser?.email === SUPER_ADMIN_EMAIL) {
+        return { success: false, error: 'The Super Admin account cannot be deleted.' };
+    }
+
     try {
         await prisma.user.delete({
             where: { id: userId },
@@ -242,5 +251,107 @@ export async function updateRolePermissions(roleName: string, permissions: { nav
   } catch (error) {
     console.error(`Failed to update permissions for role ${roleName}:`, error);
     return { success: false, error: 'An unexpected error occurred.' };
+  }
+}
+
+export async function getCurrentUserProfile() {
+  const session = await verifySession();
+  if (!session?.userId) return null;
+  try {
+    return await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, name: true, email: true, phone: true, profileImage: true },
+    });
+  } catch (error) {
+    console.error('Failed to fetch current user profile:', error);
+    return null;
+  }
+}
+
+export async function updateCurrentUserProfile(formData: FormData): Promise<{ success: boolean; error?: string; message?: string }> {
+  const session = await verifySession();
+  if (!session?.userId) {
+    return { success: false, error: 'Authentication required.' };
+  }
+
+  const name = formData.get('name') as string;
+  const email = formData.get('email') as string;
+  const phone = formData.get('phone') as string;
+  const password = formData.get('password') as string;
+  const profileImageFile = formData.get('profileImage') as File;
+
+  if (!name || name.trim().length < 2) {
+    return { success: false, error: 'Name must be at least 2 characters.' };
+  }
+  if (!email || !email.includes('@')) {
+    return { success: false, error: 'Invalid email address.' };
+  }
+  if (!phone || phone.trim().length < 10) {
+    return { success: false, error: 'Phone number must be at least 10 digits.' };
+  }
+
+  try {
+    // Check email uniqueness
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email,
+        id: { not: session.userId },
+      },
+    });
+    if (existingUser) {
+      return { success: false, error: 'Email is already taken by another user.' };
+    }
+
+    let profileImageUrl: string | undefined = undefined;
+    if (profileImageFile && profileImageFile.size > 0) {
+      const buffer = Buffer.from(await profileImageFile.arrayBuffer());
+      const safeFilename = profileImageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const key = `profiles/${session.userId}-${Date.now()}-${safeFilename}`;
+      const { uploadFileToS3 } = await import('@/lib/s3');
+      profileImageUrl = await uploadFileToS3(buffer, key, profileImageFile.type);
+    }
+
+    const updateData: any = {
+      name,
+      email,
+      phone,
+    };
+
+    if (profileImageUrl) {
+      updateData.profileImage = profileImageUrl;
+    }
+
+    if (password && password.length >= 6) {
+      updateData.password = await hashPassword(password);
+    } else if (password && password.length > 0) {
+      return { success: false, error: 'Password must be at least 6 characters.' };
+    }
+
+    await prisma.user.update({
+      where: { id: session.userId },
+      data: updateData,
+    });
+
+    const activeUser = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { profileImage: true }
+    });
+
+    // Recreate session to sync client-side cookies
+    const { createSession } = await import('@/lib/auth');
+    await createSession(
+      session.userId,
+      name,
+      email,
+      session.role,
+      session.viewPermission,
+      activeUser?.profileImage || session.profileImage
+    );
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Profile updated successfully!' };
+  } catch (e) {
+    console.error('Failed to update current user profile:', e);
+    return { success: false, error: 'An unexpected error occurred while updating your profile.' };
   }
 }

@@ -2,6 +2,9 @@
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx ai/dev.ts",
@@ -71,6 +74,8 @@
     "@types/pizzip": "^3.0.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.3.3",
     "genkit-cli": "^1.8.0",
     "postcss": "^8",
     "prisma": "^6.12.0",

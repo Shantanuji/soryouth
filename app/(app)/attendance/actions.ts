@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { differenceInMinutes, format, startOfDay, endOfDay } from 'date-fns';
 import type { Attendance, User } from '@/types';
 import { getUsers } from '../users/actions';
+import { recordPresenceEvent } from './hrms-actions';
 
 // Helper to format duration from minutes to "Xh Ym"
 function formatDuration(minutes: number | null | undefined): string {
@@ -22,22 +23,39 @@ function mapPrismaAttendance(attendance: any): Attendance {
         id: attendance.id,
         userId: attendance.userId,
         userName: attendance.user.name,
-        punchInTime: format(new Date(attendance.punchInTime), 'dd-MM-yyyy HH:mm:ss'),
-        punchOutTime: attendance.punchOutTime ? format(new Date(attendance.punchOutTime), 'dd-MM-yyyy HH:mm:ss') : null,
+        punchInTime: format(new Date(attendance.punchInTime), 'dd-MM-yyyy hh:mm:ss a'),
+        punchOutTime: attendance.punchOutTime ? format(new Date(attendance.punchOutTime), 'dd-MM-yyyy hh:mm:ss a') : null,
         punchInLocation: attendance.punchInLocation,
         punchOutLocation: attendance.punchOutLocation,
         workDuration: formatDuration(attendance.workDuration),
     };
 }
 
-export async function getCurrentUserAttendanceStatus(): Promise<{ isPunchedIn: boolean; punchInTime?: string; }> {
+export async function getCurrentUserAttendanceStatus(): Promise<{
+    isPunchedIn: boolean;
+    punchInTime?: string;
+    punchInTimeRaw?: string;
+    punchOutTime?: string;
+    punchOutTimeRaw?: string;
+    cumulativeWorkedSeconds: number;
+    shiftHours: number;
+    hasCompletedToday?: boolean;
+}> {
     const session = await verifySession();
-    if (!session?.userId) return { isPunchedIn: false };
+    if (!session?.userId) {
+        return { isPunchedIn: false, cumulativeWorkedSeconds: 0, shiftHours: 8, hasCompletedToday: false };
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { shiftHours: true },
+    });
+    const shiftHours = user?.shiftHours ?? 8;
 
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
 
-    const lastPunch = await prisma.attendance.findFirst({
+    const punchesToday = await prisma.attendance.findMany({
         where: {
             userId: session.userId,
             punchInTime: {
@@ -46,18 +64,46 @@ export async function getCurrentUserAttendanceStatus(): Promise<{ isPunchedIn: b
             },
         },
         orderBy: {
-            punchInTime: 'desc',
+            punchInTime: 'asc',
         },
     });
 
-    if (lastPunch && !lastPunch.punchOutTime) {
-        return {
-            isPunchedIn: true,
-            punchInTime: format(lastPunch.punchInTime, "HH:mm:ss"),
-        };
+    let cumulativeWorkedSeconds = 0;
+    for (const punch of punchesToday) {
+        if (punch.punchOutTime) {
+            const diffMs = punch.punchOutTime.getTime() - punch.punchInTime.getTime();
+            cumulativeWorkedSeconds += Math.floor(Math.max(0, diffMs / 1000));
+        }
     }
 
-    return { isPunchedIn: false };
+    const lastPunch = punchesToday[punchesToday.length - 1];
+
+    if (lastPunch) {
+        const hasCompletedToday = cumulativeWorkedSeconds >= (shiftHours * 3600);
+        if (!lastPunch.punchOutTime) {
+            return {
+                isPunchedIn: true,
+                punchInTime: format(lastPunch.punchInTime, "hh:mm:ss a"),
+                punchInTimeRaw: lastPunch.punchInTime.toISOString(),
+                cumulativeWorkedSeconds,
+                shiftHours,
+                hasCompletedToday,
+            };
+        } else {
+            return {
+                isPunchedIn: false,
+                punchInTime: format(lastPunch.punchInTime, "hh:mm:ss a"),
+                punchInTimeRaw: lastPunch.punchInTime.toISOString(),
+                punchOutTime: format(lastPunch.punchOutTime, "hh:mm:ss a"),
+                punchOutTimeRaw: lastPunch.punchOutTime.toISOString(),
+                cumulativeWorkedSeconds,
+                shiftHours,
+                hasCompletedToday,
+            };
+        }
+    }
+
+    return { isPunchedIn: false, cumulativeWorkedSeconds: 0, shiftHours, hasCompletedToday: false };
 }
 
 export async function punchIn(location: { latitude: number; longitude: number }): Promise<{ success: boolean; error?: string }> {
@@ -78,6 +124,7 @@ export async function punchIn(location: { latitude: number; longitude: number })
                 punchInLocation: `${location.latitude},${location.longitude}`,
             },
         });
+        await recordPresenceEvent('PunchIn', location);
         revalidatePath('/dashboard');
         revalidatePath('/attendance');
         return { success: true };
@@ -113,6 +160,7 @@ export async function punchOut(location: { latitude: number; longitude: number }
                 workDuration: duration,
             },
         });
+        await recordPresenceEvent('PunchOut', location);
         revalidatePath('/dashboard');
         revalidatePath('/attendance');
         return { success: true };

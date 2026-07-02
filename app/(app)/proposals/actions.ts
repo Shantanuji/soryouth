@@ -44,7 +44,7 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
         console.error("Authentication error: No user session found.");
         return null;
     }
-    const { id, createdAt, updatedAt,createdBy, ...proposalData } = data;
+    const { id, createdAt, updatedAt, createdBy, email, phone, ...proposalData } = data as any;
 
     const dataToSave = {
       ...proposalData,

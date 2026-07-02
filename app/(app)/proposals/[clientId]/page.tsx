@@ -66,6 +66,7 @@ export default function CustomerProposalsPage() {
     if (customerId) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
   const handleEdit = (proposal: Proposal) => {
@@ -108,8 +109,8 @@ export default function CustomerProposalsPage() {
   
   const getCustomerDetailLink = () => {
       if (!customer) return '#';
-      if ('droppedAt' in customer) return `/dropped-leads/${customer.id}`; // Dropped Lead
-      if ('dropReason' in customer) return `/leads/${customer.id}`; // Lead
+      if ('dropReason' in customer) return `/dropped-leads/${customer.id}`; // Dropped Lead has dropReason
+      if ('source' in customer) return `/leads/${customer.id}`; // Lead has source
       return `/clients/${customer.id}`; // Client
   };
 
@@ -239,6 +240,7 @@ export default function CustomerProposalsPage() {
           leads={'source' in customer ? [customer as Lead] : []}
         />
       )}
+      {/* Note: 'source' is a Lead property. So 'source' in customer => Lead; otherwise => Client */}
 
       {isPreviewOpen && selectedProposal && (
         <ProposalPreviewDialog

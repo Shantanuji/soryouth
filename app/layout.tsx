@@ -21,9 +21,29 @@ const outfit = Outfit({
   variable: '--font-outfit',
 });
 
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: 'Soryouth - CRM & Renewable Energy Solutions',
   description: 'Manage leads, proposals, and documents for your solar business with Soryouth.',
+  keywords: ['solar CRM', 'renewable energy software', 'solar leads', 'solar proposals'],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://soryouth.com',
+    title: 'Soryouth - CRM & Renewable Energy Solutions',
+    description: 'Manage leads, proposals, and documents for your solar business with Soryouth.',
+    siteName: 'Soryouth',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Soryouth - CRM & Renewable Energy Solutions',
+    description: 'Manage leads, proposals, and documents for your solar business with Soryouth.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -54,7 +74,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-body antialiased" suppressHydrationWarning>
+      <body className="font-body antialiased overflow-x-hidden" suppressHydrationWarning>
         {children}
         <Toaster />
       </body>

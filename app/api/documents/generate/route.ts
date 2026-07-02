@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     const templateData = getTemplateData(formData, documentType);
     
-    const pythonServiceUrl = process.env.PYTHON_MICROSERVICE_URL || 'http://127.0.0.1:5001/generate';
+    const pythonServiceUrl = process.env.PYTHON_MICROSERVICE_URL ? `${process.env.PYTHON_MICROSERVICE_URL}/generate` : 'http://127.0.0.1:5001/generate';
     const response = await fetch(pythonServiceUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

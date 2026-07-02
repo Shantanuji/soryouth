@@ -75,6 +75,7 @@ export default function GeneratedDocumentsPage() {
     
     useEffect(() => {
         refreshDocuments();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [documentType]);
     
     const handleDelete = (doc: AnyDocument) => {

@@ -165,11 +165,10 @@ export function LeadsTable<T extends Item>({
               href={href}
               className="font-semibold text-sm text-primary hover:underline underline-offset-2"
               onClick={(e) => {
+                handleRowClick();
                 if (onViewDetails) {
                   e.preventDefault();
                   onViewDetails(item);
-                } else {
-                  handleRowClick();
                 }
               }}
             >

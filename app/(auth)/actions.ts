@@ -43,7 +43,12 @@ export async function login(prevState: any, formData: FormData) {
       return { error: 'Invalid email or password.' };
     }
     
-    await createSession(user.id, user.name, user.email, user.role, user.viewPermission);
+    await createSession(user.id, user.name, user.email, user.role, user.viewPermission, user.profileImage);
+    
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { presenceStatus: 'Online' },
+    });
     
   } catch (error) {
     console.error(error);
@@ -105,6 +110,25 @@ export async function signup(prevState: any, formData: FormData) {
 }
 
 export async function logout() {
+  try {
+    const { verifySession } = await import('@/lib/auth');
+    const session = await verifySession();
+    if (session?.userId) {
+      await prisma.user.update({
+        where: { id: session.userId },
+        data: { presenceStatus: 'Offline', lastSeen: new Date() },
+      });
+      await prisma.auditTimeline.create({
+        data: {
+          userId: session.userId,
+          eventType: 'Logout',
+          details: 'Standard Logout',
+        },
+      });
+    }
+  } catch (e) {
+    console.error('Logout presence tracking failed:', e);
+  }
   await deleteSession();
   revalidatePath('/', 'layout');
   redirect('/login');

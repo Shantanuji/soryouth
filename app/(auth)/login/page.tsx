@@ -51,9 +51,16 @@ export default function LoginPage() {
   }, [state, toast]);
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen w-full bg-background">
-      {/* LEFT SIDE: Branding Section */}
-      <div className="relative flex-1 lg:w-[55%] flex flex-col justify-between bg-gradient-to-br from-blue-50 to-white dark:from-slate-900 dark:to-slate-950 p-8 lg:p-16 overflow-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen w-full bg-background relative overflow-hidden">
+      
+      {/* Mobile-only background accents */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none lg:hidden z-0">
+          <div className="absolute top-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[20rem] h-[20rem] rounded-full bg-primary/10 blur-3xl" />
+      </div>
+
+      {/* LEFT SIDE: Branding Section (Hidden on Mobile) */}
+      <div className="relative flex-1 lg:w-[55%] hidden lg:flex flex-col justify-between bg-gradient-to-br from-blue-50 to-white dark:from-slate-900 dark:to-slate-950 p-8 lg:p-16 overflow-hidden">
         {/* Abstract Background Accents */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
             <div className="absolute top-[-10%] right-[-5%] w-[40rem] h-[40rem] rounded-full bg-primary/5 blur-3xl" />

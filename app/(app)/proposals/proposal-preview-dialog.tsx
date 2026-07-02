@@ -106,23 +106,33 @@ export function ProposalPreviewDialog({ isOpen, onClose, pdfUrl, docxUrl, docume
     }
     
     // For PDF
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = viewableUrl;
-    document.body.appendChild(iframe);
-    iframe.onload = () => {
-      setTimeout(() => {
-        try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-        } catch (error) {
-            console.error("Printing failed:", error);
-            window.open(viewableUrl, '_blank');
-        } finally {
-            document.body.removeChild(iframe);
-        }
-      }, 100);
-    };
+    fetch(viewableUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = blobUrl;
+        document.body.appendChild(iframe);
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              iframe.contentWindow?.focus();
+              iframe.contentWindow?.print();
+            } catch (err) {
+              window.open(viewableUrl, '_blank');
+            } finally {
+              setTimeout(() => {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+                URL.revokeObjectURL(blobUrl);
+              }, 1000);
+            }
+          }, 100);
+        };
+      })
+      .catch(() => {
+         window.open(viewableUrl, '_blank');
+      });
   };
 
   const shouldShowActions = !isFinancialDocument || (isFinancialDocument && isAdmin);

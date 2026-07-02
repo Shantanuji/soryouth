@@ -55,6 +55,8 @@ export const proposalSchema = z.object({
   name: z.string().min(2, { message: 'Client/Company name must be at least 2 characters.' }),
   clientType: z.enum(CLIENT_TYPES, { required_error: "Client type is required."}),
   contactPerson: z.string().min(2, { message: 'Contact person must be at least 2 characters.' }),
+  email: z.string().optional(),
+  phone: z.string().optional(),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
   capacity: z.coerce.number().positive({ message: 'Capacity (kW) must be a positive number.' }),
   moduleType: z.enum(MODULE_TYPES, { required_error: "Module type is required."}),
@@ -98,6 +100,8 @@ const initialFormStateForUseForm: ProposalFormValues = {
   name: "",
   clientType: CLIENT_TYPES[0],
   contactPerson: "",
+  email: "",
+  phone: "",
   location: "",
   capacity: 0,
   moduleType: MODULE_TYPES[0],
@@ -171,6 +175,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("name", client.name);
     form.setValue("clientType", client.clientType || 'Other');
     form.setValue("contactPerson", client.name);
+    form.setValue("email", client.email || "");
+    form.setValue("phone", client.phone || "");
     form.setValue("location", client.address || "");
   };
 
@@ -182,6 +188,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("name", lead.name);
     form.setValue("clientType", lead.clientType || 'Other');
     form.setValue("contactPerson", lead.name);
+    form.setValue("email", lead.email || "");
+    form.setValue("phone", lead.phone || "");
     form.setValue("location", lead.address || "");
     form.setValue("capacity", lead.kilowatt || 0)
   };
@@ -248,6 +256,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
             form.setValue("name", clients[0].name);
             form.setValue("clientType", clients[0].clientType || 'Other');
             form.setValue("contactPerson", clients[0].name);
+            form.setValue("email", clients[0].email || "");
+            form.setValue("phone", clients[0].phone || "");
             form.setValue("location", clients[0].address || "");
         } else if (leads.length === 1 && clients.length === 0) {
             setSelectedLeadId(leads[0].id);
@@ -256,6 +266,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
             form.setValue("name", leads[0].name);
             form.setValue("clientType", leads[0].clientType || 'Other');
             form.setValue("contactPerson", leads[0].name);
+            form.setValue("email", leads[0].email || "");
+            form.setValue("phone", leads[0].phone || "");
             form.setValue("location", leads[0].address || "");
             form.setValue("capacity", leads[0].kilowatt || 0);
         } else {
@@ -264,6 +276,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, proposal, form]);
 
   const watchedCapacity = form.watch('capacity');
@@ -302,8 +315,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     const capacity = parseFloat(String(watchedCapacity)) || 0;
     const ratePerWatt = parseFloat(String(watchedRatePerWatt)) || 0;
     const baseAmount = ratePerWatt * capacity * 1000;
-    const cgstAmount = baseAmount * 0.045;
-    const sgstAmount = baseAmount * 0.045;
+    const cgstAmount = baseAmount * 0.0445;
+    const sgstAmount = baseAmount * 0.0445;
     const finalAmount = baseAmount + cgstAmount + sgstAmount;
     return { baseAmount, cgstAmount, sgstAmount, finalAmount };
   }, [watchedCapacity, watchedRatePerWatt]);
@@ -498,8 +511,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
               <FormField name="ratePerWatt" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Rate per Watt (₹)</FormLabel><FormControl><Input type="number" placeholder="e.g., 40" {...field} step="0.01" /></FormControl><FormMessage /></FormItem> )}/>
               <div className="space-y-2 p-3 border rounded-md bg-muted/50">
                   <div className="flex justify-between items-center"><FormLabel>Base Amount</FormLabel><span className="font-semibold flex items-center"><IndianRupee className="h-4 w-4 mr-0.5"/>{calculatedValues.baseAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-center"><FormLabel>CGST (4.5%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.cgstAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-center"><FormLabel>SGST (4.5%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>CGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.cgstAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>SGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
                   <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{calculatedValues.finalAmount.toFixed(2)}</span></div>
               </div>
               <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem className="mt-4"><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Auto-calculated" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} readOnly className={'bg-muted cursor-not-allowed text-muted-foreground'} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated based on client type and capacity. Set to 0 for Non-DCR.</p><FormMessage /></FormItem> )}/>

@@ -18,6 +18,7 @@ import { OverdueTaskToast } from '@/components/overdue-task-toast';
 import { DarkModeToggle, FullscreenToggle } from '@/components/topbar-actions';
 import { TopbarSettings } from '@/components/topbar-settings';
 import { AttendanceTopbar } from '@/components/attendance-topbar';
+import { PresenceTracker } from '@/components/presence-tracker';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -80,6 +81,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         <Toaster />
         <OverdueTaskToast />
+        <PresenceTracker />
       </SidebarInset>
     </SidebarProvider>
   );

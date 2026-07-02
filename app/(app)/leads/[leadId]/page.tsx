@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { LEAD_PRIORITY_OPTIONS, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_TYPES, DROP_REASON_OPTIONS } from '@/lib/constants';
 import type { Lead, User, LeadStatusType, LeadPriorityType, ClientType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateLeadData, DropReasonType, Proposal, CustomSetting, SiteSurvey, LeadSourceOptionType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft, UserX, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft, UserX, ChevronDown, Zap } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead, deleteElectricityBill } from '@/app/(app)/leads-list/actions';
 import { getProposalsForLead, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -743,7 +743,7 @@ export default function LeadDetailsPage() {
                <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="default" className="h-9 px-4 font-medium shadow-sm bg-blue-600 hover:bg-blue-700 text-white" disabled={isUpdating}>
-                      <Repeat className="mr-2 h-4 w-4" /> Convert
+                      <Zap className="mr-2 h-4 w-4" /> Quick Links
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="end" className="w-64 p-3 border border-border shadow-xl rounded-xl flex flex-col gap-2 bg-card">
@@ -1073,11 +1073,36 @@ export default function LeadDetailsPage() {
                                       </AccordionTrigger>
                                       <AccordionContent className="p-0 pb-4">
                                          <div className="text-xs space-y-3 p-4 bg-muted/20 border border-border/50 rounded-lg">
-                                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-                                                  <div><span className="text-muted-foreground block mb-0.5">Surveyor</span> <span className="font-semibold">{survey.surveyorName}</span></div>
-                                                  <div><span className="text-muted-foreground block mb-0.5">Category</span> <span className="font-semibold">{survey.consumerCategory}</span></div>
-                                                  <div><span className="text-muted-foreground block mb-0.5">Roof Type</span> <span className="font-semibold">{survey.roofType}</span></div>
-                                                  <div><span className="text-muted-foreground block mb-0.5">Shadow-Free</span> <span className="font-semibold">{survey.shadowFreeArea}</span></div>
+                                                                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+                                                  <div><span className="text-muted-foreground block mb-0.5">Surveyor</span> <span className="font-semibold">{survey.surveyorName || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Consumer Name</span> <span className="font-semibold">{survey.consumerName || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Category</span> <span className="font-semibold">{survey.consumerCategory || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Location</span> <span className="font-semibold">{survey.location || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Discom</span> <span className="font-semibold">{survey.discom || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Sanctioned Load</span> <span className="font-semibold">{survey.sanctionedLoad || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Load Type</span> <span className="font-semibold">{survey.consumerLoadType || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Meters</span> <span className="font-semibold">{survey.numberOfMeters || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Meter Phase</span> <span className="font-semibold">{survey.meterPhase || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Meter Rating</span> <span className="font-semibold">{survey.meterRating || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Monthly Bill</span> <span className="font-semibold">{survey.electricityAmount ? `₹${survey.electricityAmount}` : 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Roof Type</span> <span className="font-semibold">{survey.roofType || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Building Height</span> <span className="font-semibold">{survey.buildingHeight || 'N/A'}</span></div>
+                                                  <div><span className="text-muted-foreground block mb-0.5">Shadow-Free Area</span> <span className="font-semibold">{survey.shadowFreeArea || 'N/A'}</span></div>
+                                                                                                    <div className="col-span-2 sm:col-span-4"><span className="text-muted-foreground block mb-0.5">Remark</span> <span className="font-semibold">{survey.remark || 'N/A'}</span></div>
+                                                  <div className="col-span-2 sm:col-span-4">
+                                                    <span className="text-muted-foreground block mb-0.5">Attachments</span>
+                                                    <span className="font-semibold">
+                                                      {survey.electricityBillFiles && survey.electricityBillFiles.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-2 mt-1">
+                                                          {survey.electricityBillFiles.map((file, i) => (
+                                                            <a key={i} href={typeof file === 'string' ? file : (file as any).url || file} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-blue-500 hover:underline bg-blue-500/10 px-2 py-1 rounded text-xs">
+                                                              <i className="ri-attachment-2 mr-1"></i> File {i + 1}
+                                                            </a>
+                                                          ))}
+                                                        </div>
+                                                      ) : 'N/A'}
+                                                    </span>
+                                                  </div>
                                               </div>
                                           </div>
                                       </AccordionContent>

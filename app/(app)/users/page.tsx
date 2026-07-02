@@ -1,4 +1,4 @@
-﻿
+
 
 'use client';
 
@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { UserForm } from './user-form';
 import { SettingsDialog } from '@/app/(app)/settings/settings-dialog';
+import { UserAttendanceHistoryDialog } from '@/components/user-attendance-history-dialog';
 import { useRouter } from 'next/navigation';
 
 export default function ManageUsersPage() {
@@ -32,6 +33,10 @@ export default function ManageUsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  const [isHRMSOpen, setIsHRMSOpen] = useState(false);
+  const [hrmsUserId, setHrmsUserId] = useState<string | null>(null);
+  const [hrmsUserName, setHrmsUserName] = useState<string>('');
 
   const fetchData = async () => {
       setIsLoading(true);
@@ -189,6 +194,14 @@ export default function ManageUsersPage() {
                               </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                   setHrmsUserId(user.id);
+                                   setHrmsUserName(user.name);
+                                   setIsHRMSOpen(true);
+                               }}>
+                                   <Eye className="mr-2 h-3.5 w-3.5" />
+                                   View HRMS Report
+                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleOpenEditDialog(user)}>
                                   <Edit className="mr-2 h-3.5 w-3.5" />
                                   Edit User
@@ -257,6 +270,17 @@ export default function ManageUsersPage() {
         }}
         settingTypes={[{ title: 'User Roles', type: 'USER_ROLE' }]}
       />
+      {hrmsUserId && (
+        <UserAttendanceHistoryDialog
+          userId={hrmsUserId}
+          userName={hrmsUserName}
+          isOpen={isHRMSOpen}
+          onClose={() => {
+            setIsHRMSOpen(false);
+            setHrmsUserId(null);
+          }}
+        />
+      )}
     </>
   );
 }

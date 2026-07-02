@@ -34,9 +34,9 @@ export async function decrypt(input: string): Promise<any> {
   }
 }
 
-export async function createSession(userId: string, name: string, email: string, role: string, viewPermission: ViewPermission) {
+export async function createSession(userId: string, name: string, email: string, role: string, viewPermission: ViewPermission, profileImage?: string | null) {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
-  const session = await encrypt({ userId, name, email, role, viewPermission, expires });
+  const session = await encrypt({ userId, name, email, role, viewPermission, profileImage, expires });
 
   (await cookies()).set('session', session, { expires, httpOnly: true });
 }
@@ -51,7 +51,15 @@ export async function verifySession() {
     return null;
   }
   
-  return { isAuth: true, userId: session.userId, name: session.name, email: session.email, role: session.role, viewPermission: session.viewPermission };
+  return { 
+    isAuth: true, 
+    userId: session.userId, 
+    name: session.name, 
+    email: session.email, 
+    role: session.role, 
+    viewPermission: session.viewPermission,
+    profileImage: session.profileImage
+  };
 }
 
 export async function verifyServerSession() {
@@ -63,12 +71,20 @@ export async function verifyServerSession() {
   const prisma = (await import('./prisma')).default;
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, viewPermission: true }
+    select: { id: true, name: true, email: true, role: true, viewPermission: true, profileImage: true }
   });
 
   if (!user) return null;
 
-  return { isAuth: true, userId: user.id, name: user.name, email: user.email, role: user.role, viewPermission: user.viewPermission };
+  return { 
+    isAuth: true, 
+    userId: user.id, 
+    name: user.name, 
+    email: user.email, 
+    role: user.role, 
+    viewPermission: user.viewPermission,
+    profileImage: user.profileImage
+  };
 }
 
 export async function deleteSession() {
