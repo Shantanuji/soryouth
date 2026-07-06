@@ -385,13 +385,17 @@ def create_capex_evaluation_sheet(doc, context):
     import uuid
     filename = f'capex_{uuid.uuid4().hex}.png'
     temp_path = os.path.join(hti.output_path, filename)
-    hti.screenshot(html_str=html, save_as=filename)
-    
-    # insert image
-    img = InlineImage(doc, temp_path, width=Inches(6.5))
-    
-    # optionally clean up temp_path later, or just leave it since it's temp
-    return img
+    try:
+        hti.screenshot(html_str=html, save_as=filename)
+        if os.path.exists(temp_path):
+            img = InlineImage(doc, temp_path, width=Inches(6.5))
+            return img
+        else:
+            print(f"Warning: html2image failed to create screenshot at {temp_path}. Chromium/Chrome might not be installed on the system.")
+            return None
+    except Exception as e:
+        print(f"Error generating capex sheet screenshot: {e}")
+        return None
 
 def create_capex_evaluation_sheet(doc, context):
     def sf(key, default=0):
@@ -669,10 +673,17 @@ def create_capex_evaluation_sheet(doc, context):
     import uuid
     filename = f'capex_{uuid.uuid4().hex}.png'
     temp_path = os.path.join(hti.output_path, filename)
-    hti.screenshot(html_str=html, save_as=filename)
-    
-    img = InlineImage(doc, temp_path, width=Inches(6.5))
-    return img
+    try:
+        hti.screenshot(html_str=html, save_as=filename)
+        if os.path.exists(temp_path):
+            img = InlineImage(doc, temp_path, width=Inches(6.5))
+            return img
+        else:
+            print(f"Warning: html2image failed to create screenshot at {temp_path}. Chromium/Chrome might not be installed on the system.")
+            return None
+    except Exception as e:
+        print(f"Error generating capex sheet screenshot: {e}")
+        return None
 
 def format_indian(number, decimals=2):
     try:
