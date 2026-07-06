@@ -44,9 +44,17 @@ jobs:
             echo ">>> Restarting app with PM2..."
             pm2 restart soryouth-crm || pm2 start npm --name "soryouth-crm" -- start -- -p 3000
 
-            echo ">>> Restarting proposal microservice..."
+            echo ">>> Setting up proposal microservice environment..."
             cd $APP_DIR/microservices/proposal_generator
+            if [ ! -d "venv" ]; then
+              python3 -m venv venv
+            fi
             source venv/bin/activate
+            echo ">>> Installing python dependencies..."
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+            echo ">>> Restarting proposal microservice..."
             pm2 restart proposal-service || pm2 start "python3 main.py" --name "proposal-service"
 
             pm2 save
