@@ -380,7 +380,7 @@ def create_capex_evaluation_sheet(doc, context):
     </html>
     '''
     
-    hti = Html2Image(size=(840, 1188))
+    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu'])
     hti.output_path = tempfile.gettempdir()
     import uuid
     filename = f'capex_{uuid.uuid4().hex}.png'
@@ -668,7 +668,7 @@ def create_capex_evaluation_sheet(doc, context):
     </html>
     """
     
-    hti = Html2Image(size=(840, 1188))
+    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu'])
     hti.output_path = tempfile.gettempdir()
     import uuid
     filename = f'capex_{uuid.uuid4().hex}.png'
