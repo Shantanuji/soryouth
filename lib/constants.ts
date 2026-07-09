@@ -32,6 +32,7 @@ import {
   Handshake,
   Ticket,
   IndianRupee,
+  Database,
 } from 'lucide-react';
 import { format, parseISO, addDays, subDays } from 'date-fns';
 
@@ -53,6 +54,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/users', label: 'Manage Users', icon: Users },
   { href: '/manage-templates', label: 'Manage Templates', icon: ClipboardPaste },
+  { href: '/database-backup', label: 'Database Backup', icon: Database },
 ];
 
 // Secondary Navigation for tools/other sections, in user profile dropdown
