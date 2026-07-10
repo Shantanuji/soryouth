@@ -1,0 +1,3 @@
+@echo off
+echo Connecting to Hostinger Server...
+ssh -i hostinger_rsa root@187.127.188.247

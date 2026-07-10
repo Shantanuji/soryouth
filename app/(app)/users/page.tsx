@@ -39,14 +39,20 @@ export default function ManageUsersPage() {
   const [hrmsUserName, setHrmsUserName] = useState<string>('');
 
   const fetchData = async () => {
-      setIsLoading(true);
-      const [fetchedUsers, fetchedRoles] = await Promise.all([
-        getUsers(),
-        getUserRoles(),
-      ]);
-      setUsers(fetchedUsers);
-      setRoles(fetchedRoles);
-      setIsLoading(false);
+      try {
+          setIsLoading(true);
+          const [fetchedUsers, fetchedRoles] = await Promise.all([
+            getUsers(),
+            getUserRoles(),
+          ]);
+          setUsers(fetchedUsers || []);
+          setRoles(fetchedRoles || []);
+      } catch (error) {
+          console.error("Error fetching users:", error);
+          toast({ title: "Error", description: "Failed to load users data.", variant: "destructive" });
+      } finally {
+          setIsLoading(false);
+      }
   };
   
   useEffect(() => {
