@@ -39,7 +39,7 @@ const SIDEBAR_GROUPS = [
   },
   {
     label: 'MANAGEMENT',
-    hrefs: ['/users', '/manage-templates', '/database-backup'],
+    hrefs: ['/users', '/manage-templates', '/database-backup', '/mailer-settings'],
   },
 ];
 

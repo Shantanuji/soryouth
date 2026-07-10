@@ -33,6 +33,7 @@ import {
   Ticket,
   IndianRupee,
   Database,
+  Mail,
 } from 'lucide-react';
 import { format, parseISO, addDays, subDays } from 'date-fns';
 
@@ -55,6 +56,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/users', label: 'Manage Users', icon: Users },
   { href: '/manage-templates', label: 'Manage Templates', icon: ClipboardPaste },
   { href: '/database-backup', label: 'Database Backup', icon: Database },
+  { href: '/mailer-settings', label: 'Mailer Settings', icon: Mail },
 ];
 
 // Secondary Navigation for tools/other sections, in user profile dropdown

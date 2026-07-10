@@ -305,6 +305,12 @@ model CustomSetting {
   @@index([type])
 }
 
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 enum SettingType {
   LEAD_STATUS
   LEAD_SOURCE

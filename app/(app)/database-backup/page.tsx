@@ -1,18 +1,23 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Database, Download, UploadCloud, AlertTriangle } from 'lucide-react';
+import { Database, Download, UploadCloud, AlertTriangle, Mail } from 'lucide-react';
 import { useSession } from '@/hooks/use-sessions';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { fetchLocalBackups } from '@/app/actions/backup-actions';
+import { format } from 'date-fns';
 
 export default function DatabaseBackupPage() {
   const session = useSession();
   const { toast } = useToast();
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isEmailing, setIsEmailing] = useState(false);
+  const [localBackups, setLocalBackups] = useState<any[]>([]);
+  const [isLoadingBackups, setIsLoadingBackups] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (session && session.role !== 'Admin') {
@@ -24,6 +29,24 @@ export default function DatabaseBackupPage() {
       </div>
     );
   }
+
+  const loadLocalBackups = async () => {
+    setIsLoadingBackups(true);
+    try {
+      const backups = await fetchLocalBackups();
+      setLocalBackups(backups);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoadingBackups(false);
+    }
+  };
+
+  useEffect(() => {
+    if (session && session.role === 'Admin') {
+      loadLocalBackups();
+    }
+  }, [session]);
 
   const handleBackup = async () => {
     try {
@@ -54,6 +77,26 @@ export default function DatabaseBackupPage() {
       toast({ title: 'Backup Successful', description: 'Database backup downloaded successfully.' });
     } catch (error) {
       toast({ title: 'Backup Error', description: 'An error occurred while downloading the backup.', variant: 'destructive' });
+    }
+  };
+
+  const handleEmailBackup = async () => {
+    setIsEmailing(true);
+    try {
+      const response = await fetch('/api/database/backup/email', {
+        method: 'POST',
+      });
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        toast({ title: 'Email Sent', description: 'Database backup has been sent to the configured email address.' });
+      } else {
+        toast({ title: 'Email Failed', description: result.error || 'Failed to email the database backup.', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Email Error', description: 'An error occurred while sending the backup email.', variant: 'destructive' });
+    } finally {
+      setIsEmailing(false);
     }
   };
 
@@ -119,9 +162,12 @@ export default function DatabaseBackupPage() {
               Download a copy of the current database file. Keep this file safe.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-3">
             <Button onClick={handleBackup} className="w-full">
-              Download Backup (.db)
+              <Download className="mr-2 h-4 w-4" /> Download Backup (.db)
+            </Button>
+            <Button onClick={handleEmailBackup} variant="outline" className="w-full" disabled={isEmailing}>
+              <Mail className="mr-2 h-4 w-4" /> {isEmailing ? 'Sending...' : 'Email Backup to Admin'}
             </Button>
           </CardContent>
         </Card>
@@ -158,6 +204,44 @@ export default function DatabaseBackupPage() {
             >
               {isRestoring ? 'Restoring...' : 'Restore Database'}
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" /> Guaranteed Local Backups
+            </CardTitle>
+            <CardDescription>
+              These backups are securely stored on your Ubuntu server. They are automatically created before any email transmission. Only the latest 30 are kept.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingBackups ? (
+              <p className="text-sm text-muted-foreground">Loading backups...</p>
+            ) : localBackups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No local backups found.</p>
+            ) : (
+              <div className="space-y-2">
+                {localBackups.map((backup) => (
+                  <div key={backup.name} className="flex items-center justify-between p-3 border rounded-md">
+                    <div>
+                      <p className="font-medium text-sm">{backup.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(backup.createdAt), 'PPpp')} • {(backup.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`/api/database/download-local?filename=${backup.name}`} download>
+                        <Download className="h-4 w-4 mr-2" /> Download
+                      </a>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
