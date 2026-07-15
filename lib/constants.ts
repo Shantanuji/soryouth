@@ -157,6 +157,7 @@ export const PLACEHOLDER_DEFINITIONS_PROPOSAL: PlaceholderGroup = {
     { placeholder: '{{email}}', description: 'The email address of the client.' },
     { placeholder: '{{phone}}', description: 'The phone/contact number of the client.' },
     { placeholder: '{{location}}', description: 'The primary address of the client/site.' },
+    { placeholder: '{{city_area}}', description: 'The city or area of the client.' },
     { placeholder: '{{client_type}}', description: 'Type of client (e.g., Residential).' },
   ],
   'Proposal Details': [

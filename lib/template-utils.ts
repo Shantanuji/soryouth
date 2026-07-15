@@ -28,6 +28,7 @@ export async function generateHtmlFromTemplate(
             number: proposalData.proposalNumber,
             name: proposalData.name,
             city_area: proposalData.cityArea || "",
+            cityArea: proposalData.cityArea || "",
         },
         client: {
             name: proposalData.name,
