@@ -158,17 +158,17 @@ export default function MailerSettingsPage() {
                 <hr className="my-6" />
 
                 <div className="space-y-2">
-                  <Label htmlFor="backupEmailTo">Receiver Email Address</Label>
+                  <Label htmlFor="backupEmailTo">Receiver Email Address(es)</Label>
                   <Input 
                     id="backupEmailTo" 
-                    type="email"
+                    type="text"
                     value={config.backupEmailTo} 
                     onChange={e => setConfig({...config, backupEmailTo: e.target.value})} 
-                    placeholder="e.g. admin@yourcompany.com" 
+                    placeholder="e.g. admin@example.com, ceo@example.com" 
                     required 
                   />
                   <p className="text-xs text-muted-foreground">
-                    This email address will receive the scheduled backups and crash alerts.
+                    These email addresses will receive the scheduled backups and crash alerts. Separate multiple emails with a comma.
                   </p>
                 </div>
 

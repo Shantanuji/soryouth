@@ -4,7 +4,7 @@ echo     DIRECT PUSH TO HOSTINGER (NO GITHUB REQUIRED)
 echo ===================================================
 echo.
 echo 1. Packing local project files...
-tar -czf project-upload.tar.gz --exclude=node_modules --exclude=.git --exclude=.next --exclude=project-upload.tar.gz .
+tar -czf project-upload.tar.gz --exclude=node_modules --exclude=.git --exclude=.next --exclude=*.db --exclude=project-upload.tar.gz .
 
 echo 2. Uploading files securely directly to server...
 scp -i "%~dp0hostinger_rsa" project-upload.tar.gz root@187.127.188.247:/var/www/soryouth-crm/

@@ -17,7 +17,7 @@ export async function createLocalBackup(prefix: string = 'backup'): Promise<{ su
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `soryouth-${prefix}-${timestamp}.db`;
     const destinationPath = path.join(BACKUP_DIR, filename);
-    const sourcePath = path.join(process.cwd(), 'dev.db'); // Note: if you use a different DB name in production, update this
+    const sourcePath = path.join(process.cwd(), 'prisma', 'dev.db'); // Note: if you use a different DB name in production, update this
 
     // 3. Check if source DB exists
     try {

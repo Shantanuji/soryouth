@@ -8,7 +8,9 @@ import { Database, Download, UploadCloud, AlertTriangle, Mail } from 'lucide-rea
 import { useSession } from '@/hooks/use-sessions';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { fetchLocalBackups } from '@/app/actions/backup-actions';
+import { getBackupSchedule, saveBackupSchedule } from '@/app/actions/backup-actions';
+import { Input } from '@/components/ui/input';
+import { Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function DatabaseBackupPage() {
@@ -18,6 +20,8 @@ export default function DatabaseBackupPage() {
   const [isEmailing, setIsEmailing] = useState(false);
   const [localBackups, setLocalBackups] = useState<any[]>([]);
   const [isLoadingBackups, setIsLoadingBackups] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState('00:00');
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (session && session.role !== 'Admin') {
@@ -33,6 +37,7 @@ export default function DatabaseBackupPage() {
   const loadLocalBackups = async () => {
     setIsLoadingBackups(true);
     try {
+      const { fetchLocalBackups } = await import('@/app/actions/backup-actions');
       const backups = await fetchLocalBackups();
       setLocalBackups(backups);
     } catch (error) {
@@ -42,11 +47,33 @@ export default function DatabaseBackupPage() {
     }
   };
 
+  const loadSchedule = async () => {
+    try {
+      const time = await getBackupSchedule();
+      setScheduleTime(time);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     if (session && session.role === 'Admin') {
       loadLocalBackups();
+      loadSchedule();
     }
   }, [session]);
+
+  const handleSaveSchedule = async () => {
+    setIsSavingSchedule(true);
+    try {
+      await saveBackupSchedule(scheduleTime);
+      toast({ title: 'Schedule Saved', description: `Auto-backup is now scheduled for ${scheduleTime} daily.` });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save the backup schedule.', variant: 'destructive' });
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
 
   const handleBackup = async () => {
     try {
@@ -149,7 +176,7 @@ export default function DatabaseBackupPage() {
     <>
       <PageHeader
         title="Database Backup & Restore"
-        description="Manage your SQLite database backups and restore from previous versions."
+        description="Manage your database backups and restore from previous versions."
         icon={Database}
       />
       <div className="grid gap-6 md:grid-cols-2 mt-6">
@@ -169,6 +196,26 @@ export default function DatabaseBackupPage() {
             <Button onClick={handleEmailBackup} variant="outline" className="w-full" disabled={isEmailing}>
               <Mail className="mr-2 h-4 w-4" /> {isEmailing ? 'Sending...' : 'Email Backup to Admin'}
             </Button>
+            
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Clock className="h-4 w-4" /> Daily Auto-Backup Schedule
+              </h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Select the time when the automatic daily backup should occur.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="time" 
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  className="w-full"
+                />
+                <Button onClick={handleSaveSchedule} disabled={isSavingSchedule}>
+                  {isSavingSchedule ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -212,7 +259,7 @@ export default function DatabaseBackupPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" /> Guaranteed Local Backups
+              <Database className="h-5 w-5" /> Server Backups
             </CardTitle>
             <CardDescription>
               These backups are securely stored on your Ubuntu server. They are automatically created before any email transmission. Only the latest 30 are kept.

@@ -58,6 +58,7 @@ export const proposalSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
+  cityArea: z.string().optional(),
   capacity: z.coerce.number().positive({ message: 'Capacity (kW) must be a positive number.' }),
   moduleType: z.enum(MODULE_TYPES, { required_error: "Module type is required."}),
   moduleWattage: z.enum(MODULE_WATTAGE_OPTIONS, { required_error: "Module wattage is required." }),
@@ -103,6 +104,7 @@ const initialFormStateForUseForm: ProposalFormValues = {
   email: "",
   phone: "",
   location: "",
+  cityArea: "",
   capacity: 0,
   moduleType: MODULE_TYPES[0],
   moduleWattage: MODULE_WATTAGE_OPTIONS[0],
@@ -219,6 +221,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           clientType: proposal.clientType,
           contactPerson: proposal.contactPerson,
           location: proposal.location,
+          cityArea: proposal.cityArea || "",
           capacity: proposal.capacity,
           moduleType: proposal.moduleType,
           moduleWattage: proposal.moduleWattage,
@@ -368,6 +371,16 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     };
   }, [watchedCapacity, watchedUnitRate, watchedInverterQty]);
 
+  useEffect(() => {
+    form.setValue('requiredSpace', calculatedAdditionalValues.requiredSpace);
+    form.setValue('generationPerDay', calculatedAdditionalValues.generationPerDay);
+    form.setValue('generationPerYear', calculatedAdditionalValues.generationPerYear);
+    form.setValue('savingsPerYear', calculatedAdditionalValues.savingsPerYear);
+    form.setValue('laKitQty', calculatedAdditionalValues.laKitQty);
+    form.setValue('acdbDcdbQty', calculatedAdditionalValues.acdbDcdbQty);
+    form.setValue('earthingKitQty', calculatedAdditionalValues.earthingKitQty);
+  }, [calculatedAdditionalValues, form]);
+
   const isDcrDisabled = watchedClientType === 'Commercial' || watchedClientType === 'Industrial';
 
   const handleFormSubmit = (values: ProposalFormValues) => {
@@ -394,13 +407,13 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
         finalAmount: calculatedValues.finalAmount,
         subsidyAmount: parseFloat(allValues.subsidyAmount as any) || 0,
         unitRate: allValues.unitRate,
-        requiredSpace: calculatedAdditionalValues.requiredSpace,
-        generationPerDay: calculatedAdditionalValues.generationPerDay,
-        generationPerYear: calculatedAdditionalValues.generationPerYear,
-        savingsPerYear: calculatedAdditionalValues.savingsPerYear,
-        laKitQty: calculatedAdditionalValues.laKitQty,
-        acdbDcdbQty: calculatedAdditionalValues.acdbDcdbQty,
-        earthingKitQty: calculatedAdditionalValues.earthingKitQty,
+        requiredSpace: parseFloat(allValues.requiredSpace as any) || 0,
+        generationPerDay: parseFloat(allValues.generationPerDay as any) || 0,
+        generationPerYear: parseFloat(allValues.generationPerYear as any) || 0,
+        savingsPerYear: parseFloat(allValues.savingsPerYear as any) || 0,
+        laKitQty: Number(allValues.laKitQty) || 0,
+        acdbDcdbQty: Number(allValues.acdbDcdbQty) || 0,
+        earthingKitQty: Number(allValues.earthingKitQty) || 0,
       };
 
       if (proposal?.id) {
@@ -491,7 +504,10 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                  <FormField name="clientType" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Client Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select client type" /></SelectTrigger></FormControl><SelectContent>{CLIENT_TYPES.map(type => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
                  <FormField name="contactPerson" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="Enter contact person" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
-              <FormField name="location" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Location / Site Address</FormLabel><FormControl><Textarea placeholder="Enter full site address" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField name="location" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Location / Site Address</FormLabel><FormControl><Textarea placeholder="Enter full site address" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <FormField name="cityArea" control={form.control} render={({ field }) => ( <FormItem><FormLabel>City / Area</FormLabel><FormControl><Input placeholder="Enter city or area" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              </div>
 
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">System Details</h3>
@@ -522,43 +538,22 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
 
               <div className="p-3 border rounded-md bg-muted/50 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormItem>
-                      <FormLabel>Required Space (Sq. Ft.)</FormLabel>
-                      <FormControl><Input readOnly value={`${calculatedAdditionalValues.requiredSpace.toFixed(0)} sq. ft.`} /></FormControl>
-                    </FormItem>
-                    <FormItem>
-                      <FormLabel>Generation/Day (Units)</FormLabel>
-                      <FormControl><Input readOnly value={`${calculatedAdditionalValues.generationPerDay.toFixed(2)} units`} /></FormControl>
-                    </FormItem>
-                     <FormItem>
-                      <FormLabel>Generation/Year (Units)</FormLabel>
-                      <FormControl><Input readOnly value={`${calculatedAdditionalValues.generationPerYear.toFixed(2)} units`} /></FormControl>
-                    </FormItem>
+                    <FormField name="requiredSpace" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Required Space (Sq. Ft.)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField name="generationPerDay" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Day (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField name="generationPerYear" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Year (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField name="unitRate" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Unit Rate (₹)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                  <FormItem>
-                      <FormLabel>Savings/Year (₹)</FormLabel>
-                      <FormControl><Input readOnly value={`₹ ${calculatedAdditionalValues.savingsPerYear.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} /></FormControl>
-                  </FormItem>
+                  <FormField name="savingsPerYear" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Savings/Year (₹)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
               
               <div className="p-3 border rounded-md bg-muted/50 space-y-3">
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <FormItem>
-                        <FormLabel>LA Kit Quantity</FormLabel>
-                        <FormControl><Input readOnly value={calculatedAdditionalValues.laKitQty} /></FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel>ACDB/DCDB Quantity</FormLabel>
-                        <FormControl><Input readOnly value={calculatedAdditionalValues.acdbDcdbQty} /></FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel>Earthing Kit Quantity</FormLabel>
-                        <FormControl><Input readOnly value={calculatedAdditionalValues.earthingKitQty} /></FormControl>
-                      </FormItem>
+                      <FormField name="laKitQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>LA Kit Quantity</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                      <FormField name="acdbDcdbQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>ACDB/DCDB Quantity</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                      <FormField name="earthingKitQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Earthing Kit Quantity</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                   </div>
               </div>
             </fieldset>

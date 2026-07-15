@@ -249,6 +249,7 @@ model Proposal {
   clientType         String
   contactPerson      String
   location           String
+  cityArea           String?
   capacity           Decimal
   moduleType         String
   moduleWattage      String
