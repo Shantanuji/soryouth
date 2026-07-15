@@ -317,7 +317,7 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
                         <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                           <File className="h-4 w-4" />
                           <span className="flex-grow">{uploadedFileName.split('/').pop()}</span>
-                           <a href={uploadedFileName} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                           <a href={form.getValues('originalDocxPath')} target="_blank" rel="noopener noreferrer" download className="text-primary hover:underline" title="Download Template">
                             <Download className="h-4 w-4"/>
                           </a>
                         </div>
