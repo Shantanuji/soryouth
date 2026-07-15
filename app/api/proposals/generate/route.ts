@@ -78,6 +78,7 @@ function getTemplateData(proposal: Proposal) {
       ? (() => { try { return format(parseISO(proposal.proposalDate), 'dd MMM, yyyy'); } catch { return format(new Date(), 'dd MMM, yyyy'); } })()
       : format(new Date(), 'dd MMM, yyyy'),
     date_today: format(new Date(), 'dd MMM, yyyy'),
+    created_by: proposal.createdBy || '',
 
     // ── System Specs ──────────────────────────────────────────────────
     capacity: capacity,                   // raw number — e.g. 8.40

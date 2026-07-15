@@ -163,6 +163,7 @@ export const PLACEHOLDER_DEFINITIONS_PROPOSAL: PlaceholderGroup = {
   'Proposal Details': [
     { placeholder: '{{proposal_number}}', description: 'The unique identification number for the proposal.' },
     { placeholder: '{{proposal_date}}', description: 'The date the proposal was created (e.g., 27 Jun, 2024).' },
+    { placeholder: '{{created_by}}', description: 'The name of the user who created the proposal.' },
     { placeholder: '{{capacity}}', description: 'The system capacity in kilowatts (kW).' },
     { placeholder: '{{module_type}}', description: 'The type of solar module used (e.g., Mono PERC).' },
     { placeholder: '{{module_wattage}}', description: 'The wattage of a single module (e.g., 545 W).' },
