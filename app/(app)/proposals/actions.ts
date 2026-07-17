@@ -34,6 +34,7 @@ function mapPrismaProposalToProposalType(prismaProposal: any): Proposal {
     acdbDcdbQty: prismaProposal.acdbDcdbQty,
     earthingKitQty: prismaProposal.earthingKitQty,
     droppedLeadId: prismaProposal.droppedLeadId ?? undefined,
+    cityArea: prismaProposal.cityArea,
     createdBy: prismaProposal.createdBy?.name,
   };
 }
@@ -51,6 +52,11 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
       proposalDate: proposalData.proposalDate ? parseISO(proposalData.proposalDate) : new Date(),
     };
     
+    // Remove calculatedValues as it is not a Prisma schema field
+    if ('calculatedValues' in dataToSave) {
+        delete dataToSave.calculatedValues;
+    }
+
     // Remove undefined fields so Prisma doesn't try to update them
     Object.keys(dataToSave).forEach(key => dataToSave[key as keyof typeof dataToSave] === undefined && delete dataToSave[key as keyof typeof dataToSave]);
 
@@ -173,6 +179,7 @@ export async function bulkCreateProposals(proposalsData: Partial<Proposal>[]): P
                 clientType: p.clientType!,
                 contactPerson: p.contactPerson!,
                 location: p.location!,
+                cityArea: p.cityArea,
                 capacity: p.capacity!,
                 moduleType: p.moduleType!,
                 moduleWattage: p.moduleWattage!,

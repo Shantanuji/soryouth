@@ -123,6 +123,26 @@ export default function LeadDetailsPage() {
   const [isActivitiesLoading, setActivitiesLoading] = useState(true);
   const [surveys, setSurveys] = useState<SiteSurvey[]>([]);
 
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  
+  const openPdfInNewTab = async (pdfUrl: string) => {
+    const newTab = window.open('about:blank', '_blank');
+    try {
+      const s3Key = new URL(pdfUrl).pathname.substring(1);
+      const res = await fetch(`/api/s3/presigned-url?key=${encodeURIComponent(s3Key)}`);
+      const data = await res.json();
+      if (data.url && newTab) {
+        newTab.location.href = data.url;
+      } else if (newTab) {
+        newTab.close();
+        toast({ title: "Error", description: "Could not open document securely", variant: "destructive" });
+      }
+    } catch (e) {
+      if (newTab) newTab.close();
+      toast({ title: "Error", description: "Failed to open PDF", variant: "destructive" });
+    }
+  };
+
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDropDialogOpen, setIsDropDialogOpen] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
@@ -348,8 +368,7 @@ export default function LeadDetailsPage() {
         });
         await fetchProposals(); 
         if(result.pdfUrl) {
-          setSelectedProposalForPreview(result);
-          setIsPreviewOpen(true);
+          openPdfInNewTab(result.pdfUrl);
         }
       } else {
         toast({ title: "Error", description: "Could not save the proposal to the database.", variant: "destructive" });
@@ -1029,7 +1048,7 @@ export default function LeadDetailsPage() {
                     {proposals.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {proposals.map(proposal => (
-                          <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="flex flex-col p-4 border border-border/50 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all shadow-sm">
+                          <div key={proposal.id} onClick={() => { if(proposal.pdfUrl) openPdfInNewTab(proposal.pdfUrl); else toast({title: 'No PDF', description: 'PDF not generated for this proposal.', variant: 'destructive'}) }} className="flex flex-col p-4 border border-border/50 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all shadow-sm">
                             <div className="flex items-center gap-3 mb-3">
                               <div className="bg-primary/10 p-2 rounded-md"><FileText className="h-4 w-4 text-primary" /></div>
                               <div>

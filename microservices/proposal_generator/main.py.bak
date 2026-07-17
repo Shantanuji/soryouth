@@ -55,220 +55,11 @@ def get_printable_width(doc):
         return Inches(6.5)
 
 
-def create_monthly_generation_chart_b64(capacity_kw):
-    """Generates monthly chart and returns base64 PNG for HTML rendering."""
-    if not capacity_kw or capacity_kw <= 0:
-        return None
-        
-    generation_per_day = capacity_kw * 4
-    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    seasonal_factors = [0.95, 0.97, 1.10, 1.13, 1.14, 0.93, 0.75, 0.79, 0.87, 1.02, 1.00, 0.99]
-    monthly_generation = [generation_per_day * days * factor for days, factor in zip(days_in_month, seasonal_factors)]
-
-    fig = Figure(figsize=(9, 4.8), dpi=300)
-    ax = fig.add_subplot(1, 1, 1)
-
-    ax.bar(months, monthly_generation, color='#4F81BD', edgecolor='#385D8A', linewidth=1.5, width=0.6)
-    ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    ax.tick_params(axis='y', colors='#595959', labelsize=12)
-    
-    ax.set_ylabel('Energy Produced (in kWh)', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
-    ax.set_xlim(-0.5, 11.5)
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.grid(axis='y', linestyle='-', color='#D9D9D9', alpha=0.7)
-    ax.set_axisbelow(True)
-    
-    cell_text = [[f"{int(val)}" for val in monthly_generation]]
-    table = ax.table(cellText=cell_text, rowLabels=['Series1'], colLabels=months, loc='bottom', cellLoc='center', bbox=[0, -0.15, 1, 0.12])
-    table.auto_set_font_size(False)
-    table.set_fontsize(14)
-    table.scale(1, 1.8)  # Normal padding
-    
-    for key, cell in table.get_celld().items():
-        cell.set_edgecolor('#D9D9D9')
-        if key[0] == 0:  # Header row
-            cell.set_text_props(weight='bold', color='#595959')
-        if key[1] == -1: # Row label (Series1)
-            cell.set_text_props(weight='bold', color='#595959')
-
-    fig.subplots_adjust(left=0.12, bottom=0.20, right=0.95, top=0.95)
-
-    memfile = io.BytesIO()
-    fig.savefig(memfile, format='png', transparent=True)
-    memfile.seek(0)
-    b64 = base64.b64encode(memfile.read()).decode('utf-8')
-    return f"data:image/png;base64,{b64}"
-
-
-def create_yearly_savings_chart_b64(capacity_kw, unit_rate):
-    """Generates yearly chart and returns base64 PNG for HTML rendering."""
-    if not capacity_kw or capacity_kw <= 0 or not unit_rate or unit_rate <= 0:
-        return None
-
-    initial_generation_per_year = capacity_kw * 4 * 365
-    years = list(range(1, 31))
-    savings = []
-    
-    current_generation = initial_generation_per_year
-    current_rate = unit_rate
-
-    for _ in years:
-        savings.append(current_generation * current_rate)
-        current_generation *= 0.996
-        current_rate *= 1.02
-
-    fig = Figure(figsize=(9, 4.8), dpi=300)
-    ax = fig.add_subplot(1, 1, 1)
-
-    ax.plot(years, savings, marker='o', linestyle='-', color='#F79646', linewidth=2.5, markersize=8)
-    
-    ax.set_ylabel('Projected Savings (in ₹)', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
-    ax.set_xlabel('Year', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
-    
-    ax.set_xlim(0.8, 30.2) 
-    
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#D9D9D9')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_color('#595959')
-    ax.spines['left'].set_color('#595959')
-    ax.tick_params(axis='both', colors='#595959', labelsize=12)
-    ax.get_yaxis().set_major_formatter(mticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-    
-    fig.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95)
-
-    memfile = io.BytesIO()
-    fig.savefig(memfile, format='png', transparent=True)
-    memfile.seek(0)
-    b64 = base64.b64encode(memfile.read()).decode('utf-8')
-    return f"data:image/png;base64,{b64}"
-
-
-def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
-    """
-    Generates a single combined A4 page containing both charts perfectly styled and spaced, 
-    so Word does not compress them on the same page.
-    """
-    monthly_b64 = create_monthly_generation_chart_b64(capacity_kw)
-    yearly_b64 = create_yearly_savings_chart_b64(capacity_kw, unit_rate)
-    
-    if not monthly_b64 or not yearly_b64:
-        return None
-        
-    html = f'''
-    <html>
-    <head>
-    <style>
-        * {{
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }}
-        ::-webkit-scrollbar {{
-            display: none;
-        }}
-        body {{
-            font-family: 'Segoe UI', Calibri, sans-serif;
-            background: white;
-            width: 840px;
-            height: 1188px;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            margin: 0;
-        }}
-        .header {{
-            text-align: center;
-            font-size: 28px;
-            font-weight: bold;
-            color: #002060;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 3px solid #002060;
-            padding-bottom: 10px;
-        }}
-        .charts-wrapper {{
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            flex-grow: 1;
-        }}
-        .chart-block {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex-grow: 1;
-            width: 100%;
-        }}
-        .chart-title {{
-            font-size: 20px;
-            font-weight: bold;
-            color: #595959;
-            margin-bottom: 5px;
-            text-align: center;
-        }}
-        .chart-container {{
-            flex-grow: 1;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-        }}
-        img {{
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }}
-    </style>
-    </head>
-    <body>
-        <div class="header">Solar Performance Analysis</div>
-        <div class="charts-wrapper">
-            <div class="chart-block">
-                <div class="chart-title">Monthly Energy Generation</div>
-                <div class="chart-container">
-                    <img src="{monthly_b64}" />
-                </div>
-            </div>
-            <div class="chart-block">
-                <div class="chart-title">Projected Savings for 30 Years</div>
-                <div class="chart-container">
-                    <img src="{yearly_b64}" />
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
-    hti.output_path = tempfile.gettempdir()
-    filename = f'combined_charts_{uuid.uuid4().hex}.png'
-    temp_path = os.path.join(hti.output_path, filename)
-    
-    try:
-        hti.screenshot(html_str=html, save_as=filename)
-        if os.path.exists(temp_path):
-            return InlineImage(doc, temp_path, width=target_width)
-        else:
-            return None
-    except Exception as e:
-        print(f"Error generating combined charts screenshot: {e}")
-        return None
-
-
-# BACKWARD COMPATIBILITY: Keep old functions intact but unused
 def create_monthly_generation_chart(doc, capacity_kw, target_width):
+    """Generates a high-resolution, anti-aliased bar chart for monthly solar production."""
     if not capacity_kw or capacity_kw <= 0:
         return None
+        
     generation_per_day = capacity_kw * 4
     months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -277,12 +68,21 @@ def create_monthly_generation_chart(doc, capacity_kw, target_width):
 
     fig = Figure(figsize=(8, 4.5), dpi=300)
     ax = fig.add_subplot(1, 1, 1)
+
+    # Professional 3D-ish style with exact widths and colors
     ax.bar(months, monthly_generation, color='#4F81BD', edgecolor='#385D8A', linewidth=1.5, width=0.6)
+    
+    # Hide x-axis labels to rely completely on the data table
     ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
     ax.tick_params(axis='y', colors='#595959', labelsize=10)
+    
     ax.set_ylabel('Energy Produced (in kWh)', color='#595959', fontweight='bold', fontsize=12, labelpad=10)
     ax.set_title('Monthly Projection', color='#595959', fontweight='bold', fontsize=16, pad=15)
+    
+    # Strip away all internal matplotlib axis padding
     ax.set_xlim(-0.5, 11.5)
+    
+    # Clean up spines and add a subtle horizontal grid
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
@@ -290,6 +90,7 @@ def create_monthly_generation_chart(doc, capacity_kw, target_width):
     ax.grid(axis='y', linestyle='-', color='#D9D9D9', alpha=0.7)
     ax.set_axisbelow(True)
     
+    # Insert data table with plenty of breathing room below the chart
     cell_text = [[f"{int(val)}" for val in monthly_generation]]
     table = ax.table(cellText=cell_text, rowLabels=['Series1'], colLabels=months, loc='bottom', cellLoc='center', bbox=[0, -0.22, 1, 0.12])
     table.auto_set_font_size(False)
@@ -297,22 +98,28 @@ def create_monthly_generation_chart(doc, capacity_kw, target_width):
     for key, cell in table.get_celld().items():
         cell.set_edgecolor('#D9D9D9')
 
+    # Lock the axes to an exact, identical height
     fig.subplots_adjust(left=0.12, bottom=0.30, right=0.95, top=0.90)
 
     memfile = io.BytesIO()
     fig.savefig(memfile, format='png')
     memfile.seek(0)
+    
     return InlineImage(doc, memfile, width=target_width)
 
 
 def create_yearly_savings_chart(doc, capacity_kw, unit_rate, target_width):
+    """Generates a high-resolution, anti-aliased line chart for projected savings over 30 years."""
     if not capacity_kw or capacity_kw <= 0 or not unit_rate or unit_rate <= 0:
         return None
+
     initial_generation_per_year = capacity_kw * 4 * 365
     years = list(range(1, 31))
     savings = []
+    
     current_generation = initial_generation_per_year
     current_rate = unit_rate
+
     for _ in years:
         savings.append(current_generation * current_rate)
         current_generation *= 0.996
@@ -320,11 +127,18 @@ def create_yearly_savings_chart(doc, capacity_kw, unit_rate, target_width):
 
     fig = Figure(figsize=(8, 4.5), dpi=300)
     ax = fig.add_subplot(1, 1, 1)
+
+    # Professional bold line with clear markers
     ax.plot(years, savings, marker='o', linestyle='-', color='#F79646', linewidth=2.5, markersize=6)
+    
     ax.set_ylabel('Projected Savings (in ₹)', color='#595959', fontweight='bold', fontsize=12)
     ax.set_xlabel('Year', color='#595959', fontweight='bold', fontsize=12)
     ax.set_title('Projected Yearly Savings for 30 Years', color='#595959', fontweight='bold', fontsize=16, pad=15)
+    
+    # Strip away all internal matplotlib axis padding
     ax.set_xlim(0.8, 30.2) 
+    
+    # Detailed background grid for financial clarity
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#D9D9D9')
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -332,12 +146,13 @@ def create_yearly_savings_chart(doc, capacity_kw, unit_rate, target_width):
     ax.spines['left'].set_color('#595959')
     ax.tick_params(axis='both', colors='#595959', labelsize=10)
     ax.get_yaxis().set_major_formatter(mticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-    
+    # Lock the axes to an exact, identical height
     fig.subplots_adjust(left=0.12, bottom=0.30, right=0.95, top=0.90)
 
     memfile = io.BytesIO()
     fig.savefig(memfile, format='png')
     memfile.seek(0)
+
     return InlineImage(doc, memfile, width=target_width)
 
 
@@ -370,6 +185,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     net_inv = final_amt - subsidy - total_ad
     roi_years = safe_float(context.get('roi_in_years'), net_inv / savings_yr if savings_yr > 0 else 0)
 
+    # HTML explicitly designed around precise typographic layouts
     html = f'''
     <html>
     <head>
@@ -736,14 +552,6 @@ def generate_proposal():
         # Dynamically evaluate the maximum printable width for responsive rendering
         max_printable_width = get_printable_width(doc)
 
-        # -------------------------------------------------------------
-        # NEW ARCHITECTURE: Render combined page if requested
-        if 'combined_charts_page' in undeclared:
-            combined_page_image = create_combined_charts_page(doc, capacity_kw, unit_rate_val, max_printable_width)
-            if combined_page_image:
-                context['combined_charts_page'] = combined_page_image
-
-        # Backward compatibility for old placeholders
         if 'monthly_generation_chart' in undeclared:
             monthly_chart_image = create_monthly_generation_chart(doc, capacity_kw, max_printable_width)
             if monthly_chart_image:
@@ -753,7 +561,6 @@ def generate_proposal():
             yearly_savings_chart_image = create_yearly_savings_chart(doc, capacity_kw, unit_rate_val, max_printable_width)
             if yearly_savings_chart_image:
                 context['yearly_savings_chart'] = yearly_savings_chart_image
-        # -------------------------------------------------------------
         
         if 'capex_evaluation_sheet' in undeclared:
             capex_sheet_image = create_capex_evaluation_sheet(doc, raw_context, max_printable_width)
@@ -806,7 +613,7 @@ def generate_proposal():
         elif 'MPLCONFIGDIR' in os.environ:
             del os.environ['MPLCONFIGDIR']
         
-        # shutil.rmtree(temp_dir, ignore_errors=True)
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 if __name__ == '__main__':

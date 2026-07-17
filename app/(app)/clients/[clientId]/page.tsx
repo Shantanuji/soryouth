@@ -124,6 +124,26 @@ export default function ClientDetailsPage() {
   const [isProposalTemplateDialogOpen, setIsProposalTemplateDialogOpen] = useState(false);
   const [selectedProposalTemplateId, setSelectedProposalTemplateId] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+
+  const openPdfInNewTab = async (pdfUrl: string) => {
+    const newTab = window.open('about:blank', '_blank');
+    try {
+      const s3Key = new URL(pdfUrl).pathname.substring(1);
+      const res = await fetch(`/api/s3/presigned-url?key=${encodeURIComponent(s3Key)}`);
+      const data = await res.json();
+      if (data.url && newTab) {
+        newTab.location.href = data.url;
+      } else if (newTab) {
+        newTab.close();
+        toast({ title: "Error", description: "Could not open document securely", variant: "destructive" });
+      }
+    } catch (e) {
+      if (newTab) newTab.close();
+      toast({ title: "Error", description: "Failed to open PDF", variant: "destructive" });
+    }
+  };
+
   const [deals, setDeals] = useState<Deal[]>([]);
   const [activityComment, setActivityComment] = useState('');
 
@@ -343,8 +363,7 @@ export default function ClientDetailsPage() {
         });
         await fetchProposals();
         if(result.pdfUrl) {
-          setSelectedProposalForPreview(result);
-          setIsPreviewOpen(true);
+          openPdfInNewTab(result.pdfUrl);
         }
       } else {
         toast({ title: "Error", description: "Could not save proposal to database.", variant: "destructive" });
@@ -1094,7 +1113,7 @@ export default function ClientDetailsPage() {
                       {proposals.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                             {proposals.map(proposal => (
-                                <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="p-3 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-background shadow-sm cursor-pointer h-full flex flex-col justify-between">
+                                <div key={proposal.id} onClick={() => { if(proposal.pdfUrl) openPdfInNewTab(proposal.pdfUrl); else toast({title: 'No PDF', description: 'PDF not generated for this proposal.', variant: 'destructive'}) }} className="p-3 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-background shadow-sm cursor-pointer h-full flex flex-col justify-between">
                                     <div className="flex items-start gap-3">
                                         <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                                             <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />

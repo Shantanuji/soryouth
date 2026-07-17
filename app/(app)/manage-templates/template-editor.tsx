@@ -89,7 +89,24 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
   }, [template, form]);
 
   const handleCopyPlaceholder = (placeholder: string) => {
-    navigator.clipboard.writeText(placeholder);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(placeholder);
+    } else {
+      // Fallback for non-HTTPS environments (like local IP address testing)
+      const textArea = document.createElement("textarea");
+      textArea.value = placeholder;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Fallback: Oops, unable to copy', err);
+      }
+      document.body.removeChild(textArea);
+    }
     toast({
       title: 'Copied!',
       description: `${placeholder} copied to clipboard.`,

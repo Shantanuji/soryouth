@@ -45,6 +45,7 @@ import { LeadForm } from '@/app/(app)/leads/lead-form';
 import { getLeads, createLead } from '@/app/(app)/leads-list/actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { getLeadStatuses, getLeadSources } from '@/app/(app)/settings/actions';
+import { calculateProposalValues } from '@/lib/proposal-calculations';
 
 export const proposalSchema = z.object({
   clientId: z.string().optional(),
@@ -180,6 +181,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("email", client.email || "");
     form.setValue("phone", client.phone || "");
     form.setValue("location", client.address || "");
+    form.setValue("cityArea", client.cityArea || "");
   };
 
   const handleLeadSelect = (lead: Lead) => {
@@ -193,6 +195,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("email", lead.email || "");
     form.setValue("phone", lead.phone || "");
     form.setValue("location", lead.address || "");
+    form.setValue("cityArea", lead.cityArea || "");
     form.setValue("capacity", lead.kilowatt || 0)
   };
   
@@ -262,6 +265,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
             form.setValue("email", clients[0].email || "");
             form.setValue("phone", clients[0].phone || "");
             form.setValue("location", clients[0].address || "");
+            form.setValue("cityArea", clients[0].cityArea || "");
         } else if (leads.length === 1 && clients.length === 0) {
             setSelectedLeadId(leads[0].id);
             setSelectedClientId(null);
@@ -272,6 +276,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
             form.setValue("email", leads[0].email || "");
             form.setValue("phone", leads[0].phone || "");
             form.setValue("location", leads[0].address || "");
+            form.setValue("cityArea", leads[0].cityArea || "");
             form.setValue("capacity", leads[0].kilowatt || 0);
         } else {
             setSelectedClientId(null);
@@ -297,14 +302,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
      }
   }, [watchedCapacity, form, isOpen]);
 
-  useEffect(() => {
-    const currentDcrStatus = form.getValues('dcrStatus');
-    if ((watchedClientType === 'Commercial' || watchedClientType === 'Industrial')) {
-      if (currentDcrStatus !== 'Non-DCR') {
-        form.setValue('dcrStatus', 'Non-DCR', { shouldValidate: true, shouldDirty: true });
-      }
-    }
-  }, [watchedClientType, form]);
+  // DCR status is now fully controllable by the user
 
   useEffect(() => {
     if (watchedClientType === 'Commercial' || watchedClientType === 'Industrial') {
@@ -315,73 +313,40 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
   }, [watchedClientType, form]);
 
   const calculatedValues = useMemo(() => {
-    const capacity = parseFloat(String(watchedCapacity)) || 0;
-    const ratePerWatt = parseFloat(String(watchedRatePerWatt)) || 0;
-    const baseAmount = ratePerWatt * capacity * 1000;
-    const cgstAmount = baseAmount * 0.0445;
-    const sgstAmount = baseAmount * 0.0445;
-    const finalAmount = baseAmount + cgstAmount + sgstAmount;
-    return { baseAmount, cgstAmount, sgstAmount, finalAmount };
-  }, [watchedCapacity, watchedRatePerWatt]);
+    return calculateProposalValues({
+      capacity: parseFloat(String(watchedCapacity)) || 0,
+      ratePerWatt: parseFloat(String(watchedRatePerWatt)) || 0,
+      unitRate: parseFloat(String(watchedUnitRate)) || 0,
+      clientType: String(watchedClientType),
+      dcrStatus: String(watchedDcrStatus),
+      inverterQty: parseInt(String(watchedInverterQty), 10) || 1,
+    });
+  }, [watchedCapacity, watchedRatePerWatt, watchedUnitRate, watchedClientType, watchedDcrStatus, watchedInverterQty]);
 
   useEffect(() => {
-    const capacity = parseFloat(String(watchedCapacity)) || 0;
-    let newSubsidyAmount = 0;
-    
-    if (watchedDcrStatus === 'Non-DCR') {
-      newSubsidyAmount = 0;
-    } else {
-      if (watchedClientType === 'Housing Society') {
-        newSubsidyAmount = 18000 * capacity;
-      } else if (watchedClientType === 'Individual/Bungalow') {
-        if (capacity === 1) newSubsidyAmount = 30000;
-        else if (capacity === 2) newSubsidyAmount = 60000;
-        else if (capacity >= 3) newSubsidyAmount = 78000;
-      }
-    }
-    
-    const currentFormSubsidy = parseFloat(String(form.getValues('subsidyAmount')));
-    if (currentFormSubsidy !== newSubsidyAmount || isNaN(currentFormSubsidy)) {
-        form.setValue('subsidyAmount', newSubsidyAmount, { shouldValidate: true, shouldDirty: true });
-    }
-  }, [watchedClientType, watchedCapacity, watchedDcrStatus, form]);
+    // Only auto-update when the source dependencies change, to allow manual overrides
+    const newSubsidy = calculatedValues.subsidyAmount;
+    form.setValue('subsidyAmount', newSubsidy, { shouldValidate: true });
 
-  const calculatedAdditionalValues = useMemo(() => {
-    const capacity = parseFloat(String(watchedCapacity)) || 0;
-    const unitRate = parseFloat(String(watchedUnitRate)) || 0;
-    const inverterQty = parseInt(String(watchedInverterQty), 10) || 1;
+    const newReqSpace = calculatedValues.requiredSpace;
+    form.setValue('requiredSpace', newReqSpace, { shouldValidate: true });
 
-    const requiredSpace = capacity * 80;
-    const generationPerDay = capacity * 4;
-    const generationPerYear = generationPerDay * 365;
-    const savingsPerYear = generationPerYear * unitRate;
+    const newGenDay = calculatedValues.generationPerDay;
+    form.setValue('generationPerDay', newGenDay, { shouldValidate: true });
 
-    const laKitQty = inverterQty * 1;
-    const acdbDcdbQty = inverterQty * 1;
-    const earthingKitQty = inverterQty * 3;
+    const newGenYear = calculatedValues.generationPerYear;
+    form.setValue('generationPerYear', newGenYear, { shouldValidate: true });
 
-    return {
-      requiredSpace,
-      generationPerDay,
-      generationPerYear,
-      savingsPerYear,
-      laKitQty,
-      acdbDcdbQty,
-      earthingKitQty
-    };
-  }, [watchedCapacity, watchedUnitRate, watchedInverterQty]);
+    const newSavings = calculatedValues.savingsPerYear;
+    form.setValue('savingsPerYear', newSavings, { shouldValidate: true });
 
-  useEffect(() => {
-    form.setValue('requiredSpace', calculatedAdditionalValues.requiredSpace);
-    form.setValue('generationPerDay', calculatedAdditionalValues.generationPerDay);
-    form.setValue('generationPerYear', calculatedAdditionalValues.generationPerYear);
-    form.setValue('savingsPerYear', calculatedAdditionalValues.savingsPerYear);
-    form.setValue('laKitQty', calculatedAdditionalValues.laKitQty);
-    form.setValue('acdbDcdbQty', calculatedAdditionalValues.acdbDcdbQty);
-    form.setValue('earthingKitQty', calculatedAdditionalValues.earthingKitQty);
-  }, [calculatedAdditionalValues, form]);
+    form.setValue('laKitQty', calculatedValues.laKitQty);
+    form.setValue('acdbDcdbQty', calculatedValues.acdbDcdbQty);
+    form.setValue('earthingKitQty', calculatedValues.earthingKitQty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedCapacity, watchedClientType, watchedDcrStatus, watchedUnitRate, watchedInverterQty]);
 
-  const isDcrDisabled = watchedClientType === 'Commercial' || watchedClientType === 'Industrial';
+  // DCR is no longer disabled
 
   const handleFormSubmit = (values: ProposalFormValues) => {
     startGenerationTransition(async () => {
@@ -414,6 +379,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
         laKitQty: Number(allValues.laKitQty) || 0,
         acdbDcdbQty: Number(allValues.acdbDcdbQty) || 0,
         earthingKitQty: Number(allValues.earthingKitQty) || 0,
+        calculatedValues: calculatedValues // Pass full evaluation sheet & metrics to API
       };
 
       if (proposal?.id) {
@@ -517,7 +483,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                  <FormField name="moduleWattage" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Module Wattage (W)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Wattage" /></SelectTrigger></FormControl><SelectContent>{MODULE_WATTAGE_OPTIONS.map(wattage => (<SelectItem key={wattage} value={wattage}>{wattage} W</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField name="dcrStatus" control={form.control} render={({ field }) => ( <FormItem><FormLabel>DCR/Non-DCR</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={isDcrDisabled}><FormControl><SelectTrigger><SelectValue placeholder="Select DCR status" /></SelectTrigger></FormControl><SelectContent>{DCR_STATUSES.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select>{isDcrDisabled && <p className="text-xs text-muted-foreground">Auto-set to Non-DCR for Commercial/Industrial.</p>}<FormMessage /></FormItem> )}/>
+                  <FormField name="dcrStatus" control={form.control} render={({ field }) => ( <FormItem><FormLabel>DCR/Non-DCR</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select DCR status" /></SelectTrigger></FormControl><SelectContent>{DCR_STATUSES.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )}/>
                   <FormField name="inverterRating" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Rating (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                   <FormField name="inverterQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Quantity</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
@@ -531,7 +497,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                   <div className="flex justify-between items-center"><FormLabel>SGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
                   <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{calculatedValues.finalAmount.toFixed(2)}</span></div>
               </div>
-              <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem className="mt-4"><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Auto-calculated" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} readOnly className={'bg-muted cursor-not-allowed text-muted-foreground'} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated based on client type and capacity. Set to 0 for Non-DCR.</p><FormMessage /></FormItem> )}/>
+              <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem className="mt-4"><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter subsidy amount" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated initially, but can be manually overridden.</p><FormMessage /></FormItem> )}/>
 
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">Additional Details</h3>
@@ -539,8 +505,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
               <div className="p-3 border rounded-md bg-muted/50 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <FormField name="requiredSpace" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Required Space (Sq. Ft.)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                    <FormField name="generationPerDay" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Day (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                    <FormField name="generationPerYear" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Year (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField name="generationPerDay" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Day (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => { field.onChange(e); const val = parseFloat(e.target.value) || 0; form.setValue('generationPerYear', parseFloat((val * 365).toFixed(2)), { shouldValidate: true, shouldDirty: true }); }} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField name="generationPerYear" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Year (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => { field.onChange(e); const val = parseFloat(e.target.value) || 0; form.setValue('generationPerDay', parseFloat((val / 365).toFixed(2)), { shouldValidate: true, shouldDirty: true }); }} /></FormControl><FormMessage /></FormItem> )}/>
                 </div>
               </div>
 

@@ -84,6 +84,7 @@ model Lead {
   nextFollowUpTime  String? // Store as String
   kilowatt          Float?
   address           String?
+  cityArea          String?
   priority          String? // Corresponds to LeadPriorityType
   dropReason        String? @default("Not Dropped")// Corresponds to DropReasonType
   clientType        String? // Corresponds to ClientType
@@ -125,6 +126,7 @@ model DroppedLead {
   nextFollowUpTime   String?
   kilowatt           Float?
   address            String?
+  cityArea           String?
   priority           String?
   clientType         String?
   electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
@@ -162,6 +164,7 @@ model Client {
   nextFollowUpTime  String?
   kilowatt          Float?
   address           String?
+  cityArea          String?
   clientType        String?
   notes             String?
   electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
