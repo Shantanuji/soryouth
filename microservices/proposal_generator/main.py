@@ -612,23 +612,24 @@ def generate_balance_of_system_png(context):
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
-            height: auto;
-            padding: 25px 35px;
+            height: 1188px;
+            padding: 40px 45px;
             margin: 0;
             overflow: hidden;
             color: #0B3B60;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }}
         .header-container {{
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             padding-bottom: 0px;
         }}
         .title {{
             font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
-            font-size: 34px;
+            font-size: 38px;
             font-weight: 700;
             color: #0F3B66;
             letter-spacing: 0;
@@ -636,27 +637,27 @@ def generate_balance_of_system_png(context):
         }}
         table {{
             width: 100%;
-            height: auto;
+            flex-grow: 1;
             border-collapse: collapse;
             border: 2.5px solid #0080C0;
-            font-size: 13px;
+            font-size: 14px;
         }}
         th {{
             background-color: #1B4D75;
             color: #ffffff;
             font-weight: 700;
-            font-size: 14px;
-            padding: 12px 10px;
+            font-size: 15px;
+            padding: 16px 12px;
             text-align: center;
             border: 1.5px solid #0080C0;
         }}
         td {{
-            padding: 10px 12px;
+            padding: 15px 14px;
             border: 1.5px solid #0080C0;
             background-color: #EAF4FC;
             color: #0B3B60;
             vertical-align: middle;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.4;
         }}
         .component-name {{
@@ -769,7 +770,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = get_html2image(size=(840, 1080), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir
