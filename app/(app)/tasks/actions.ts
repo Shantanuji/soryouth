@@ -66,9 +66,9 @@ export async function getGroupedGeneralTasks(): Promise<Record<string, { user: {
 
     try {
         const whereClause: Prisma.GeneralTaskWhereInput = {};
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
 
-        // If the user has ASSIGNED view permission, they can only see tasks they created or are assigned to.
-        if (session.viewPermission === 'ASSIGNED') {
+        if (session.viewPermission === 'ASSIGNED' && !isAdmin) {
             whereClause.OR = [
                 { createdById: session.userId },
                 { assignedToId: session.userId }

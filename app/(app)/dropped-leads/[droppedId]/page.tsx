@@ -161,15 +161,16 @@ export default function DroppedLeadDetailsPage() {
   }, [droppedId, toast]);
 
   useEffect(() => {
-      if (session && droppedLead && session.viewPermission === 'ASSIGNED' && droppedLead.assignedTo !== session.name) {
-        setDroppedLead(null); // This will trigger the "Not Found" view
-        toast({
-          title: "Access Denied",
-          description: "You do not have permission to view this client.",
-          variant: "destructive",
-        });
-      }
-    }, [session, droppedLead, toast]);
+    const isAdmin = session?.role === 'Admin' || session?.role === 'admin' || session?.role === 'SuperAdmin';
+    if (session && droppedLead && session.viewPermission === 'ASSIGNED' && !isAdmin && droppedLead.assignedTo !== session.name) {
+      setDroppedLead(null); // This will trigger the "Not Found" view
+      toast({
+        title: "Access Denied",
+        description: "You do not have permission to view this client.",
+        variant: "destructive",
+      });
+    }
+  }, [session, droppedLead, toast]);
   
   const handleBillUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;

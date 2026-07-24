@@ -608,65 +608,65 @@ def generate_balance_of_system_png(context):
         ::-webkit-scrollbar {{
             display: none;
         }}
-        body {{
+        body {
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
-            height: 1188px;
-            padding: 45px 50px;
+            height: auto;
+            padding: 25px 35px;
             margin: 0;
             overflow: hidden;
             color: #0B3B60;
             display: flex;
             flex-direction: column;
-        }}
-        .header-container {{
+        }
+        .header-container {
             display: flex;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding-bottom: 0px;
-        }}
-        .title {{
+        }
+        .title {
             font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
-            font-size: 42px;
+            font-size: 34px;
             font-weight: 700;
             color: #0F3B66;
             letter-spacing: 0;
             line-height: 1;
-        }}
-        table {{
+        }
+        table {
             width: 100%;
-            height: 980px;
+            height: auto;
             border-collapse: collapse;
             border: 2.5px solid #0080C0;
-            font-size: 13.5px;
-        }}
-        th {{
+            font-size: 13px;
+        }
+        th {
             background-color: #1B4D75;
             color: #ffffff;
             font-weight: 700;
-            font-size: 15px;
-            padding: 16px 12px;
+            font-size: 14px;
+            padding: 12px 10px;
             text-align: center;
             border: 1.5px solid #0080C0;
-        }}
-        td {{
-            padding: 14px 14px;
+        }
+        td {
+            padding: 10px 12px;
             border: 1.5px solid #0080C0;
             background-color: #EAF4FC;
             color: #0B3B60;
             vertical-align: middle;
-            font-size: 13.5px;
-            line-height: 1.45;
-        }}
-        .component-name {{
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .component-name {
             font-weight: 700;
             color: #0B3B60;
-        }}
-        .center-col {{
+        }
+        .center-col {
             text-align: center;
             white-space: nowrap;
-        }}
+        }
     </style>
     </head>
     <body>
@@ -769,7 +769,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 720), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir

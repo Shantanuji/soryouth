@@ -277,7 +277,8 @@ export default function LeadDetailsPage() {
   }, [lead]);
 
   useEffect(() => {
-    if (session && lead && session.viewPermission === 'ASSIGNED' && lead.assignedTo !== session.name) {
+    const isAdmin = session?.role === 'Admin' || session?.role === 'admin' || session?.role === 'SuperAdmin';
+    if (session && lead && session.viewPermission === 'ASSIGNED' && !isAdmin && lead.assignedTo !== session.name) {
       setLead(null); // This will trigger the "Not Found" view
       toast({
         title: "Access Denied",

@@ -81,7 +81,8 @@ export async function getAllExpensesGroupedByUser(): Promise<Record<string, { us
     if (!session?.userId) return {};
     try {
         const whereClause: any = {};
-        if (session.viewPermission === 'ASSIGNED') {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !isAdmin) {
             whereClause.userId = session.userId;
         }
         const expenses = await prisma.expense.findMany({

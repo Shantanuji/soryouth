@@ -121,7 +121,8 @@ export async function getDroppedLeads({ ignorePermissions = false }: { ignorePer
 
     try {
         const whereClause: Prisma.DroppedLeadWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
           whereClause.assignedToId = session.userId;
         }
 

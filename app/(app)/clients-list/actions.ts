@@ -69,7 +69,8 @@ export async function getActiveClients({ ignorePermissions = false }: { ignorePe
       status: { not: 'Inactive' },
     };
 
-    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+    const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
       whereClause.assignedToId = session.userId;
     }
 
@@ -100,7 +101,8 @@ export async function getInactiveClients({ ignorePermissions = false }: { ignore
     const whereClause: Prisma.ClientWhereInput = {
       status: 'Inactive',
     };
-    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+    const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
       whereClause.assignedToId = session.userId;
     }
     const clientsFromDb = await prisma.client.findMany({

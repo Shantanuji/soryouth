@@ -266,7 +266,8 @@ export async function getProposalsForLead(leadId: string): Promise<Proposal[]> {
     if (!session?.userId) return [];
     try {
         const whereClause: Prisma.ProposalWhereInput = { leadId };
-        if (session.viewPermission === 'ASSIGNED') {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !isAdmin) {
             whereClause.OR = [
                 { createdById: session.userId },
                 { lead: { assignedToId: session.userId } }
@@ -290,7 +291,8 @@ export async function getProposalsForClient(clientId: string): Promise<Proposal[
      if (!session?.userId) return [];
     try {
         const whereClause: Prisma.ProposalWhereInput = { clientId };
-        if (session.viewPermission === 'ASSIGNED') {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !isAdmin) {
             whereClause.OR = [
                 { createdById: session.userId },
                 { client: { assignedToId: session.userId } }
@@ -313,7 +315,8 @@ export async function getAllProposals({ ignorePermissions = false }: { ignorePer
     if (!session?.userId) return [];
     try {
         const whereClause: Prisma.ProposalWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
             whereClause.OR = [
                 { createdById: session.userId },
                 { client: { assignedToId: session.userId } },

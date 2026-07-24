@@ -269,7 +269,8 @@ export default function ClientDetailsPage() {
   }, [clientId, toast]);
 
   useEffect(() => {
-    if (session && client && session.viewPermission === 'ASSIGNED' && client.assignedTo !== session.name) {
+    const isAdmin = session?.role === 'Admin' || session?.role === 'admin' || session?.role === 'SuperAdmin';
+    if (session && client && session.viewPermission === 'ASSIGNED' && !isAdmin && client.assignedTo !== session.name) {
       setClient(null); // This will trigger the "Not Found" view
       toast({
         title: "Access Denied",

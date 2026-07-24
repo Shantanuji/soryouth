@@ -102,7 +102,8 @@ export async function getLeads({ ignorePermissions = false }: { ignorePermission
 
   try {
     const whereClause: Prisma.LeadWhereInput = {};
-    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+    const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+    if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
       whereClause.assignedToId = session.userId;
     } 
     const leadsFromDb = await prisma.lead.findMany({
@@ -213,7 +214,8 @@ export async function getAllFollowUps(): Promise<FollowUp[]> {
 
     try {
         const whereClause: Prisma.FollowUpWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED') {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !isAdmin) {
             whereClause.OR = [
                 { createdById: session.userId },
                 { taskForUserId: session.userId },
