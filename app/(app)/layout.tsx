@@ -19,6 +19,7 @@ import { DarkModeToggle, FullscreenToggle } from '@/components/topbar-actions';
 import { TopbarSettings } from '@/components/topbar-settings';
 import { AttendanceTopbar } from '@/components/attendance-topbar';
 import { PresenceTracker } from '@/components/presence-tracker';
+import { CronStarter } from '@/components/cron-starter';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -82,6 +83,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <Toaster />
         <OverdueTaskToast />
         <PresenceTracker />
+        <CronStarter />
       </SidebarInset>
     </SidebarProvider>
   );

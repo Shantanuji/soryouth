@@ -89,7 +89,24 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
   }, [template, form]);
 
   const handleCopyPlaceholder = (placeholder: string) => {
-    navigator.clipboard.writeText(placeholder);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(placeholder);
+    } else {
+      // Fallback for non-HTTPS environments (like local IP address testing)
+      const textArea = document.createElement("textarea");
+      textArea.value = placeholder;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Fallback: Oops, unable to copy', err);
+      }
+      document.body.removeChild(textArea);
+    }
     toast({
       title: 'Copied!',
       description: `${placeholder} copied to clipboard.`,
@@ -317,7 +334,7 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
                         <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                           <File className="h-4 w-4" />
                           <span className="flex-grow">{uploadedFileName.split('/').pop()}</span>
-                           <a href={uploadedFileName} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                           <a href={form.getValues('originalDocxPath')} target="_blank" rel="noopener noreferrer" download className="text-primary hover:underline" title="Download Template">
                             <Download className="h-4 w-4"/>
                           </a>
                         </div>

@@ -11,6 +11,13 @@ import { getUserRoles } from '@/app/(app)/settings/actions';
 import { NAV_ITEMS, TOOLS_NAV_ITEMS, SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 function mapPrismaUserToUserType(prismaUser: any): User {
+    let dateStr = new Date().toISOString();
+    try {
+        if (prismaUser.createdAt) {
+            dateStr = new Date(prismaUser.createdAt).toISOString();
+        }
+    } catch(e) {}
+
     return {
       id: prismaUser.id,
       name: prismaUser.name,
@@ -22,7 +29,7 @@ function mapPrismaUserToUserType(prismaUser: any): User {
       profileImage: prismaUser.profileImage,
       deviceId: prismaUser.deviceId,
       viewPermission: prismaUser.viewPermission,
-      createdAt: prismaUser.createdAt.toISOString(),
+      createdAt: dateStr,
     };
   }
 

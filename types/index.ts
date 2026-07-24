@@ -69,6 +69,7 @@ export interface Lead {
   nextFollowUpTime?: string | null;
   kilowatt?: number | null;
   address?: string | null;
+  cityArea?: string | null;
   notes?: string | null;
   priority?: LeadPriorityType | null;
   dropReason?: DropReasonType | "Not Dropped" | null;
@@ -83,6 +84,7 @@ export type CreateLeadData = Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'foll
 
 export interface DroppedLead extends Omit<Lead, 'status' | 'updatedAt'> {
   status: 'Lost';
+  cityArea?: string | null;
   dropReason: DropReasonType;
   dropComment?: string | null;
   droppedAt: string;
@@ -102,6 +104,7 @@ export interface Client {
   updatedAt: string;
   kilowatt?: number | null;
   address?: string | null;
+  cityArea?: string | null;
   notes?: string | null;
   clientType?: ClientType | null;
   electricityBillUrls: string[];
@@ -115,6 +118,10 @@ export interface Client {
 export type CreateClientData = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'followupCount' | 'lastCommentText' | 'lastCommentDate' | 'nextFollowUpDate' | 'nextFollowUpTime' | 'electricityBillUrls' | 'totalDealValue'> & {
     electricityBillUrls?: string[];
     totalDealValue?: number;
+    lastCommentText?: string;
+    lastCommentDate?: string;
+    nextFollowUpDate?: string;
+    nextFollowUpTime?: string;
 };
 
 
@@ -130,6 +137,7 @@ export interface Proposal {
   createdBy: string;
   contactPerson: string;
   location: string;
+  cityArea?: string | null;
   phone?: string | null;
   email?: string | null;
   capacity: number;
@@ -146,6 +154,7 @@ export interface Proposal {
   subtotalAmount: number;
   finalAmount: number;
   subsidyAmount: number;
+  additionalSubsidy?: number | null;
   createdAt: string;
   updatedAt?: string;
   pdfUrl?: string | null;
@@ -160,6 +169,9 @@ export interface Proposal {
   laKitQty?: number;
   acdbDcdbQty?: number;
   earthingKitQty?: number;
+  moduleSpec?: string | null;
+  inverterSpec?: string | null;
+  calculatedValues?: any;
 }
 
 export interface Document {

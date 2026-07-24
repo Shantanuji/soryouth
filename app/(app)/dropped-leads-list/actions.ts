@@ -26,6 +26,7 @@ function mapPrismaDroppedLeadToDroppedLeadType(prismaLead: any): DroppedLead {
     nextFollowUpTime: prismaLead.nextFollowUpTime ?? undefined,
     kilowatt: prismaLead.kilowatt === null ? undefined : prismaLead.kilowatt,
     address: prismaLead.address ?? undefined,
+    cityArea: prismaLead.cityArea ?? undefined,
     priority: prismaLead.priority ?? undefined,
     dropReason: prismaLead.dropReason,
     dropComment: prismaLead.dropComment ?? undefined,

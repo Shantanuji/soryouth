@@ -31,6 +31,7 @@ function mapPrismaLeadToLeadType(prismaLead: any): Lead {
     nextFollowUpTime: prismaLead.nextFollowUpTime ?? undefined,
     kilowatt: prismaLead.kilowatt === null ? undefined : prismaLead.kilowatt,
     address: prismaLead.address ?? undefined,
+    cityArea: prismaLead.cityArea ?? undefined,
     notes: prismaLead.notes ?? undefined,
     priority: prismaLead.priority ?? undefined,
     dropReason: prismaLead.dropReason ?? undefined,
@@ -56,6 +57,7 @@ function mapPrismaClientToClientType(prismaClient: any): Client {
     updatedAt: prismaClient.updatedAt.toISOString(),
     kilowatt: prismaClient.kilowatt ?? undefined,
     address: prismaClient.address ?? undefined,
+    cityArea: prismaClient.cityArea ?? undefined,
     clientType: prismaClient.clientType ?? undefined,
     electricityBillUrls: prismaClient.electricityBillUrls ?? [],
     followupCount: prismaClient.followUps?.length ?? 0,
@@ -206,8 +208,23 @@ export async function getOverdueFollowUpTasksForCurrentUser(): Promise<TaskNotif
 }
 
 export async function getAllFollowUps(): Promise<FollowUp[]> {
+    const session = await verifySession();
+    if (!session?.userId) return [];
+
     try {
+        const whereClause: Prisma.FollowUpWhereInput = {};
+        if (session.viewPermission === 'ASSIGNED') {
+            whereClause.OR = [
+                { createdById: session.userId },
+                { taskForUserId: session.userId },
+                { lead: { assignedToId: session.userId } },
+                { client: { assignedToId: session.userId } },
+                { deal: { assignedToId: session.userId } },
+            ];
+        }
+
         const followUps = await prisma.followUp.findMany({
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
             include: { 
                 createdBy: true, 
@@ -597,6 +614,7 @@ export async function convertToClient(leadId: string): Promise<{ success: boolea
           createdAt: lead.createdAt,
           kilowatt: lead.kilowatt,
           address: lead.address,
+          cityArea: lead.cityArea,
           clientType: lead.clientType,
           electricityBillUrls: lead.electricityBillUrls as Prisma.InputJsonValue,
           createdById: lead.createdById,

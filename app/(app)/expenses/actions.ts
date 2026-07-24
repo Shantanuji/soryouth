@@ -77,8 +77,15 @@ export async function getExpensesForCurrentUser(): Promise<Expense[]> {
 }
 
 export async function getAllExpensesGroupedByUser(): Promise<Record<string, { user: { id: string, name: string }, expenses: Expense[] }>> {
+    const session = await verifySession();
+    if (!session?.userId) return {};
     try {
+        const whereClause: any = {};
+        if (session.viewPermission === 'ASSIGNED') {
+            whereClause.userId = session.userId;
+        }
         const expenses = await prisma.expense.findMany({
+            where: whereClause,
             include: { user: true, reviewedBy: true },
             orderBy: { submittedAt: 'desc' },
         });

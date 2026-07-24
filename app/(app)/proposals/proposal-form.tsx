@@ -45,6 +45,7 @@ import { LeadForm } from '@/app/(app)/leads/lead-form';
 import { getLeads, createLead } from '@/app/(app)/leads-list/actions';
 import { getUsers } from '@/app/(app)/users/actions';
 import { getLeadStatuses, getLeadSources } from '@/app/(app)/settings/actions';
+import { calculateProposalValues } from '@/lib/proposal-calculations';
 
 export const proposalSchema = z.object({
   clientId: z.string().optional(),
@@ -58,6 +59,7 @@ export const proposalSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
+  cityArea: z.string().optional(),
   capacity: z.coerce.number().positive({ message: 'Capacity (kW) must be a positive number.' }),
   moduleType: z.enum(MODULE_TYPES, { required_error: "Module type is required."}),
   moduleWattage: z.enum(MODULE_WATTAGE_OPTIONS, { required_error: "Module wattage is required." }),
@@ -66,6 +68,7 @@ export const proposalSchema = z.object({
   inverterQty: z.coerce.number().int().positive({ message: 'Inverter quantity must be a positive integer.' }),
   ratePerWatt: z.coerce.number().positive({ message: 'Rate per Watt (₹) must be a positive number.' }),
   subsidyAmount: z.coerce.number().min(0, { message: 'Subsidy amount cannot be negative.' }).optional(),
+  additionalSubsidy: z.coerce.number().min(0, { message: 'Additional subsidy cannot be negative.' }).optional(),
   
   unitRate: z.coerce.number().optional(),
   requiredSpace: z.coerce.number().optional(),
@@ -75,6 +78,8 @@ export const proposalSchema = z.object({
   laKitQty: z.coerce.number().optional(),
   acdbDcdbQty: z.coerce.number().optional(),
   earthingKitQty: z.coerce.number().optional(),
+  moduleSpec: z.string().optional(),
+  inverterSpec: z.string().optional(),
   createdBy: z.string().optional(),
   
 }).refine(data => !(data.clientId && data.leadId), {
@@ -103,6 +108,7 @@ const initialFormStateForUseForm: ProposalFormValues = {
   email: "",
   phone: "",
   location: "",
+  cityArea: "",
   capacity: 0,
   moduleType: MODULE_TYPES[0],
   moduleWattage: MODULE_WATTAGE_OPTIONS[0],
@@ -111,6 +117,7 @@ const initialFormStateForUseForm: ProposalFormValues = {
   inverterQty: 1,
   ratePerWatt: 0,
   subsidyAmount: 0,
+  additionalSubsidy: 0,
   unitRate: 10,
   requiredSpace: 0,
   generationPerDay: 0,
@@ -119,6 +126,8 @@ const initialFormStateForUseForm: ProposalFormValues = {
   laKitQty: 1,
   acdbDcdbQty: 1,
   earthingKitQty: 3,
+  moduleSpec: "Rayzon Solar Topcon Bifacial DCR 600 Wp",
+  inverterSpec: "Growatt/Sungrow 8 kW",
 };
 
 export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, clients = [], leads = [] }: ProposalFormProps) {
@@ -129,6 +138,43 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     resolver: zodResolver(proposalSchema),
     defaultValues: initialFormStateForUseForm,
   });
+
+  // Dynamic watcher auto-updates for proposal calculations
+  const watchedCapacity = form.watch('capacity');
+  const watchedInverterRating = form.watch('inverterRating');
+  const watchedModuleType = form.watch('moduleType');
+  const watchedDcrStatus = form.watch('dcrStatus');
+  const watchedModuleWattage = form.watch('moduleWattage');
+  const watchedRatePerWatt = form.watch('ratePerWatt');
+  const watchedClientType = form.watch('clientType');
+  const watchedUnitRate = form.watch('unitRate');
+  const watchedInverterQty = form.watch('inverterQty');
+  const watchedSubsidyAmount = form.watch('subsidyAmount');
+  const watchedAdditionalSubsidy = form.watch('additionalSubsidy');
+
+  useEffect(() => {
+    const kw = watchedInverterRating > 0 ? watchedInverterRating : (watchedCapacity > 0 ? watchedCapacity : 8);
+    const curr = form.getValues('inverterSpec');
+    if (!curr || curr === "Growatt/Sungrow 8 kW" || curr.startsWith("Growatt/Sungrow")) {
+      form.setValue('inverterSpec', `Growatt/Sungrow ${kw} kW`);
+    }
+  }, [watchedCapacity, watchedInverterRating]);
+
+  useEffect(() => {
+    const curr = form.getValues('moduleSpec');
+    if (!curr || curr === "Rayzon Solar Topcon Bifacial DCR 600 Wp" || curr.startsWith("Rayzon Solar")) {
+      form.setValue('moduleSpec', `Rayzon Solar ${watchedModuleType || 'Topcon Bifacial'} ${watchedDcrStatus || 'DCR'} ${watchedModuleWattage || '600'} Wp`);
+    }
+  }, [watchedModuleType, watchedDcrStatus, watchedModuleWattage]);
+
+  useEffect(() => {
+    const invCount = parseInt(watchedInverterQty as any) || 1;
+    if (invCount > 0) {
+      form.setValue('laKitQty', invCount * 1);
+      form.setValue('acdbDcdbQty', invCount * 1);
+      form.setValue('earthingKitQty', invCount * 3);
+    }
+  }, [watchedInverterQty]);
 
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -178,6 +224,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("email", client.email || "");
     form.setValue("phone", client.phone || "");
     form.setValue("location", client.address || "");
+    form.setValue("cityArea", client.cityArea || "");
   };
 
   const handleLeadSelect = (lead: Lead) => {
@@ -191,6 +238,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     form.setValue("email", lead.email || "");
     form.setValue("phone", lead.phone || "");
     form.setValue("location", lead.address || "");
+    form.setValue("cityArea", lead.cityArea || "");
     form.setValue("capacity", lead.kilowatt || 0)
   };
   
@@ -212,6 +260,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
   useEffect(() => {
     if (isOpen) {
       if (proposal) { // Editing
+        const kw = proposal.inverterRating || proposal.capacity || 8;
         const formValues: ProposalFormValues = {
           proposalNumber: proposal.proposalNumber,
           proposalDate: proposal.proposalDate ? format(parseISO(proposal.proposalDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
@@ -219,6 +268,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           clientType: proposal.clientType,
           contactPerson: proposal.contactPerson,
           location: proposal.location,
+          cityArea: proposal.cityArea || "",
           capacity: proposal.capacity,
           moduleType: proposal.moduleType,
           moduleWattage: proposal.moduleWattage,
@@ -227,6 +277,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           inverterQty: proposal.inverterQty,
           ratePerWatt: proposal.ratePerWatt,
           subsidyAmount: proposal.subsidyAmount,
+          additionalSubsidy: proposal.additionalSubsidy ?? 0,
           unitRate: proposal.unitRate,
           requiredSpace: proposal.requiredSpace,
           generationPerDay: proposal.generationPerDay,
@@ -235,6 +286,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           laKitQty: proposal.laKitQty,
           acdbDcdbQty: proposal.acdbDcdbQty,
           earthingKitQty: proposal.earthingKitQty,
+          moduleSpec: proposal.moduleSpec || `Rayzon Solar ${proposal.moduleType || 'Topcon Bifacial'} ${proposal.dcrStatus || 'DCR'} ${proposal.moduleWattage || '600'} Wp`,
+          inverterSpec: proposal.inverterSpec || `Growatt/Sungrow ${kw} kW`,
           clientId: proposal.clientId || undefined,
           leadId: proposal.leadId || undefined,
           templateId: proposal.templateId,
@@ -259,6 +312,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
             form.setValue("email", clients[0].email || "");
             form.setValue("phone", clients[0].phone || "");
             form.setValue("location", clients[0].address || "");
+            form.setValue("cityArea", clients[0].cityArea || "");
         } else if (leads.length === 1 && clients.length === 0) {
             setSelectedLeadId(leads[0].id);
             setSelectedClientId(null);
@@ -269,6 +323,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
             form.setValue("email", leads[0].email || "");
             form.setValue("phone", leads[0].phone || "");
             form.setValue("location", leads[0].address || "");
+            form.setValue("cityArea", leads[0].cityArea || "");
             form.setValue("capacity", leads[0].kilowatt || 0);
         } else {
             setSelectedClientId(null);
@@ -279,13 +334,6 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, proposal, form]);
 
-  const watchedCapacity = form.watch('capacity');
-  const watchedRatePerWatt = form.watch('ratePerWatt');
-  const watchedClientType = form.watch('clientType');
-  const watchedUnitRate = form.watch('unitRate');
-  const watchedInverterQty = form.watch('inverterQty');
-  const watchedDcrStatus = form.watch('dcrStatus');
-
   useEffect(() => {
      const currentCapacity = parseFloat(watchedCapacity as any) || 0;
      const currentInverterRating = parseFloat(form.getValues('inverterRating') as any) || 0;
@@ -294,14 +342,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
      }
   }, [watchedCapacity, form, isOpen]);
 
-  useEffect(() => {
-    const currentDcrStatus = form.getValues('dcrStatus');
-    if ((watchedClientType === 'Commercial' || watchedClientType === 'Industrial')) {
-      if (currentDcrStatus !== 'Non-DCR') {
-        form.setValue('dcrStatus', 'Non-DCR', { shouldValidate: true, shouldDirty: true });
-      }
-    }
-  }, [watchedClientType, form]);
+  // DCR status is now fully controllable by the user
 
   useEffect(() => {
     if (watchedClientType === 'Commercial' || watchedClientType === 'Industrial') {
@@ -312,63 +353,45 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
   }, [watchedClientType, form]);
 
   const calculatedValues = useMemo(() => {
-    const capacity = parseFloat(String(watchedCapacity)) || 0;
-    const ratePerWatt = parseFloat(String(watchedRatePerWatt)) || 0;
-    const baseAmount = ratePerWatt * capacity * 1000;
-    const cgstAmount = baseAmount * 0.0445;
-    const sgstAmount = baseAmount * 0.0445;
-    const finalAmount = baseAmount + cgstAmount + sgstAmount;
-    return { baseAmount, cgstAmount, sgstAmount, finalAmount };
-  }, [watchedCapacity, watchedRatePerWatt]);
+    return calculateProposalValues({
+      capacity: parseFloat(String(watchedCapacity)) || 0,
+      ratePerWatt: parseFloat(String(watchedRatePerWatt)) || 0,
+      unitRate: parseFloat(String(watchedUnitRate)) || 0,
+      clientType: String(watchedClientType),
+      dcrStatus: String(watchedDcrStatus),
+      inverterQty: parseInt(String(watchedInverterQty), 10) || 1,
+    });
+  }, [watchedCapacity, watchedRatePerWatt, watchedUnitRate, watchedClientType, watchedDcrStatus, watchedInverterQty]);
+
+  const effectiveSubsidy = parseFloat(String(watchedSubsidyAmount)) || 0;
+  const effectiveAdditionalSubsidy = parseFloat(String(watchedAdditionalSubsidy)) || 0;
+  const effectiveTotalSubsidy = effectiveSubsidy + effectiveAdditionalSubsidy;
+  const netInvestmentValue = Math.max(0, Math.round((calculatedValues.finalAmount - effectiveTotalSubsidy - calculatedValues.totalAdBenefit) * 100) / 100);
 
   useEffect(() => {
-    const capacity = parseFloat(String(watchedCapacity)) || 0;
-    let newSubsidyAmount = 0;
-    
-    if (watchedDcrStatus === 'Non-DCR') {
-      newSubsidyAmount = 0;
-    } else {
-      if (watchedClientType === 'Housing Society') {
-        newSubsidyAmount = 18000 * capacity;
-      } else if (watchedClientType === 'Individual/Bungalow') {
-        if (capacity === 1) newSubsidyAmount = 30000;
-        else if (capacity === 2) newSubsidyAmount = 60000;
-        else if (capacity >= 3) newSubsidyAmount = 78000;
-      }
-    }
-    
-    const currentFormSubsidy = parseFloat(String(form.getValues('subsidyAmount')));
-    if (currentFormSubsidy !== newSubsidyAmount || isNaN(currentFormSubsidy)) {
-        form.setValue('subsidyAmount', newSubsidyAmount, { shouldValidate: true, shouldDirty: true });
-    }
-  }, [watchedClientType, watchedCapacity, watchedDcrStatus, form]);
+    // Auto-update generated fields when calculations change
+    const newSubsidy = calculatedValues.subsidyAmount;
+    form.setValue('subsidyAmount', newSubsidy, { shouldValidate: true });
 
-  const calculatedAdditionalValues = useMemo(() => {
-    const capacity = parseFloat(String(watchedCapacity)) || 0;
-    const unitRate = parseFloat(String(watchedUnitRate)) || 0;
-    const inverterQty = parseInt(String(watchedInverterQty), 10) || 1;
+    const newReqSpace = calculatedValues.requiredSpace;
+    form.setValue('requiredSpace', newReqSpace, { shouldValidate: true });
 
-    const requiredSpace = capacity * 80;
-    const generationPerDay = capacity * 4;
-    const generationPerYear = generationPerDay * 365;
-    const savingsPerYear = generationPerYear * unitRate;
+    const newGenDay = calculatedValues.generationPerDay;
+    form.setValue('generationPerDay', newGenDay, { shouldValidate: true });
 
-    const laKitQty = inverterQty * 1;
-    const acdbDcdbQty = inverterQty * 1;
-    const earthingKitQty = inverterQty * 3;
+    const newGenYear = calculatedValues.generationPerYear;
+    form.setValue('generationPerYear', newGenYear, { shouldValidate: true });
 
-    return {
-      requiredSpace,
-      generationPerDay,
-      generationPerYear,
-      savingsPerYear,
-      laKitQty,
-      acdbDcdbQty,
-      earthingKitQty
-    };
-  }, [watchedCapacity, watchedUnitRate, watchedInverterQty]);
+    const newSavings = calculatedValues.savingsPerYear;
+    form.setValue('savingsPerYear', newSavings, { shouldValidate: true });
 
-  const isDcrDisabled = watchedClientType === 'Commercial' || watchedClientType === 'Industrial';
+    form.setValue('laKitQty', calculatedValues.laKitQty);
+    form.setValue('acdbDcdbQty', calculatedValues.acdbDcdbQty);
+    form.setValue('earthingKitQty', calculatedValues.earthingKitQty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedCapacity, watchedClientType, watchedDcrStatus, watchedUnitRate, watchedInverterQty]);
+
+  // DCR is no longer disabled
 
   const handleFormSubmit = (values: ProposalFormValues) => {
     startGenerationTransition(async () => {
@@ -393,14 +416,16 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
         subtotalAmount: calculatedValues.baseAmount + calculatedValues.cgstAmount + calculatedValues.sgstAmount,
         finalAmount: calculatedValues.finalAmount,
         subsidyAmount: parseFloat(allValues.subsidyAmount as any) || 0,
+        additionalSubsidy: parseFloat(allValues.additionalSubsidy as any) || 0,
         unitRate: allValues.unitRate,
-        requiredSpace: calculatedAdditionalValues.requiredSpace,
-        generationPerDay: calculatedAdditionalValues.generationPerDay,
-        generationPerYear: calculatedAdditionalValues.generationPerYear,
-        savingsPerYear: calculatedAdditionalValues.savingsPerYear,
-        laKitQty: calculatedAdditionalValues.laKitQty,
-        acdbDcdbQty: calculatedAdditionalValues.acdbDcdbQty,
-        earthingKitQty: calculatedAdditionalValues.earthingKitQty,
+        requiredSpace: parseFloat(allValues.requiredSpace as any) || 0,
+        generationPerDay: parseFloat(allValues.generationPerDay as any) || 0,
+        generationPerYear: parseFloat(allValues.generationPerYear as any) || 0,
+        savingsPerYear: parseFloat(allValues.savingsPerYear as any) || 0,
+        laKitQty: Number(allValues.laKitQty) || 0,
+        acdbDcdbQty: Number(allValues.acdbDcdbQty) || 0,
+        earthingKitQty: Number(allValues.earthingKitQty) || 0,
+        calculatedValues: calculatedValues // Pass full evaluation sheet & metrics to API
       };
 
       if (proposal?.id) {
@@ -491,7 +516,10 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                  <FormField name="clientType" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Client Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select client type" /></SelectTrigger></FormControl><SelectContent>{CLIENT_TYPES.map(type => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
                  <FormField name="contactPerson" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="Enter contact person" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
-              <FormField name="location" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Location / Site Address</FormLabel><FormControl><Textarea placeholder="Enter full site address" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField name="location" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Location / Site Address</FormLabel><FormControl><Textarea placeholder="Enter full site address" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <FormField name="cityArea" control={form.control} render={({ field }) => ( <FormItem><FormLabel>City / Area</FormLabel><FormControl><Input placeholder="Enter city or area" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              </div>
 
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">System Details</h3>
@@ -501,9 +529,14 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                  <FormField name="moduleWattage" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Module Wattage (W)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Wattage" /></SelectTrigger></FormControl><SelectContent>{MODULE_WATTAGE_OPTIONS.map(wattage => (<SelectItem key={wattage} value={wattage}>{wattage} W</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField name="dcrStatus" control={form.control} render={({ field }) => ( <FormItem><FormLabel>DCR/Non-DCR</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={isDcrDisabled}><FormControl><SelectTrigger><SelectValue placeholder="Select DCR status" /></SelectTrigger></FormControl><SelectContent>{DCR_STATUSES.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select>{isDcrDisabled && <p className="text-xs text-muted-foreground">Auto-set to Non-DCR for Commercial/Industrial.</p>}<FormMessage /></FormItem> )}/>
+                  <FormField name="dcrStatus" control={form.control} render={({ field }) => ( <FormItem><FormLabel>DCR/Non-DCR</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select DCR status" /></SelectTrigger></FormControl><SelectContent>{DCR_STATUSES.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )}/>
                   <FormField name="inverterRating" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Rating (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                   <FormField name="inverterQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Quantity</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <FormField name="moduleSpec" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Solar Module Specification (Text)</FormLabel><FormControl><Input placeholder="e.g. Rayzon Solar Topcon Bifacial DCR 600 Wp" {...field} /></FormControl><p className="text-xs text-muted-foreground">Printed on document table (auto-updated from inputs, or edit manually).</p><FormMessage /></FormItem> )}/>
+                  <FormField name="inverterSpec" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Specification (Text)</FormLabel><FormControl><Input placeholder="e.g. Growatt/Sungrow 8 kW" {...field} /></FormControl><p className="text-xs text-muted-foreground">Printed on document table (auto-updated from Inverter Rating/Capacity, or edit manually).</p><FormMessage /></FormItem> )}/>
               </div>
               
               <Separator className="my-6" />
@@ -515,50 +548,45 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                   <div className="flex justify-between items-center"><FormLabel>SGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
                   <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{calculatedValues.finalAmount.toFixed(2)}</span></div>
               </div>
-              <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem className="mt-4"><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Auto-calculated" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} readOnly className={'bg-muted cursor-not-allowed text-muted-foreground'} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated based on client type and capacity. Set to 0 for Non-DCR.</p><FormMessage /></FormItem> )}/>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter subsidy amount" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated initially based on system capacity & DCR status, can be manually overridden.</p><FormMessage /></FormItem> )}/>
+                <FormField name="additionalSubsidy" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Additional Subsidy Benefits (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter additional subsidy" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">State/Discom top-up subsidy or extra benefits (can be edited manually).</p><FormMessage /></FormItem> )}/>
+              </div>
+
+              <div className="mt-4 p-3 border border-emerald-500/30 rounded-md bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2">
+                  <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-300">
+                      <FormLabel className="font-semibold text-base">Net Investment (After Subsidy / AD Benefits)</FormLabel>
+                      <span className="font-bold text-lg flex items-center">
+                          <IndianRupee className="h-4 w-4 mr-0.5"/>
+                          {netInvestmentValue.toFixed(2)}
+                      </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                      Calculation: Total Project Cost ({calculatedValues.finalAmount.toFixed(2)}) - Subsidy ({effectiveSubsidy.toFixed(2)}) - Additional Subsidy ({effectiveAdditionalSubsidy.toFixed(2)}) - AD Benefits ({calculatedValues.totalAdBenefit.toFixed(2)})
+                  </p>
+              </div>
 
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">Additional Details</h3>
 
               <div className="p-3 border rounded-md bg-muted/50 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormItem>
-                      <FormLabel>Required Space (Sq. Ft.)</FormLabel>
-                      <FormControl><Input readOnly value={`${calculatedAdditionalValues.requiredSpace.toFixed(0)} sq. ft.`} /></FormControl>
-                    </FormItem>
-                    <FormItem>
-                      <FormLabel>Generation/Day (Units)</FormLabel>
-                      <FormControl><Input readOnly value={`${calculatedAdditionalValues.generationPerDay.toFixed(2)} units`} /></FormControl>
-                    </FormItem>
-                     <FormItem>
-                      <FormLabel>Generation/Year (Units)</FormLabel>
-                      <FormControl><Input readOnly value={`${calculatedAdditionalValues.generationPerYear.toFixed(2)} units`} /></FormControl>
-                    </FormItem>
+                    <FormField name="requiredSpace" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Required Space (Sq. Ft.)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField name="generationPerDay" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Day (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => { field.onChange(e); const val = parseFloat(e.target.value) || 0; form.setValue('generationPerYear', parseFloat((val * 365).toFixed(2)), { shouldValidate: true, shouldDirty: true }); }} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField name="generationPerYear" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Generation/Year (Units)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => { field.onChange(e); const val = parseFloat(e.target.value) || 0; form.setValue('generationPerDay', parseFloat((val / 365).toFixed(2)), { shouldValidate: true, shouldDirty: true }); }} /></FormControl><FormMessage /></FormItem> )}/>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField name="unitRate" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Unit Rate (₹)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                  <FormItem>
-                      <FormLabel>Savings/Year (₹)</FormLabel>
-                      <FormControl><Input readOnly value={`₹ ${calculatedAdditionalValues.savingsPerYear.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} /></FormControl>
-                  </FormItem>
+                  <FormField name="savingsPerYear" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Savings/Year (₹)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
               
               <div className="p-3 border rounded-md bg-muted/50 space-y-3">
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <FormItem>
-                        <FormLabel>LA Kit Quantity</FormLabel>
-                        <FormControl><Input readOnly value={calculatedAdditionalValues.laKitQty} /></FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel>ACDB/DCDB Quantity</FormLabel>
-                        <FormControl><Input readOnly value={calculatedAdditionalValues.acdbDcdbQty} /></FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel>Earthing Kit Quantity</FormLabel>
-                        <FormControl><Input readOnly value={calculatedAdditionalValues.earthingKitQty} /></FormControl>
-                      </FormItem>
+                      <FormField name="laKitQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>LA Kit Quantity</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                      <FormField name="acdbDcdbQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>ACDB/DCDB Quantity</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                      <FormField name="earthingKitQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Earthing Kit Quantity</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                   </div>
               </div>
             </fieldset>

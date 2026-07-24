@@ -10,12 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_PRIORITY_OPTIONS, CLIENT_TYPES, DEAL_PIPELINES } from '@/lib/constants';
 import type { Client, User, UserOptionType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateClientData, ClientStatusType, ClientPriorityType, Proposal, CustomSetting, SiteSurvey, DocumentType, Deal, DealPipelineType, DealStage, ClientType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, Lock, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, FileText,Handshake, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, UserX, IndianRupee, ClipboardEdit, Eye, UploadCloud, PlusCircle, CheckCircle, Lock, LoaderPinwheel, LoaderIcon, Loader, ChevronsLeft, ChevronsRight, MoreVertical, Download } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getClientById, updateClient, addClientActivity, getActivitiesForClient, convertClientToLead } from '@/app/(app)/clients-list/actions';
 import { deleteElectricityBill } from '../../leads-list/actions';
@@ -27,7 +28,7 @@ import { getClientStatuses, getLeadSources } from '@/app/(app)/settings/actions'
 import { ClientForm } from '@/app/(app)/clients/client-form';
 import { DealForm, type DealFormValues } from '@/app/(app)/deals/deal-form';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, openS3File } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProposalPreviewDialog } from '@/app/(app)/proposals/proposal-preview-dialog';
 import { ProposalForm } from '@/app/(app)/proposals/proposal-form';
@@ -124,6 +125,26 @@ export default function ClientDetailsPage() {
   const [isProposalTemplateDialogOpen, setIsProposalTemplateDialogOpen] = useState(false);
   const [selectedProposalTemplateId, setSelectedProposalTemplateId] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+
+  const openPdfInNewTab = async (pdfUrl: string) => {
+    const newTab = window.open('about:blank', '_blank');
+    try {
+      const s3Key = new URL(pdfUrl).pathname.substring(1);
+      const res = await fetch(`/api/s3/presigned-url?key=${encodeURIComponent(s3Key)}`);
+      const data = await res.json();
+      if (data.url && newTab) {
+        newTab.location.href = data.url;
+      } else if (newTab) {
+        newTab.close();
+        toast({ title: "Error", description: "Could not open document securely", variant: "destructive" });
+      }
+    } catch (e) {
+      if (newTab) newTab.close();
+      toast({ title: "Error", description: "Failed to open PDF", variant: "destructive" });
+    }
+  };
+
   const [deals, setDeals] = useState<Deal[]>([]);
   const [activityComment, setActivityComment] = useState('');
 
@@ -343,8 +364,7 @@ export default function ClientDetailsPage() {
         });
         await fetchProposals();
         if(result.pdfUrl) {
-          setSelectedProposalForPreview(result);
-          setIsPreviewOpen(true);
+          openPdfInNewTab(result.pdfUrl);
         }
       } else {
         toast({ title: "Error", description: "Could not save proposal to database.", variant: "destructive" });
@@ -1094,17 +1114,42 @@ export default function ClientDetailsPage() {
                       {proposals.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                             {proposals.map(proposal => (
-                                <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="p-3 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-background shadow-sm cursor-pointer h-full flex flex-col justify-between">
-                                    <div className="flex items-start gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-semibold text-sm truncate text-foreground">{proposal.proposalNumber}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground border-transparent">{proposal.capacity} kW</Badge>
+                                <div key={proposal.id} className="p-4 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-background shadow-sm h-full flex flex-col justify-between">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-900/50">
+                                                <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-semibold text-sm truncate text-foreground">{proposal.proposalNumber}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground border-transparent">{proposal.capacity} kW</Badge>
+                                                </div>
                                             </div>
                                         </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-red-500 hover:text-red-600 shrink-0">
+                                                    <MoreVertical className="h-4 w-4 fill-red-500 text-red-500" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={async () => {
+                                                    const opened = await openS3File(proposal.pdfUrl);
+                                                    if (!opened) toast({ title: 'No PDF', description: 'PDF has not been generated yet for this proposal.', variant: 'destructive' });
+                                                }} className="cursor-pointer font-medium">
+                                                    <Eye className="mr-2 h-4 w-4 text-blue-500" />
+                                                    Open PDF
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={async () => {
+                                                    const opened = await openS3File(proposal.docxUrl);
+                                                    if (!opened) toast({ title: 'No DOCX File', description: 'DOCX document has not been generated yet for this proposal.', variant: 'destructive' });
+                                                }} className="cursor-pointer font-medium">
+                                                    <Download className="mr-2 h-4 w-4 text-emerald-500" />
+                                                    Download DOCX
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                     <div className="flex justify-between items-end mt-3 pt-3 border-t border-border/30">
                                         <div>

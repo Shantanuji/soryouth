@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { LEAD_PRIORITY_OPTIONS, FOLLOW_UP_TYPES, FOLLOW_UP_STATUSES, CLIENT_TYPES, DROP_REASON_OPTIONS } from '@/lib/constants';
 import type { Lead, User, LeadStatusType, LeadPriorityType, ClientType, FollowUp, FollowUpStatus, AddActivityData, FollowUpType, CreateLeadData, DropReasonType, Proposal, CustomSetting, SiteSurvey, LeadSourceOptionType } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft, UserX, ChevronDown, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Phone, MessageSquare, Mail, MessageCircle, UserCircle2, Lock, FileText, ShoppingCart, Loader2, Save, Send, Video, Building, Repeat, Trash2, IndianRupee, ClipboardEdit, Eye, UploadCloud, CheckCircle, ChevronsLeftIcon, ChevronsRight, ChevronsLeft, UserX, ChevronDown, Zap, MoreVertical, Download } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getLeadById, updateLead, addActivity, convertToClient, dropLead, getActivitiesForLead, deleteElectricityBill } from '@/app/(app)/leads-list/actions';
 import { getProposalsForLead, createOrUpdateProposal } from '@/app/(app)/proposals/actions';
@@ -26,7 +26,7 @@ import { getUsers } from '@/app/(app)/users/actions';
 import { getLeadStatuses, getLeadSources } from '@/app/(app)/settings/actions';
 import { LeadForm } from '@/app/(app)/leads/lead-form';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, openS3File } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -122,6 +122,26 @@ export default function LeadDetailsPage() {
   const [activities, setActivities] = useState<FollowUp[]>([]);
   const [isActivitiesLoading, setActivitiesLoading] = useState(true);
   const [surveys, setSurveys] = useState<SiteSurvey[]>([]);
+
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  
+  const openPdfInNewTab = async (pdfUrl: string) => {
+    const newTab = window.open('about:blank', '_blank');
+    try {
+      const s3Key = new URL(pdfUrl).pathname.substring(1);
+      const res = await fetch(`/api/s3/presigned-url?key=${encodeURIComponent(s3Key)}`);
+      const data = await res.json();
+      if (data.url && newTab) {
+        newTab.location.href = data.url;
+      } else if (newTab) {
+        newTab.close();
+        toast({ title: "Error", description: "Could not open document securely", variant: "destructive" });
+      }
+    } catch (e) {
+      if (newTab) newTab.close();
+      toast({ title: "Error", description: "Failed to open PDF", variant: "destructive" });
+    }
+  };
 
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDropDialogOpen, setIsDropDialogOpen] = useState(false);
@@ -348,8 +368,7 @@ export default function LeadDetailsPage() {
         });
         await fetchProposals(); 
         if(result.pdfUrl) {
-          setSelectedProposalForPreview(result);
-          setIsPreviewOpen(true);
+          openPdfInNewTab(result.pdfUrl);
         }
       } else {
         toast({ title: "Error", description: "Could not save the proposal to the database.", variant: "destructive" });
@@ -1029,13 +1048,38 @@ export default function LeadDetailsPage() {
                     {proposals.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {proposals.map(proposal => (
-                          <div key={proposal.id} onClick={() => { setSelectedProposalForPreview(proposal); setIsPreviewOpen(true); }} className="flex flex-col p-4 border border-border/50 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all shadow-sm">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="bg-primary/10 p-2 rounded-md"><FileText className="h-4 w-4 text-primary" /></div>
-                              <div>
-                                <p className="font-bold text-sm text-foreground">{proposal.proposalNumber}</p>
-                                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{format(parseISO(proposal.proposalDate), 'dd MMM yyyy')}</p>
+                          <div key={proposal.id} className="flex flex-col p-4 border border-border/50 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all shadow-sm bg-background">
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-primary/10 p-2.5 rounded-lg border border-primary/20"><FileText className="h-4 w-4 text-primary" /></div>
+                                <div>
+                                  <p className="font-bold text-sm text-foreground">{proposal.proposalNumber}</p>
+                                  <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{format(parseISO(proposal.proposalDate), 'dd MMM yyyy')}</p>
+                                </div>
                               </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-red-500 hover:text-red-600">
+                                    <MoreVertical className="h-4 w-4 fill-red-500 text-red-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={async () => {
+                                    const opened = await openS3File(proposal.pdfUrl);
+                                    if (!opened) toast({ title: 'No PDF', description: 'PDF has not been generated yet for this proposal.', variant: 'destructive' });
+                                  }} className="cursor-pointer font-medium">
+                                    <Eye className="mr-2 h-4 w-4 text-blue-500" />
+                                    Open PDF
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={async () => {
+                                    const opened = await openS3File(proposal.docxUrl);
+                                    if (!opened) toast({ title: 'No DOCX File', description: 'DOCX document has not been generated yet for this proposal.', variant: 'destructive' });
+                                  }} className="cursor-pointer font-medium">
+                                    <Download className="mr-2 h-4 w-4 text-emerald-500" />
+                                    Download DOCX
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                             <div className="flex justify-between items-end mt-auto pt-2 border-t border-border/50">
                                <p className="text-xs text-muted-foreground font-medium">{proposal.capacity} kW System</p>

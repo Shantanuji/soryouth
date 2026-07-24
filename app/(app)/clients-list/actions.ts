@@ -25,6 +25,7 @@ function mapPrismaClientToClientType(prismaClient: any): Client {
     updatedAt: prismaClient.updatedAt.toISOString(),
     kilowatt: prismaClient.kilowatt ?? undefined,
     address: prismaClient.address ?? undefined,
+    cityArea: prismaClient.cityArea ?? undefined,
     notes: prismaClient.notes ?? undefined,
     clientType: prismaClient.clientType ?? undefined,
     electricityBillUrls: prismaClient.electricityBillUrls ?? [],
@@ -166,23 +167,66 @@ export async function createClient(data: CreateClientData): Promise<Client | { e
             if (user) assignedToId = user.id;
         }
 
-        const newClient = await prisma.client.create({
-            data: {
-                name: data.name,
-                status: data.status,
-                email: data.email || null,
-                phone: data.phone || null,
-                source: data.source || null,
-                kilowatt: data.kilowatt === undefined ? null : Number(data.kilowatt),
-                address: data.address || null,
-                notes: data.notes || null,
-                priority: data.priority || null,
-                clientType: data.clientType || null,
-                electricityBillUrls: data.electricityBillUrls || [],
-                createdById: session.userId,
-                assignedToId: assignedToId,
+        const newClient = await prisma.$transaction(async (tx) => {
+            // 1. Create client record
+            const createdClient = await tx.client.create({
+                data: {
+                    name: data.name,
+                    status: data.status,
+                    email: data.email || null,
+                    phone: data.phone || null,
+                    source: data.source || null,
+                    kilowatt: data.kilowatt === undefined ? null : Number(data.kilowatt),
+                    address: data.address || null,
+                    notes: data.notes || null,
+                    priority: data.priority || null,
+                    clientType: data.clientType || null,
+                    electricityBillUrls: data.electricityBillUrls || [],
+                    createdById: session.userId,
+                    assignedToId: assignedToId,
+                    lastCommentText: data.lastCommentText || null,
+                    lastCommentDate: data.lastCommentDate ? parseISO(data.lastCommentDate.split('-').reverse().join('-')) : null,
+                    nextFollowUpDate: data.nextFollowUpDate ? parseISO(data.nextFollowUpDate) : null,
+                    nextFollowUpTime: data.nextFollowUpTime || null,
+                }
+            });
+
+            // 2. Create follow-up if comment provided
+            if (data.lastCommentText) {
+                await tx.followUp.create({
+                    data: {
+                        clientId: createdClient.id,
+                        type: 'Call',
+                        date: new Date(),
+                        status: 'Answered',
+                        comment: data.lastCommentText,
+                        followupOrTask: 'Followup',
+                        createdById: session.userId,
+                    }
+                });
             }
+
+            // 3. Create task if next follow-up date provided
+            if (data.nextFollowUpDate && data.nextFollowUpTime && assignedToId) {
+                await tx.followUp.create({
+                    data: {
+                        clientId: createdClient.id,
+                        type: 'Call',
+                        date: new Date(),
+                        status: 'Answered',
+                        comment: `Initial follow-up task for client ${data.name}`,
+                        followupOrTask: 'Task',
+                        taskDate: parseISO(data.nextFollowUpDate),
+                        taskTime: data.nextFollowUpTime,
+                        taskStatus: 'Open',
+                        createdById: session.userId,
+                    }
+                });
+            }
+
+            return createdClient;
         });
+
         revalidatePath('/clients-list');
         revalidatePath('/deals'); // Revalidate deals page as new clients can be selected
         const newClientWithRelations = await getClientById(newClient.id);
@@ -211,7 +255,7 @@ export async function updateClient(id: string, data: Partial<Omit<Client, 'id' |
     }
 
     const prismaData: any = {};
-    const fieldsToIgnore = ['id', 'createdAt', 'updatedAt', 'followupCount', 'lastCommentText', 'lastCommentDate', 'nextFollowUpDate', 'nextFollowUpTime', 'createdBy', 'assignedTo', 'totalDealValue'];
+    const fieldsToIgnore = ['id', 'createdAt', 'updatedAt', 'followupCount', 'createdBy', 'assignedTo', 'totalDealValue'];
     
     for (const key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
@@ -222,6 +266,10 @@ export async function updateClient(id: string, data: Partial<Omit<Client, 'id' |
             const typedKey = key as keyof typeof data;
             if (typedKey === 'kilowatt') {
                 prismaData.kilowatt = data.kilowatt === undefined ? null : Number(data.kilowatt);
+            } else if (typedKey === 'nextFollowUpDate' && data.nextFollowUpDate) {
+                prismaData[typedKey] = parseISO(data.nextFollowUpDate);
+            } else if (typedKey === 'lastCommentDate' && data.lastCommentDate) {
+                prismaData[typedKey] = parseISO(data.lastCommentDate.split('-').reverse().join('-'));
             } else {
                 prismaData[typedKey] = (data as any)[typedKey] ?? null;
             }
@@ -245,8 +293,6 @@ export async function updateClient(id: string, data: Partial<Omit<Client, 'id' |
     return mapPrismaClientToClientType(updatedClientFromDb);
   } catch (error: any) {
     if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
-      // This should return a value that the caller can use to show a toast message.
-      // For now, returning null indicates failure. The UI will show a generic error.
       return { error: 'A contact with this phone number already exists.' };
     }
     console.error("Failed to update client:", error);
@@ -436,6 +482,7 @@ export async function convertClientToLead(clientId: string): Promise<{ success: 
           createdAt: client.createdAt,
           kilowatt: client.kilowatt,
           address: client.address,
+          cityArea: client.cityArea,
           clientType: client.clientType,
           electricityBillUrls: client.electricityBillUrls as Prisma.InputJsonValue,
           nextFollowUpDate: client.nextFollowUpDate,

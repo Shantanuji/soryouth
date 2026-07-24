@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const currentUser = await verifySession();
   const { pathname } = request.nextUrl;
 
-  const publicRoutes = ['/', '/login', '/signup'];
+  const publicRoutes = ['/', '/login', '/signup', '/app-release.apk'];
   const isPublicRoute = publicRoutes.some(route => pathname === route);
   
   // If trying to access a non-public API route without a session, deny access

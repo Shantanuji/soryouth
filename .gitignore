@@ -1,9 +1,14 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =====================================================
+# Dependencies
+# =====================================================
+node_modules/
+/microservices/proposal_generator/venv/
+venv/
+.venv/
+env/
 
-# dependencies
-/microservices/proposal_generator/venv
-/node_modules
-/.pnp
+# Yarn / PNPM
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -11,57 +16,257 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# =====================================================
+# Next.js
+# =====================================================
+.next/
+out/
+build/
+dist/
 
-# next.js
-/.next/
-/out/
+# =====================================================
+# Python
+# =====================================================
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
 
-# production
-/build
+# =====================================================
+# Environment
+# =====================================================
+.env
+.env.*
+!.env.example
 
-# misc
-.DS_Store
-*.pem
+# =====================================================
+# SQLite (NEVER COMMIT)
+# =====================================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+*.before_restore_backup
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.genkit/*
-.env*
-
-# firebase
-firebase-debug.log
-firestore-debug.log
-/generated/prisma
-
-# SQLite databases (contain real user data — never commit)
 prisma/*.db
 prisma/*.db-journal
 prisma/*.db-shm
 prisma/*.db-wal
 
-# Temp/debug files
+# Backup folder
+backups/
+
+# =====================================================
+# APK / Android Builds
+# =====================================================
+*.apk
+*.aab
+
+# =====================================================
+# Logs
+# =====================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+firebase-debug.log
+firestore-debug.log
 error_log.txt
+
+# =====================================================
+# Recovery / Temporary Scripts
+# =====================================================
+scratch/
+check_extracted_db.py
+recover_deleted_db.py
+restore_from_git.py
+verify_july2_db.py
+verify_july2_db.js
 db_check.js
 login_test.js
 
-# Python cache
+# =====================================================
+# Archives
+# =====================================================
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# =====================================================
+# Generated Files
+# =====================================================
+generated/
+.generated/
+generated/prisma/
+
+# =====================================================
+# Vercel
+# =====================================================
+.vercel/
+
+# =====================================================
+# TypeScript
+# =====================================================
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================================================
+# macOS / Windows
+# =====================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =====================================================
+# IDE
+# =====================================================
+.vscode/
+.idea/
+# =====================================================
+# Dependencies
+# =====================================================
+node_modules/
+/microservices/proposal_generator/venv/
+venv/
+.venv/
+env/
+
+# Yarn / PNPM
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# =====================================================
+# Next.js
+# =====================================================
+.next/
+out/
+build/
+dist/
+
+# =====================================================
+# Python
+# =====================================================
+__pycache__/
 **/__pycache__/
 *.pyc
+*.pyo
 *.pyd
+.pytest_cache/
+.mypy_cache/
 
+# =====================================================
+# Environment
+# =====================================================
+.env
+.env.*
+!.env.example
+
+# =====================================================
+# SQLite (NEVER COMMIT)
+# =====================================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+*.before_restore_backup
+
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-shm
+prisma/*.db-wal
+
+# Backup folder
+backups/
+
+# =====================================================
+# APK / Android Builds
+# =====================================================
+*.apk
+*.aab
+
+# =====================================================
+# Logs
+# =====================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+firebase-debug.log
+firestore-debug.log
+error_log.txt
+
+# =====================================================
+# Recovery / Temporary Scripts
+# =====================================================
+scratch/
+check_extracted_db.py
+recover_deleted_db.py
+restore_from_git.py
+verify_july2_db.py
+verify_july2_db.js
+db_check.js
+login_test.js
+
+# =====================================================
 # Archives
+# =====================================================
 *.zip
+*.tar
+*.gz
+*.rar
+*.7z
 
+# =====================================================
+# Generated Files
+# =====================================================
+generated/
+.generated/
+generated/prisma/
+
+# =====================================================
+# Vercel
+# =====================================================
+.vercel/
+
+# =====================================================
+# TypeScript
+# =====================================================
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================================================
+# macOS / Windows
+# =====================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =====================================================
+# IDE
+# =====================================================
+.vscode/
+.idea/
+
+# =====================================================
+# Secrets
+# =====================================================
+*.pem
+*.key
+*.crt
+hostinger_rsa*
