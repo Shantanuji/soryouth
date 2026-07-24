@@ -1293,7 +1293,7 @@ def generate_proposal():
 
         # 1. If template contains explicit BOS placeholders (e.g. {{balance_of_system}}), inject InlineImage or Subdoc
         if bos_png_path and os.path.exists(bos_png_path):
-            bos_inline = InlineImage(doc, bos_png_path, width=docx.shared.Inches(5.8))
+            bos_inline = InlineImage(doc, bos_png_path, width=max_printable_width)
             for key in bos_placeholders:
                 context[key] = bos_inline
             bos_rendered = True
