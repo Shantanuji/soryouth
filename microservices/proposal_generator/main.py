@@ -612,8 +612,8 @@ def generate_balance_of_system_png(context):
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
-            height: 1040px;
-            padding: 20px 25px;
+            height: 940px;
+            padding: 15px 25px;
             margin: 0;
             overflow: hidden;
             color: #0B3B60;
@@ -770,7 +770,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = get_html2image(size=(840, 1040), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 940), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir
@@ -1293,7 +1293,7 @@ def generate_proposal():
 
         # 1. If template contains explicit BOS placeholders (e.g. {{balance_of_system}}), inject InlineImage or Subdoc
         if bos_png_path and os.path.exists(bos_png_path):
-            bos_inline = InlineImage(doc, bos_png_path, width=max_printable_width)
+            bos_inline = InlineImage(doc, bos_png_path, width=docx.shared.Inches(6.3))
             for key in bos_placeholders:
                 context[key] = bos_inline
             bos_rendered = True
