@@ -608,7 +608,7 @@ def generate_balance_of_system_png(context):
         ::-webkit-scrollbar {{
             display: none;
         }}
-        body {
+        body {{
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
@@ -619,29 +619,29 @@ def generate_balance_of_system_png(context):
             color: #0B3B60;
             display: flex;
             flex-direction: column;
-        }
-        .header-container {
+        }}
+        .header-container {{
             display: flex;
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 0px;
-        }
-        .title {
+        }}
+        .title {{
             font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
             font-size: 34px;
             font-weight: 700;
             color: #0F3B66;
             letter-spacing: 0;
             line-height: 1;
-        }
-        table {
+        }}
+        table {{
             width: 100%;
             height: auto;
             border-collapse: collapse;
             border: 2.5px solid #0080C0;
             font-size: 13px;
-        }
-        th {
+        }}
+        th {{
             background-color: #1B4D75;
             color: #ffffff;
             font-weight: 700;
@@ -649,8 +649,8 @@ def generate_balance_of_system_png(context):
             padding: 12px 10px;
             text-align: center;
             border: 1.5px solid #0080C0;
-        }
-        td {
+        }}
+        td {{
             padding: 10px 12px;
             border: 1.5px solid #0080C0;
             background-color: #EAF4FC;
@@ -658,15 +658,15 @@ def generate_balance_of_system_png(context):
             vertical-align: middle;
             font-size: 13px;
             line-height: 1.4;
-        }
-        .component-name {
+        }}
+        .component-name {{
             font-weight: 700;
             color: #0B3B60;
-        }
-        .center-col {
+        }}
+        .center-col {{
             text-align: center;
             white-space: nowrap;
-        }
+        }}
     </style>
     </head>
     <body>
@@ -769,7 +769,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = get_html2image(size=(840, 720), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 1080), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir
@@ -778,10 +778,19 @@ def generate_balance_of_system_png(context):
     temp_path = os.path.join(out_dir, filename)
     
     try:
-        hti.screenshot(html_str=html, save_as=filename)
-        if os.path.exists(temp_path):
-            with open(temp_path, 'rb') as f:
-                return temp_path, f.read()
+        res = hti.screenshot(html_str=html, save_as=filename)
+        target_path = None
+        if res and isinstance(res, list) and len(res) > 0 and os.path.exists(res[0]):
+            target_path = res[0]
+        else:
+            for p in [temp_path, os.path.join(os.getcwd(), filename), filename]:
+                if os.path.exists(p) and os.path.getsize(p) > 0:
+                    target_path = p
+                    break
+
+        if target_path and os.path.exists(target_path):
+            with open(target_path, 'rb') as f:
+                return target_path, f.read()
     except Exception as e:
         print(f"Error generating Balance of System PNG: {e}")
     return None, None
