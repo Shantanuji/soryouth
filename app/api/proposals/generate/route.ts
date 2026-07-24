@@ -53,6 +53,7 @@ function getTemplateData(proposal: any) {
     return {
     // ── Basic Proposal Info ────────────────────────────────────────────
     name: proposal.name,
+    Name: proposal.name,
     contact_person: proposal.contactPerson,
     email: proposal.email || '',
     phone: proposal.phone || '',
