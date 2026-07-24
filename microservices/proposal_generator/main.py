@@ -612,8 +612,8 @@ def generate_balance_of_system_png(context):
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
-            height: 940px;
-            padding: 15px 25px;
+            height: 960px;
+            padding: 12px 20px;
             margin: 0;
             overflow: hidden;
             color: #0B3B60;
@@ -624,12 +624,12 @@ def generate_balance_of_system_png(context):
         .header-container {{
             display: flex;
             align-items: center;
-            margin-bottom: 18px;
+            margin-bottom: 10px;
             padding-bottom: 0px;
         }}
         .title {{
             font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
-            font-size: 38px;
+            font-size: 32px;
             font-weight: 700;
             color: #0F3B66;
             letter-spacing: 0;
@@ -639,26 +639,26 @@ def generate_balance_of_system_png(context):
             width: 100%;
             flex-grow: 1;
             border-collapse: collapse;
-            border: 2.5px solid #0080C0;
-            font-size: 14px;
+            border: 2px solid #0080C0;
+            font-size: 12px;
         }}
         th {{
             background-color: #1B4D75;
             color: #ffffff;
             font-weight: 700;
-            font-size: 15px;
-            padding: 15px 12px;
+            font-size: 13px;
+            padding: 8px 10px;
             text-align: center;
             border: 1.5px solid #0080C0;
         }}
         td {{
-            padding: 13.5px 14px;
+            padding: 6px 10px;
             border: 1.5px solid #0080C0;
             background-color: #EAF4FC;
             color: #0B3B60;
             vertical-align: middle;
-            font-size: 13.5px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.25;
         }}
         .component-name {{
             font-weight: 700;
@@ -770,7 +770,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = get_html2image(size=(840, 940), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 960), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir
