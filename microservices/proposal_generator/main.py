@@ -1318,17 +1318,6 @@ def generate_proposal():
                         print(f"Error replacing image blob {rel.target_ref}: {ex}")
 
         doc.render(context)
-
-        # Zero out paragraph margins/line-spacing on paragraphs containing embedded images to prevent Word from creating empty trailing page breaks
-        try:
-            for p in doc.paragraphs:
-                if 'w:drawing' in p._element.xml:
-                    p.paragraph_format.space_before = docx.shared.Pt(0)
-                    p.paragraph_format.space_after = docx.shared.Pt(0)
-                    p.paragraph_format.line_spacing = docx.shared.Pt(1)
-        except Exception as ex:
-            print(f"Error adjusting drawing paragraph margins: {ex}")
-
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
         doc.save(temp_docx_path)
 
