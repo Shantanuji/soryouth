@@ -612,8 +612,8 @@ def generate_balance_of_system_png(context):
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
-            height: 1188px;
-            padding: 40px 45px;
+            height: 1020px;
+            padding: 25px 35px;
             margin: 0;
             overflow: hidden;
             color: #0B3B60;
@@ -624,12 +624,12 @@ def generate_balance_of_system_png(context):
         .header-container {{
             display: flex;
             align-items: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             padding-bottom: 0px;
         }}
         .title {{
             font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
-            font-size: 38px;
+            font-size: 36px;
             font-weight: 700;
             color: #0F3B66;
             letter-spacing: 0;
@@ -640,25 +640,25 @@ def generate_balance_of_system_png(context):
             flex-grow: 1;
             border-collapse: collapse;
             border: 2.5px solid #0080C0;
-            font-size: 14px;
+            font-size: 13px;
         }}
         th {{
             background-color: #1B4D75;
             color: #ffffff;
             font-weight: 700;
-            font-size: 15px;
-            padding: 16px 12px;
+            font-size: 14px;
+            padding: 13px 10px;
             text-align: center;
             border: 1.5px solid #0080C0;
         }}
         td {{
-            padding: 15px 14px;
+            padding: 11px 12px;
             border: 1.5px solid #0080C0;
             background-color: #EAF4FC;
             color: #0B3B60;
             vertical-align: middle;
-            font-size: 14px;
-            line-height: 1.4;
+            font-size: 13px;
+            line-height: 1.35;
         }}
         .component-name {{
             font-weight: 700;
@@ -770,7 +770,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 1020), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir
@@ -1318,6 +1318,17 @@ def generate_proposal():
                         print(f"Error replacing image blob {rel.target_ref}: {ex}")
 
         doc.render(context)
+
+        # Zero out paragraph margins/line-spacing on paragraphs containing embedded images to prevent Word from creating empty trailing page breaks
+        try:
+            for p in doc.paragraphs:
+                if 'w:drawing' in p._element.xml:
+                    p.paragraph_format.space_before = docx.shared.Pt(0)
+                    p.paragraph_format.space_after = docx.shared.Pt(0)
+                    p.paragraph_format.line_spacing = docx.shared.Pt(1)
+        except Exception as ex:
+            print(f"Error adjusting drawing paragraph margins: {ex}")
+
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
         doc.save(temp_docx_path)
 
