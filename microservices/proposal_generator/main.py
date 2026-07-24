@@ -15,13 +15,21 @@ import matplotlib.ticker as mticker
 
 from flask import Flask, request, jsonify
 from docxtpl import DocxTemplate, InlineImage
-from docx.shared import Inches
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 import docx  # From python-docx
 from html2image import Html2Image
 
 if platform.system() == 'Windows':
-    import pythoncom
-    from docx2pdf import convert as convert_to_pdf
+    try:
+        import pythoncom
+        from docx2pdf import convert as convert_to_pdf
+    except ImportError:
+        pythoncom = None
+        convert_to_pdf = None
 else:
     pythoncom = None
     convert_to_pdf = None
@@ -250,7 +258,17 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     '''
     
     hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
-    hti.output_path = tempfile.gettempdir()
+    
+    if platform.system() == 'Linux':
+        out_dir = os.path.expanduser('~/hti_tmp')
+        os.makedirs(out_dir, exist_ok=True)
+        hti.output_path = out_dir
+        hti.temp_path = out_dir
+    else:
+        hti.output_path = tempfile.gettempdir()
+        hti.temp_path = tempfile.gettempdir()
+
+        
     filename = f'combined_charts_{uuid.uuid4().hex}.png'
     temp_path = os.path.join(hti.output_path, filename)
     
@@ -338,7 +356,429 @@ def create_yearly_savings_chart(doc, capacity_kw, unit_rate, target_width):
     memfile = io.BytesIO()
     fig.savefig(memfile, format='png')
     memfile.seek(0)
-    return InlineImage(doc, memfile, width=target_width)
+def set_cell_background(cell, hex_color):
+    shading_elm = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
+    cell._tc.get_or_add_tcPr().append(shading_elm)
+
+def set_cell_borders(cell, top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="12", val="single"):
+    tcPr = cell._tc.get_or_add_tcPr()
+    borders_elm = parse_xml(f'''
+        <w:tcBorders {nsdecls("w")}>
+            <w:top w:val="{val}" w:sz="{sz}" w:space="0" w:color="{top}"/>
+            <w:left w:val="{val}" w:sz="{sz}" w:space="0" w:color="{left}"/>
+            <w:bottom w:val="{val}" w:sz="{sz}" w:space="0" w:color="{bottom}"/>
+            <w:right w:val="{val}" w:sz="{sz}" w:space="0" w:color="{right}"/>
+        </w:tcBorders>
+    ''')
+    tcPr.append(borders_elm)
+
+def set_cell_margins(cell, top=140, bottom=140, left=180, right=180):
+    tcPr = cell._tc.get_or_add_tcPr()
+    margins_elm = parse_xml(f'''
+        <w:tcMar {nsdecls("w")}>
+            <w:top w:w="{top}" w:type="dxa"/>
+            <w:bottom w:w="{bottom}" w:type="dxa"/>
+            <w:left w:w="{left}" w:type="dxa"/>
+            <w:right w:w="{right}" w:type="dxa"/>
+        </w:tcMar>
+    ''')
+    tcPr.append(margins_elm)
+
+def add_native_balance_of_system_table(container, context):
+    """
+    Generates a native, fully editable Word table inside any Document or Subdoc
+    with exact blue styling, borders, shading, font weights, and dynamic values.
+    """
+    import math
+
+    capacity = safe_float(context.get('capacity', context.get('project_size', 0)))
+    mod_watt = safe_float(context.get('module_wattage'), 600)
+    if mod_watt <= 0:
+        mod_watt = 600
+        
+    calc_mod_qty = int(math.ceil((capacity * 1000) / mod_watt)) if capacity > 0 else 0
+    passed_mod_qty = safe_float(context.get('module_qty', context.get('moduleQty', 0)))
+    module_qty = str(int(passed_mod_qty)) if passed_mod_qty > 0 else (str(calc_mod_qty) if calc_mod_qty > 0 else "14")
+
+    mod_type = str(context.get('module_type', 'Topcon Bifacial')).strip()
+    dcr_stat = str(context.get('dcr_status', 'DCR')).strip()
+    mod_spec_fallback = f"Rayzon Solar {mod_type} {dcr_stat} {int(mod_watt)} Wp"
+    module_spec = str(context.get('module_spec', context.get('module_details', context.get('module_description', mod_spec_fallback))))
+
+    inv_kw = safe_float(context.get('inverter_rating', context.get('inverter_kw', capacity)))
+    inv_kw_fmt = f"{int(inv_kw) if inv_kw == int(inv_kw) else inv_kw:.1f} kW" if inv_kw > 0 else "8 kW"
+    inv_spec_fallback = f"Growatt/Sungrow {inv_kw_fmt}"
+    inverter_spec = str(context.get('inverter_spec', context.get('inverter_details', context.get('inverter_description', inv_spec_fallback))))
+
+    inv_qty_val = int(safe_float(context.get('inverter_qty', context.get('inverterQty', 1))))
+    inv_qty_val = max(1, inv_qty_val)
+    inverter_qty_nos = f"{inv_qty_val} Nos"
+
+    acdb_qty_val = int(safe_float(context.get('acdb_qty', context.get('acdb_dcdb_qty', inv_qty_val))))
+    dcdb_qty_val = int(safe_float(context.get('dcdb_qty', context.get('acdb_dcdb_qty', inv_qty_val))))
+    earthing_qty_val = int(safe_float(context.get('earthing_kit_qty', context.get('earthing_qty', inv_qty_val * 3))))
+    la_qty_val = int(safe_float(context.get('la_kit_qty', context.get('la_qty', inv_qty_val))))
+
+    dcdb_qty_nos = f"{dcdb_qty_val} No" if dcdb_qty_val == 1 else f"{dcdb_qty_val} Nos"
+    acdb_qty_nos = f"{acdb_qty_val} No" if acdb_qty_val == 1 else f"{acdb_qty_val} Nos"
+    earthing_kit_qty_nos = f"{earthing_qty_val} Nos"
+    la_kit_qty_nos = f"{la_qty_val} No" if la_qty_val == 1 else f"{la_qty_val} Nos"
+
+    p = container.add_paragraph()
+    run = p.add_run("Balance of System")
+    run.font.name = 'Segoe UI'
+    run.font.size = Pt(20)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(11, 59, 96) # #0B3B60
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(14)
+
+    rows_data = [
+        ("Solar Modules", "PV Solar Module", module_qty, module_spec),
+        ("Inverter", inverter_spec, inverter_qty_nos, inverter_spec),
+        ("Mounting Structure", "RCC Rooftop", "1 Lot", "GI Sqaure Pipe for Columns & Rafter/Strut Channel for Panel Mounting 15-18ft"),
+        ("DC Cable", "4 sq.mm", "As per design", "Polycab 1.1 kV Standard EN 50618 / IEC 62930 UV Resistant - Yes"),
+        ("AC Cable", "As per Design", "As per design", "XLPE Insulated Armed Polycab Voltage Rating 1.1 kV Standard - IS 7098"),
+        ("DCDB", "As per design", dcdb_qty_nos, "DC Isolator, DC SPD Type-II, String Fuses Enclosure - IP65 Weatherproof"),
+        ("ACDB", "As per design", acdb_qty_nos, "MCCB/MCB, AC SPD Type-II Enclosure - IP65 Weatherproof"),
+        ("Earthing Kit", "Chemical Earthing", earthing_kit_qty_nos, "Electrode Size - 17.2 mm Copper Bonded / GI Electrode Earth Resistance less than 5 Ohms Compliance IS 3043"),
+        ("Lightning Arrester", "Standard", la_kit_qty_nos, "IS/IEC Standards"),
+        ("Connectors", "MC4 compatible", "As required", "1500 V DC Protection Class - IP68"),
+        ("Monitoring", "RMS App-based", "1 Set", "Real-Time Generation, Fault Alerts, Historical Data Analysis"),
+        ("Tags", "Aluminum Engraved", "1 Set", "Aluminum Engraved Identification Tags"),
+        ("Fire Extinguishers", "As per compliance", "1 Set", "As per MNRE / Electrical Compliance Requirements"),
+    ]
+
+    table = container.add_table(rows=len(rows_data) + 1, cols=4)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+
+    col_widths = [Inches(1.3), Inches(1.5), Inches(0.9), Inches(2.8)]
+
+    # Header row
+    hdr_cells = table.rows[0].cells
+    headers = ["Component", "Details", "Qty", "Specifications"]
+    for i, h_text in enumerate(headers):
+        cell = hdr_cells[i]
+        cell.width = col_widths[i]
+        set_cell_background(cell, "1B4D75")
+        set_cell_borders(cell, top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="12")
+        set_cell_margins(cell, top=160, bottom=160, left=180, right=180)
+        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        
+        hp = cell.paragraphs[0]
+        hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        hrun = hp.add_run(h_text)
+        hrun.font.name = 'Calibri'
+        hrun.font.size = Pt(10.5)
+        hrun.font.bold = True
+        hrun.font.color.rgb = RGBColor(255, 255, 255)
+
+    # Data rows
+    for r_idx, row_tuple in enumerate(rows_data, start=1):
+        row_cells = table.rows[r_idx].cells
+        for c_idx, val in enumerate(row_tuple):
+            cell = row_cells[c_idx]
+            cell.width = col_widths[c_idx]
+            set_cell_background(cell, "EAF4FC")
+            set_cell_borders(cell, top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="10")
+            set_cell_margins(cell, top=120, bottom=120, left=150, right=150)
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+            cp = cell.paragraphs[0]
+            if c_idx == 2:
+                cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            else:
+                cp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                
+            crun = cp.add_run(str(val))
+            crun.font.name = 'Calibri'
+            crun.font.size = Pt(9.5)
+            crun.font.color.rgb = RGBColor(11, 59, 96)
+            if c_idx == 0:
+                crun.font.bold = True
+
+    return table
+
+
+def generate_balance_of_system_png(context):
+    """
+    Generates an ultra-high-resolution PNG screenshot of the Balance of System page
+    with exact Soryouth branding, component list, quantities, and specifications
+    derived directly from the proposal/database context.
+    """
+    import math
+
+    capacity = safe_float(context.get('capacity', context.get('project_size', 0)))
+    mod_watt = safe_float(context.get('module_wattage'), 600)
+    if mod_watt <= 0:
+        mod_watt = 600
+        
+    calc_mod_qty = int(math.ceil((capacity * 1000) / mod_watt)) if capacity > 0 else 0
+    passed_mod_qty = safe_float(context.get('module_qty', context.get('moduleQty', 0)))
+    module_qty = str(int(passed_mod_qty)) if passed_mod_qty > 0 else (str(calc_mod_qty) if calc_mod_qty > 0 else "14")
+
+    mod_type = str(context.get('module_type', 'Topcon Bifacial')).strip()
+    dcr_stat = str(context.get('dcr_status', 'DCR')).strip()
+    mod_spec_fallback = f"Rayzon Solar {mod_type} {dcr_stat} {int(mod_watt)} Wp"
+    module_spec = str(context.get('module_spec', context.get('module_details', context.get('module_description', mod_spec_fallback))))
+
+    inv_kw = safe_float(context.get('inverter_rating', context.get('inverter_kw', capacity)))
+    inv_kw_fmt = f"{int(inv_kw) if inv_kw == int(inv_kw) else inv_kw:.1f} kW" if inv_kw > 0 else "8 kW"
+    inv_spec_fallback = f"Growatt/Sungrow {inv_kw_fmt}"
+    inverter_spec = str(context.get('inverter_spec', context.get('inverter_details', context.get('inverter_description', inv_spec_fallback))))
+
+    inv_qty_val = int(safe_float(context.get('inverter_qty', context.get('inverterQty', 1))))
+    inv_qty_val = max(1, inv_qty_val)
+    inverter_qty_nos = f"{inv_qty_val} Nos"
+
+    acdb_qty_val = int(safe_float(context.get('acdb_qty', context.get('acdb_dcdb_qty', inv_qty_val))))
+    dcdb_qty_val = int(safe_float(context.get('dcdb_qty', context.get('acdb_dcdb_qty', inv_qty_val))))
+    earthing_qty_val = int(safe_float(context.get('earthing_kit_qty', context.get('earthing_qty', inv_qty_val * 3))))
+    la_qty_val = int(safe_float(context.get('la_kit_qty', context.get('la_qty', inv_qty_val))))
+
+    dcdb_qty_nos = f"{dcdb_qty_val} No" if dcdb_qty_val == 1 else f"{dcdb_qty_val} Nos"
+    acdb_qty_nos = f"{acdb_qty_val} No" if acdb_qty_val == 1 else f"{acdb_qty_val} Nos"
+    earthing_kit_qty_nos = f"{earthing_qty_val} Nos"
+    la_kit_qty_nos = f"{la_qty_val} No" if la_qty_val == 1 else f"{la_qty_val} Nos"
+
+    out_dir = tempfile.gettempdir()
+    logo_filename = f"soryouth_logo_{uuid.uuid4().hex[:8]}.png"
+    logo_dest_path = os.path.join(out_dir, logo_filename)
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+
+    possible_logo_paths = [
+        os.path.join(project_root, 'public', 'assets', 'images', 'logo-icon.png'),
+        os.path.join(project_root, 'public', 'assets', 'images', 'soryouth-logo.png'),
+        os.path.join(project_root, 'public', 'assets', 'images', 'logo.png'),
+        os.path.join(project_root, 'public', 'assets', 'images', 'logo-dark.png'),
+        os.path.join(project_root, 'public', 'logo.png'),
+        os.path.abspath('public/assets/images/logo-icon.png'),
+        os.path.abspath('public/assets/images/soryouth-logo.png'),
+        os.path.abspath('public/assets/images/logo.png'),
+    ]
+    found_logo = None
+    for p in possible_logo_paths:
+        if os.path.exists(p):
+            found_logo = p
+            break
+
+    logo_html = ""
+    if found_logo:
+        try:
+            shutil.copyfile(found_logo, logo_dest_path)
+            logo_html = f'<img src="{logo_filename}" style="height: 76px; max-width: 220px; object-fit: contain; margin-right: 25px;" />'
+        except Exception as ex:
+            print(f"Error copying logo for Chromium rendering: {ex}")
+            logo_html = ""
+
+    html = f'''
+    <html>
+    <head>
+    <style>
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+        ::-webkit-scrollbar {{
+            display: none;
+        }}
+        body {{
+            font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+            background: #ffffff;
+            width: 840px;
+            height: 1188px;
+            padding: 45px 50px;
+            margin: 0;
+            overflow: hidden;
+            color: #0B3B60;
+            display: flex;
+            flex-direction: column;
+        }}
+        .header-container {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 0px;
+        }}
+        .title {{
+            font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: #0F3B66;
+            letter-spacing: 0;
+            line-height: 1;
+        }}
+        table {{
+            width: 100%;
+            height: 980px;
+            border-collapse: collapse;
+            border: 2.5px solid #0080C0;
+            font-size: 13.5px;
+        }}
+        th {{
+            background-color: #1B4D75;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 16px 12px;
+            text-align: center;
+            border: 1.5px solid #0080C0;
+        }}
+        td {{
+            padding: 14px 14px;
+            border: 1.5px solid #0080C0;
+            background-color: #EAF4FC;
+            color: #0B3B60;
+            vertical-align: middle;
+            font-size: 13.5px;
+            line-height: 1.45;
+        }}
+        .component-name {{
+            font-weight: 700;
+            color: #0B3B60;
+        }}
+        .center-col {{
+            text-align: center;
+            white-space: nowrap;
+        }}
+    </style>
+    </head>
+    <body>
+        <div class="header-container">
+            {logo_html}
+            <div class="title">Balance of System</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 18%;">Component</th>
+                    <th style="width: 22%;">Details</th>
+                    <th style="width: 15%;">Qty</th>
+                    <th style="width: 45%;">Specifications</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="component-name">Solar Modules</td>
+                    <td>PV Solar Module</td>
+                    <td class="center-col">{module_qty}</td>
+                    <td>{module_spec}</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Inverter</td>
+                    <td>{inverter_spec}</td>
+                    <td class="center-col">{inverter_qty_nos}</td>
+                    <td>{inverter_spec}</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Mounting Structure</td>
+                    <td>RCC Rooftop</td>
+                    <td class="center-col">1 Lot</td>
+                    <td>GI Sqaure Pipe for Columns & Rafter/Strut Channel for Panel Mounting 15-18ft</td>
+                </tr>
+                <tr>
+                    <td class="component-name">DC Cable</td>
+                    <td>4 sq.mm</td>
+                    <td class="center-col">As per design</td>
+                    <td>Polycab 1.1 kV Standard EN 50618 / IEC 62930 UV Resistant - Yes</td>
+                </tr>
+                <tr>
+                    <td class="component-name">AC Cable</td>
+                    <td>As per Design</td>
+                    <td class="center-col">As per design</td>
+                    <td>XLPE Insulated Armed Polycab Voltage Rating 1.1 kV Standard - IS 7098</td>
+                </tr>
+                <tr>
+                    <td class="component-name">DCDB</td>
+                    <td>As per design</td>
+                    <td class="center-col">{dcdb_qty_nos}</td>
+                    <td>DC Isolator, DC SPD Type-II, String Fuses Enclosure - IP65 Weatherproof</td>
+                </tr>
+                <tr>
+                    <td class="component-name">ACDB</td>
+                    <td>As per design</td>
+                    <td class="center-col">{acdb_qty_nos}</td>
+                    <td>MCCB/MCB, AC SPD Type-II Enclosure - IP65 Weatherproof</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Earthing Kit</td>
+                    <td>Chemical Earthing</td>
+                    <td class="center-col">{earthing_kit_qty_nos}</td>
+                    <td>Electrode Size - 17.2 mm Copper Bonded / GI Electrode Earth Resistance less than 5 Ohms Compliance IS 3043</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Lightning Arrester</td>
+                    <td>Standard</td>
+                    <td class="center-col">{la_kit_qty_nos}</td>
+                    <td>IS/IEC Standards</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Connectors</td>
+                    <td>MC4 compatible</td>
+                    <td class="center-col">As required</td>
+                    <td>1500 V DC Protection Class - IP68</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Monitoring</td>
+                    <td>RMS App-based</td>
+                    <td class="center-col">1 Set</td>
+                    <td>Real-Time Generation, Fault Alerts, Historical Data Analysis</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Tags</td>
+                    <td>Aluminum Engraved</td>
+                    <td class="center-col">1 Set</td>
+                    <td>Aluminum Engraved Identification Tags</td>
+                </tr>
+                <tr>
+                    <td class="component-name">Fire Extinguishers</td>
+                    <td>As per compliance</td>
+                    <td class="center-col">1 Set</td>
+                    <td>As per MNRE / Electrical Compliance Requirements</td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+    </html>
+    '''
+
+    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    out_dir = tempfile.gettempdir()
+    hti.output_path = out_dir
+    hti.temp_path = out_dir
+
+    filename = f'balance_of_system_{uuid.uuid4().hex}.png'
+    temp_path = os.path.join(out_dir, filename)
+    
+    try:
+        hti.screenshot(html_str=html, save_as=filename)
+        if os.path.exists(temp_path):
+            with open(temp_path, 'rb') as f:
+                return temp_path, f.read()
+    except Exception as e:
+        print(f"Error generating Balance of System PNG: {e}")
+    return None, None
+
+
+def create_native_balance_of_system_subdoc(doc, context):
+    try:
+        subdoc = doc.new_subdoc()
+        add_native_balance_of_system_table(subdoc, context)
+        return subdoc
+    except Exception:
+        return None
+
+
+def create_balance_of_system_page(doc, context, target_width):
+    path, blob = generate_balance_of_system_png(context)
+    if path and os.path.exists(path):
+        return InlineImage(doc, path, width=target_width)
+    return None
 
 
 def create_capex_evaluation_sheet(doc, context, target_width):
@@ -360,10 +800,30 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     gen_yr     = safe_float(context.get('generation_per_year'), capacity * 4 * 345)
     savings_yr = safe_float(context.get('savings_per_year'), gen_yr * unit_rate)
 
-    ad1 = safe_float(context.get('ad_benefit_year1'), base_amt * 0.40 * 0.25)
-    ad2 = safe_float(context.get('ad_benefit_year2'), base_amt * 0.60 * 0.60 * 0.25)
-    ad3 = safe_float(context.get('ad_benefit_year3'), base_amt * 0.60 * 0.40 * 0.675 * 0.25)
-    total_ad = safe_float(context.get('total_ad_benefit'), ad1 + ad2 + ad3)
+    client_type = str(context.get('client_type', context.get('clientType', 'Other'))).strip().lower()
+    unit_rate_val = safe_float(context.get('unit_rate'), safe_float(context.get('grid_tariff_per_unit')))
+    is_business = ('commercial' in client_type) or ('industrial' in client_type) or ('industr' in client_type) or ('industry' in client_type) or ('factory' in client_type) or ('business' in client_type) or ('corporate' in client_type) or (unit_rate_val <= 12 and unit_rate_val > 0 and 'housing' not in client_type and 'bungalow' not in client_type and 'individual' not in client_type)
+
+    if is_business:
+        ad1_val = safe_float(context.get('ad_benefit_year1'), 0.0)
+        ad1 = ad1_val if ad1_val > 0 else (base_amt * 0.40 * 0.25)
+        
+        ad2_val = safe_float(context.get('ad_benefit_year2'), 0.0)
+        wdv1 = base_amt - (base_amt * 0.40)
+        ad2 = ad2_val if ad2_val > 0 else (wdv1 * 0.80 * 0.25)
+        
+        ad3_val = safe_float(context.get('ad_benefit_year3'), 0.0)
+        wdv2 = wdv1 - (wdv1 * 0.80)
+        ad3 = ad3_val if ad3_val > 0 else (wdv2 * 0.80 * 0.25)
+        
+        total_ad_val = safe_float(context.get('total_ad_benefit'), 0.0)
+        total_ad = total_ad_val if total_ad_val > 0 else (ad1 + ad2 + ad3)
+    else:
+        ad1 = 0.0
+        ad2 = 0.0
+        ad3 = 0.0
+        total_ad = 0.0
+
     om_pkw   = safe_float(context.get('om_cost_per_kw'), 750)
     om_base  = safe_float(context.get('total_om_cost'), capacity * om_pkw)
     
@@ -532,11 +992,12 @@ def create_capex_evaluation_sheet(doc, context, target_width):
                 <table>
                     <tr><td colspan="3" class="table-title">Return On Investment (ROI) Calculation</td></tr>
                     <tr class="white-row"><td class="label-col">Project Cost ex GST</td><td class="label-col">₹</td><td class="val-col">{base_amt:,.2f}</td></tr>
-                    <tr class="blue-row"><td class="label-col">Additional / Subsidy Benefits</td><td class="label-col">₹</td><td class="val-col">{subsidy:,.2f}</td></tr>
+                    <tr class="blue-row"><td class="label-col">Accelerated Depreciation Benefits</td><td class="label-col">₹</td><td class="val-col">{total_ad:,.2f}</td></tr>
                     <tr class="white-row"><td class="label-col">Cost Via Grid</td><td class="label-col">₹</td><td class="val-col">{savings_yr * 25:,.2f}</td></tr>
-                    <tr class="blue-row"><td class="label-col">ROI in Years</td><td class="val-col" colspan="2">{roi_years:,.2f}</td></tr>
+                    <tr class="blue-row"><td class="label-col">ROI in Years</td><td class="val-col" colspan="2" style="text-align:right;">{roi_years:,.2f}</td></tr>
                     <tr class="white-row"><td class="label-col">Monthly Payments</td><td class="label-col">₹</td><td class="val-col">-</td></tr>
-                    <tr class="green-row"><td class="label-col">Total Plant cost inc Interest</td><td class="label-col">₹</td><td class="val-col">{net_inv:,.2f}</td></tr>
+                    <tr class="blue-row"><td class="label-col">Total Plant cost inc Interest</td><td class="label-col">₹</td><td class="val-col">-</td></tr>
+                    <tr class="white-row" style="font-weight:bold"><td class="label-col">subsidy</td><td class="label-col">₹</td><td class="val-col">{subsidy:,.2f}</td></tr>
                 </table>
             </div>
         </div>
@@ -562,7 +1023,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     
     evaluation_sheet = context.get('evaluationSheet')
     yr_data = []
-    sum_gen, sum_grid, sum_om, sum_ad, sum_sav = 0, 0, 0, 0, 0
+    sum_gen, sum_grid, sum_om, sum_gsc, sum_ad, sum_sav = 0, 0, 0, 0, 0, 0
     
     if evaluation_sheet and isinstance(evaluation_sheet, list) and len(evaluation_sheet) > 0:
         for row in evaluation_sheet:
@@ -570,29 +1031,37 @@ def create_capex_evaluation_sheet(doc, context, target_width):
             gen = float(row.get('generation', 0))
             grid = float(row.get('gridCost', 0))
             om = float(row.get('omCost', 0))
-            ad = float(row.get('adBenefit', 0))
-            sav = float(row.get('netSavings', 0))
-            yr_data.append((y, gen, grid, om, ad, sav))
+            gsc = float(row.get('gscCharges', round(gen * 1.96, 2)))
+            row_ad = float(row.get('adBenefit', 0))
+            if is_business:
+                ad = row_ad if row_ad > 0 else ([ad1, ad2, ad3][y - 1] if y <= 3 else 0.0)
+            else:
+                ad = 0.0
+            sav = (grid + ad - om - gsc)
+            yr_data.append((y, gen, grid, om, gsc, ad, sav))
     else:
         for y in range(1, 26):
             gen  = gen_yr * (0.994 ** (y - 1))
             grid = gen * unit_rate
             om   = 0.0 if y == 1 else om_base * (1.03 ** (y - 2))
-            ad_val = [ad1, ad2, ad3][y - 1] if y <= 3 else 0.0
-            sav  = grid + ad_val - om
-            yr_data.append((y, gen, grid, om, ad_val, sav))
+            gsc  = gen * 1.96
+            ad_val = ([ad1, ad2, ad3][y - 1] if y <= 3 else 0.0) if is_business else 0.0
+            sav  = (grid + ad_val - om - gsc)
+            yr_data.append((y, gen, grid, om, gsc, ad_val, sav))
             
     for r in yr_data:
-        y, gen, grid, om, ad, sav = r
+        y, gen, grid, om, gsc, ad, sav = r
         sum_gen += gen
         sum_grid += grid
         sum_om += om
+        sum_gsc += gsc
         sum_ad += ad
         sum_sav += sav
         
         bg_class = "blue-row" if (y - 1) % 2 == 0 else "white-row"
         
         om_str = f"₹ {om:,.2f}" if om > 0 else "₹ -"
+        gsc_str = f"₹ {gsc:,.2f}" if gsc > 0 else "₹ -"
         ad_str = f"₹ {ad:,.2f}" if ad > 0 else "₹ -"
         
         html += f'''
@@ -602,7 +1071,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
                 <td class="val-col">₹ {grid:,.2f}</td>
                 <td class="val-col">₹ -</td>
                 <td class="val-col">{om_str}</td>
-                <td class="val-col">₹ -</td>
+                <td class="val-col">{gsc_str}</td>
                 <td class="val-col">{ad_str}</td>
                 <td class="val-col" style="font-weight:500;">₹ {sav:,.2f}</td>
             </tr>
@@ -615,7 +1084,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
                 <td class="table-title val-col">₹ {sum_grid:,.2f}</td>
                 <td class="table-title val-col">₹ -</td>
                 <td class="table-title val-col">₹ {sum_om:,.2f}</td>
-                <td class="table-title val-col">₹ -</td>
+                <td class="table-title val-col">₹ {sum_gsc:,.2f}</td>
                 <td class="table-title val-col">₹ {sum_ad:,.2f}</td>
                 <td class="table-title val-col">₹ {sum_sav:,.2f}</td>
             </tr>
@@ -638,7 +1107,17 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     
     # Native 3x rendering utilizing device scale factor for perfect 300 DPI A4 mapping
     hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
-    hti.output_path = tempfile.gettempdir()
+    
+    if platform.system() == 'Linux':
+        out_dir = os.path.expanduser('~/hti_tmp')
+        os.makedirs(out_dir, exist_ok=True)
+        hti.output_path = out_dir
+        hti.temp_path = out_dir
+    else:
+        hti.output_path = tempfile.gettempdir()
+        hti.temp_path = tempfile.gettempdir()
+
+        
     filename = f'capex_{uuid.uuid4().hex}.png'
     temp_path = os.path.join(hti.output_path, filename)
     
@@ -708,7 +1187,8 @@ def generate_proposal():
         doc = DocxTemplate(template_full_path)
         doc.init_docx()
 
-        raw_context = {
+        raw_context = dict(context) if isinstance(context, dict) else {}
+        raw_context.update({
             'name':               str(context.get('name', 'N/A')),
             'location':           str(context.get('location', 'N/A')),
             'capacity':           safe_float(context.get('capacity')),
@@ -718,12 +1198,23 @@ def generate_proposal():
             'cgst_amount':        safe_float(context.get('cgst_amount')),
             'sgst_amount':        safe_float(context.get('sgst_amount')),
             'subsidy_amount':     safe_float(context.get('subsidy_amount')),
+            'central_subsidy_amount': safe_float(context.get('central_subsidy_amount'), safe_float(context.get('subsidy_amount'))),
+            'additional_subsidy_benefits': safe_float(context.get('additional_subsidy_benefits'), safe_float(context.get('additional_subsidy'))),
+            'additional_subsidy': safe_float(context.get('additional_subsidy'), safe_float(context.get('additional_subsidy_benefits'))),
+            'total_subsidy_amount': safe_float(context.get('total_subsidy_amount')),
             'unit_rate':          safe_float(context.get('unit_rate')),
             'grid_tariff_per_unit': safe_float(context.get('unit_rate')),
             'generation_per_year':  safe_float(context.get('generation_per_year')),
             'savings_per_year':     safe_float(context.get('savings_per_year')),
-            'evaluationSheet':    context.get('evaluationSheet')
-        }
+            'evaluationSheet':    context.get('evaluationSheet'),
+            'ad_benefit_year1':   context.get('ad_benefit_year1'),
+            'ad_benefit_year2':   context.get('ad_benefit_year2'),
+            'ad_benefit_year3':   context.get('ad_benefit_year3'),
+            'total_ad_benefit':   context.get('total_ad_benefit'),
+            'om_cost_per_kw':     context.get('om_cost_per_kw'),
+            'total_om_cost':      context.get('total_om_cost'),
+            'roi_in_years':       context.get('roi_in_years'),
+        })
 
         capacity_kw = raw_context['capacity']
         unit_rate_val = raw_context['unit_rate']
@@ -735,6 +1226,9 @@ def generate_proposal():
             
         # Dynamically evaluate the maximum printable width for responsive rendering
         max_printable_width = get_printable_width(doc)
+
+        # Ensure render context has all raw_context values
+        context.update(raw_context)
 
         # -------------------------------------------------------------
         # NEW ARCHITECTURE: Render combined page if requested
@@ -760,9 +1254,45 @@ def generate_proposal():
             if capex_sheet_image:
                 context['capex_evaluation_sheet'] = capex_sheet_image
         
+        bos_placeholders = ['balance_of_system', 'balance_of_system_page', 'balance_of_system_table', 'bos_table', 'balance_system', 'bos']
+        bos_rendered = False
+        
+        bos_png_path, bos_png_bytes = generate_balance_of_system_png(raw_context)
+
+        # 1. If template contains explicit BOS placeholders (e.g. {{balance_of_system}}), inject InlineImage
+        if bos_png_path and os.path.exists(bos_png_path):
+            bos_inline = InlineImage(doc, bos_png_path, width=max_printable_width)
+            for key in bos_placeholders:
+                if key in undeclared:
+                    context[key] = bos_inline
+                    bos_rendered = True
+
+        # 2. Overwrite static template image ONLY IF explicit placeholder was NOT used
+        if not bos_rendered and bos_png_bytes:
+            for rel in doc.part.rels.values():
+                ref_lower = str(rel.target_ref).lower()
+                if 'image6.png' in ref_lower or 'image6.jpeg' in ref_lower or 'image6' in ref_lower:
+                    try:
+                        rel.target_part._blob = bos_png_bytes
+                        bos_rendered = True
+                        print(f"Successfully replaced static template image {rel.target_ref} with dynamic Balance of System image!")
+                        break
+                    except Exception as ex:
+                        print(f"Error replacing image blob {rel.target_ref}: {ex}")
+
         doc.render(context)
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
         doc.save(temp_docx_path)
+
+        # 3. If neither placeholder nor static template image was present, append native table at end
+        if not bos_rendered:
+            try:
+                rendered_doc = docx.Document(temp_docx_path)
+                rendered_doc.add_page_break()
+                add_native_balance_of_system_table(rendered_doc, raw_context)
+                rendered_doc.save(temp_docx_path)
+            except Exception as ex:
+                print(f"Auto-append BOS table error: {ex}")
         
         temp_pdf_path = os.path.join(temp_dir, 'output.pdf')
         

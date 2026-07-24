@@ -267,6 +267,7 @@ model Proposal {
   subtotalAmount     Decimal
   finalAmount        Decimal
   subsidyAmount      Decimal
+  additionalSubsidy  Decimal?
   pdfUrl             String?
   docxUrl            String?
   requiredSpace      Decimal?

@@ -68,6 +68,7 @@ export const proposalSchema = z.object({
   inverterQty: z.coerce.number().int().positive({ message: 'Inverter quantity must be a positive integer.' }),
   ratePerWatt: z.coerce.number().positive({ message: 'Rate per Watt (₹) must be a positive number.' }),
   subsidyAmount: z.coerce.number().min(0, { message: 'Subsidy amount cannot be negative.' }).optional(),
+  additionalSubsidy: z.coerce.number().min(0, { message: 'Additional subsidy cannot be negative.' }).optional(),
   
   unitRate: z.coerce.number().optional(),
   requiredSpace: z.coerce.number().optional(),
@@ -77,6 +78,8 @@ export const proposalSchema = z.object({
   laKitQty: z.coerce.number().optional(),
   acdbDcdbQty: z.coerce.number().optional(),
   earthingKitQty: z.coerce.number().optional(),
+  moduleSpec: z.string().optional(),
+  inverterSpec: z.string().optional(),
   createdBy: z.string().optional(),
   
 }).refine(data => !(data.clientId && data.leadId), {
@@ -114,6 +117,7 @@ const initialFormStateForUseForm: ProposalFormValues = {
   inverterQty: 1,
   ratePerWatt: 0,
   subsidyAmount: 0,
+  additionalSubsidy: 0,
   unitRate: 10,
   requiredSpace: 0,
   generationPerDay: 0,
@@ -122,6 +126,8 @@ const initialFormStateForUseForm: ProposalFormValues = {
   laKitQty: 1,
   acdbDcdbQty: 1,
   earthingKitQty: 3,
+  moduleSpec: "Rayzon Solar Topcon Bifacial DCR 600 Wp",
+  inverterSpec: "Growatt/Sungrow 8 kW",
 };
 
 export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, clients = [], leads = [] }: ProposalFormProps) {
@@ -132,6 +138,43 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     resolver: zodResolver(proposalSchema),
     defaultValues: initialFormStateForUseForm,
   });
+
+  // Dynamic watcher auto-updates for proposal calculations
+  const watchedCapacity = form.watch('capacity');
+  const watchedInverterRating = form.watch('inverterRating');
+  const watchedModuleType = form.watch('moduleType');
+  const watchedDcrStatus = form.watch('dcrStatus');
+  const watchedModuleWattage = form.watch('moduleWattage');
+  const watchedRatePerWatt = form.watch('ratePerWatt');
+  const watchedClientType = form.watch('clientType');
+  const watchedUnitRate = form.watch('unitRate');
+  const watchedInverterQty = form.watch('inverterQty');
+  const watchedSubsidyAmount = form.watch('subsidyAmount');
+  const watchedAdditionalSubsidy = form.watch('additionalSubsidy');
+
+  useEffect(() => {
+    const kw = watchedInverterRating > 0 ? watchedInverterRating : (watchedCapacity > 0 ? watchedCapacity : 8);
+    const curr = form.getValues('inverterSpec');
+    if (!curr || curr === "Growatt/Sungrow 8 kW" || curr.startsWith("Growatt/Sungrow")) {
+      form.setValue('inverterSpec', `Growatt/Sungrow ${kw} kW`);
+    }
+  }, [watchedCapacity, watchedInverterRating]);
+
+  useEffect(() => {
+    const curr = form.getValues('moduleSpec');
+    if (!curr || curr === "Rayzon Solar Topcon Bifacial DCR 600 Wp" || curr.startsWith("Rayzon Solar")) {
+      form.setValue('moduleSpec', `Rayzon Solar ${watchedModuleType || 'Topcon Bifacial'} ${watchedDcrStatus || 'DCR'} ${watchedModuleWattage || '600'} Wp`);
+    }
+  }, [watchedModuleType, watchedDcrStatus, watchedModuleWattage]);
+
+  useEffect(() => {
+    const invCount = parseInt(watchedInverterQty as any) || 1;
+    if (invCount > 0) {
+      form.setValue('laKitQty', invCount * 1);
+      form.setValue('acdbDcdbQty', invCount * 1);
+      form.setValue('earthingKitQty', invCount * 3);
+    }
+  }, [watchedInverterQty]);
 
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -217,6 +260,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
   useEffect(() => {
     if (isOpen) {
       if (proposal) { // Editing
+        const kw = proposal.inverterRating || proposal.capacity || 8;
         const formValues: ProposalFormValues = {
           proposalNumber: proposal.proposalNumber,
           proposalDate: proposal.proposalDate ? format(parseISO(proposal.proposalDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
@@ -233,6 +277,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           inverterQty: proposal.inverterQty,
           ratePerWatt: proposal.ratePerWatt,
           subsidyAmount: proposal.subsidyAmount,
+          additionalSubsidy: proposal.additionalSubsidy ?? 0,
           unitRate: proposal.unitRate,
           requiredSpace: proposal.requiredSpace,
           generationPerDay: proposal.generationPerDay,
@@ -241,6 +286,8 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
           laKitQty: proposal.laKitQty,
           acdbDcdbQty: proposal.acdbDcdbQty,
           earthingKitQty: proposal.earthingKitQty,
+          moduleSpec: proposal.moduleSpec || `Rayzon Solar ${proposal.moduleType || 'Topcon Bifacial'} ${proposal.dcrStatus || 'DCR'} ${proposal.moduleWattage || '600'} Wp`,
+          inverterSpec: proposal.inverterSpec || `Growatt/Sungrow ${kw} kW`,
           clientId: proposal.clientId || undefined,
           leadId: proposal.leadId || undefined,
           templateId: proposal.templateId,
@@ -287,13 +334,6 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, proposal, form]);
 
-  const watchedCapacity = form.watch('capacity');
-  const watchedRatePerWatt = form.watch('ratePerWatt');
-  const watchedClientType = form.watch('clientType');
-  const watchedUnitRate = form.watch('unitRate');
-  const watchedInverterQty = form.watch('inverterQty');
-  const watchedDcrStatus = form.watch('dcrStatus');
-
   useEffect(() => {
      const currentCapacity = parseFloat(watchedCapacity as any) || 0;
      const currentInverterRating = parseFloat(form.getValues('inverterRating') as any) || 0;
@@ -323,8 +363,13 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     });
   }, [watchedCapacity, watchedRatePerWatt, watchedUnitRate, watchedClientType, watchedDcrStatus, watchedInverterQty]);
 
+  const effectiveSubsidy = parseFloat(String(watchedSubsidyAmount)) || 0;
+  const effectiveAdditionalSubsidy = parseFloat(String(watchedAdditionalSubsidy)) || 0;
+  const effectiveTotalSubsidy = effectiveSubsidy + effectiveAdditionalSubsidy;
+  const netInvestmentValue = Math.max(0, Math.round((calculatedValues.finalAmount - effectiveTotalSubsidy - calculatedValues.totalAdBenefit) * 100) / 100);
+
   useEffect(() => {
-    // Only auto-update when the source dependencies change, to allow manual overrides
+    // Auto-update generated fields when calculations change
     const newSubsidy = calculatedValues.subsidyAmount;
     form.setValue('subsidyAmount', newSubsidy, { shouldValidate: true });
 
@@ -371,6 +416,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
         subtotalAmount: calculatedValues.baseAmount + calculatedValues.cgstAmount + calculatedValues.sgstAmount,
         finalAmount: calculatedValues.finalAmount,
         subsidyAmount: parseFloat(allValues.subsidyAmount as any) || 0,
+        additionalSubsidy: parseFloat(allValues.additionalSubsidy as any) || 0,
         unitRate: allValues.unitRate,
         requiredSpace: parseFloat(allValues.requiredSpace as any) || 0,
         generationPerDay: parseFloat(allValues.generationPerDay as any) || 0,
@@ -487,6 +533,11 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                   <FormField name="inverterRating" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Rating (kW)</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                   <FormField name="inverterQty" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Quantity</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <FormField name="moduleSpec" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Solar Module Specification (Text)</FormLabel><FormControl><Input placeholder="e.g. Rayzon Solar Topcon Bifacial DCR 600 Wp" {...field} /></FormControl><p className="text-xs text-muted-foreground">Printed on document table (auto-updated from inputs, or edit manually).</p><FormMessage /></FormItem> )}/>
+                  <FormField name="inverterSpec" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Inverter Specification (Text)</FormLabel><FormControl><Input placeholder="e.g. Growatt/Sungrow 8 kW" {...field} /></FormControl><p className="text-xs text-muted-foreground">Printed on document table (auto-updated from Inverter Rating/Capacity, or edit manually).</p><FormMessage /></FormItem> )}/>
+              </div>
               
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">Financials</h3>
@@ -497,7 +548,23 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                   <div className="flex justify-between items-center"><FormLabel>SGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
                   <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{calculatedValues.finalAmount.toFixed(2)}</span></div>
               </div>
-              <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem className="mt-4"><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter subsidy amount" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated initially, but can be manually overridden.</p><FormMessage /></FormItem> )}/>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter subsidy amount" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated initially based on system capacity & DCR status, can be manually overridden.</p><FormMessage /></FormItem> )}/>
+                <FormField name="additionalSubsidy" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Additional Subsidy Benefits (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter additional subsidy" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">State/Discom top-up subsidy or extra benefits (can be edited manually).</p><FormMessage /></FormItem> )}/>
+              </div>
+
+              <div className="mt-4 p-3 border border-emerald-500/30 rounded-md bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2">
+                  <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-300">
+                      <FormLabel className="font-semibold text-base">Net Investment (After Subsidy / AD Benefits)</FormLabel>
+                      <span className="font-bold text-lg flex items-center">
+                          <IndianRupee className="h-4 w-4 mr-0.5"/>
+                          {netInvestmentValue.toFixed(2)}
+                      </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                      Calculation: Total Project Cost ({calculatedValues.finalAmount.toFixed(2)}) - Subsidy ({effectiveSubsidy.toFixed(2)}) - Additional Subsidy ({effectiveAdditionalSubsidy.toFixed(2)}) - AD Benefits ({calculatedValues.totalAdBenefit.toFixed(2)})
+                  </p>
+              </div>
 
               <Separator className="my-6" />
               <h3 className="text-lg font-medium text-foreground">Additional Details</h3>

@@ -154,6 +154,7 @@ export interface Proposal {
   subtotalAmount: number;
   finalAmount: number;
   subsidyAmount: number;
+  additionalSubsidy?: number | null;
   createdAt: string;
   updatedAt?: string;
   pdfUrl?: string | null;
@@ -168,6 +169,9 @@ export interface Proposal {
   laKitQty?: number;
   acdbDcdbQty?: number;
   earthingKitQty?: number;
+  moduleSpec?: string | null;
+  inverterSpec?: string | null;
+  calculatedValues?: any;
 }
 
 export interface Document {

@@ -20,16 +20,37 @@ function fmtN(n: number) {
 import { calculateProposalValues } from '@/lib/proposal-calculations';
 
 function getTemplateData(proposal: any) {
+  const rawClientType = proposal.clientType || proposal.client_type || proposal.consumerCategory || proposal.clientCategory || (proposal.unitRate <= 12 ? 'Commercial' : 'Other');
+
   const calc = calculateProposalValues({
     capacity: proposal.capacity || 0,
     ratePerWatt: proposal.ratePerWatt || 0,
     unitRate: proposal.unitRate || 0,
-    clientType: proposal.clientType || 'Other',
+    clientType: rawClientType,
     dcrStatus: proposal.dcrStatus || 'Non-DCR',
     inverterQty: proposal.inverterQty || 1,
+    moduleWattage: parseFloat(proposal.moduleWattage) || 550,
+    manualGenerationPerYear: proposal.generationPerYear,
+    manualSubsidy: proposal.subsidyAmount,
+    manualAdditionalSubsidy: proposal.additionalSubsidy,
+    manualSpace: proposal.requiredSpace,
   });
 
-  return {
+    // Always use server-calculated evaluation sheet so calculations strictly reflect current clientType and inputs
+    const evaluationSheet = calc.evaluationSheet;
+
+    const invKw = proposal.inverterRating || proposal.capacity || 0;
+    const defaultModuleSpec = `Rayzon Solar ${proposal.moduleType || 'Topcon Bifacial'} ${proposal.dcrStatus || 'DCR'} ${proposal.moduleWattage || '600'} Wp`;
+    const defaultInverterSpec = `Growatt/Sungrow ${invKw} kW`;
+
+    const moduleSpecText = proposal.moduleSpec || defaultModuleSpec;
+    const inverterSpecText = proposal.inverterSpec || defaultInverterSpec;
+
+    const laQty = proposal.laKitQty ?? calc.laKitQty;
+    const acdbDcdbQty = proposal.acdbDcdbQty ?? calc.acdbDcdbQty;
+    const earthingQty = proposal.earthingKitQty ?? calc.earthingKitQty;
+
+    return {
     // ── Basic Proposal Info ────────────────────────────────────────────
     name: proposal.name,
     contact_person: proposal.contactPerson,
@@ -38,7 +59,8 @@ function getTemplateData(proposal: any) {
     location: proposal.location,
     city_area: proposal.cityArea || '',
     cityArea: proposal.cityArea || '',
-    client_type: proposal.clientType,
+    client_type: rawClientType,
+    clientType: rawClientType,
     proposal_number: proposal.proposalNumber,
     proposal_date: proposal.proposalDate
       ? (() => { try { return format(parseISO(proposal.proposalDate), 'dd MMM, yyyy'); } catch { return format(new Date(), 'dd MMM, yyyy'); } })()
@@ -50,13 +72,33 @@ function getTemplateData(proposal: any) {
     capacity: proposal.capacity,
     module_type: proposal.moduleType,
     module_wattage: proposal.moduleWattage,
+    module_qty: calc.moduleQty,
+    moduleQty: calc.moduleQty,
+    module_spec: moduleSpecText,
+    module_details: moduleSpecText,
+    module_description: moduleSpecText,
     dcr_status: proposal.dcrStatus,
     inverter_rating: proposal.inverterRating,
     inverter_qty: proposal.inverterQty,
+    inverterQty: proposal.inverterQty,
+    inverter_spec: inverterSpecText,
+    inverter_details: inverterSpecText,
+    inverter_description: inverterSpecText,
+    inverter_kw: `${invKw} kW`,
+    inverter_make: 'Growatt/Sungrow',
     required_space: fmtN(calc.requiredSpace),
-    la_kit_qty: calc.laKitQty,
-    acdb_dcdb_qty: calc.acdbDcdbQty,
-    earthing_kit_qty: calc.earthingKitQty,
+    la_kit_qty: laQty,
+    la_kit_qty_nos: `${laQty} Nos`,
+    acdb_dcdb_qty: acdbDcdbQty,
+    acdb_dcdb_qty_nos: `${acdbDcdbQty} Nos`,
+    acdb_qty: acdbDcdbQty,
+    acdb_qty_nos: `${acdbDcdbQty} No${acdbDcdbQty > 1 ? 's' : ''}`,
+    dcdb_qty: acdbDcdbQty,
+    dcdb_qty_nos: `${acdbDcdbQty} No${acdbDcdbQty > 1 ? 's' : ''}`,
+    earthing_kit_qty: earthingQty,
+    earthing_kit_qty_nos: `${earthingQty} Nos`,
+    earthing_qty: earthingQty,
+    earthing_qty_nos: `${earthingQty} Nos`,
 
     // ── Project Specification (Capex Sheet) ───────────────────────────
     project_size: proposal.capacity,
@@ -68,9 +110,16 @@ function getTemplateData(proposal: any) {
     sgst_amount: fmt(calc.sgstAmount),
     total_project_cost_inc_gst: fmt(calc.finalAmount),
     subsidy_amount: fmt(calc.subsidyAmount),
+    central_subsidy_amount: fmt(calc.subsidyAmount),
+    additional_subsidy_benefits: fmt(calc.additionalSubsidyAmount),
+    additional_subsidy: fmt(calc.additionalSubsidyAmount),
+    total_subsidy_amount: fmt(calc.totalSubsidyAmount),
     net_amount_after_subsidy: fmt(calc.netAmountAfterSubsidy),
+    net_investment: fmt(calc.netInvestment),
+    netInvestment: fmt(calc.netInvestment),
 
     // Aliases matching existing placeholders (formatted strings for docx render)
+    subtotal: fmt(calc.baseAmount),
     base_amount: fmt(calc.baseAmount),
     final_amount: fmt(calc.finalAmount),
 
@@ -82,7 +131,7 @@ function getTemplateData(proposal: any) {
     monthly_generation: fmt(calc.generationPerYear / 12),
     generation_per_day: fmt(calc.generationPerDay),
     degradation_rate: '0.70 - 0.80%',
-    savings_per_year: calc.savingsPerYear,
+    savings_per_year: fmt(calc.savingsPerYear),
 
     // ── O&M Cost (Capex Sheet) ────────────────────────────────────────
     om_cost_per_kw: fmtN(calc.omCostPerKw),
@@ -97,12 +146,11 @@ function getTemplateData(proposal: any) {
 
     // ── ROI Calculation (Capex Sheet) ────────────────────────────────
     project_cost_ex_gst_roi: fmt(calc.baseAmount),
-    additional_subsidy_benefits: fmt(calc.subsidyAmount),
     cost_via_grid: fmt(calc.savingsPerYear * 25),
     roi_in_years: calc.roiInYears.toFixed(2),
     
     // ── Python Evaluation Sheet Array ────────────────────────────────
-    evaluationSheet: calc.evaluationSheet,
+    evaluationSheet: evaluationSheet,
   };
 }
 

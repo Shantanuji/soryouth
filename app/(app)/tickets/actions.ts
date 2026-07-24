@@ -61,8 +61,18 @@ export async function createTicket(data: CreateTicketData): Promise<Tickets | { 
 }
 
 export async function getTickets(): Promise<Tickets[]> {
+    const session = await verifySession();
+    if (!session?.userId) return [];
     try {
+        const whereClause: any = {};
+        if (session.viewPermission === 'ASSIGNED') {
+            whereClause.OR = [
+                { assignedToId: session.userId },
+                { createdById: session.userId }
+            ];
+        }
         const tickets = await prisma.ticket.findMany({
+            where: whereClause,
             include: {
                 client: true,
                 deal: true,

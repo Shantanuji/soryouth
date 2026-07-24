@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { parseISO } from 'date-fns';
 import { deleteFileFromS3 } from '@/lib/s3';
 import { verifySession } from '@/lib/auth';
+import type { Prisma } from '@prisma/client';
 
 // Helper to map Prisma proposal to frontend Proposal type
 function mapPrismaProposalToProposalType(prismaProposal: any): Proposal {
@@ -25,6 +26,7 @@ function mapPrismaProposalToProposalType(prismaProposal: any): Proposal {
     subtotalAmount: Number(prismaProposal.subtotalAmount),
     finalAmount: Number(prismaProposal.finalAmount),
     subsidyAmount: Number(prismaProposal.subsidyAmount),
+    additionalSubsidy: prismaProposal.additionalSubsidy ? Number(prismaProposal.additionalSubsidy) : undefined,
     unitRate: prismaProposal.unitRate ? Number(prismaProposal.unitRate) : undefined,
     requiredSpace: prismaProposal.requiredSpace ? Number(prismaProposal.requiredSpace) : undefined,
     generationPerDay: prismaProposal.generationPerDay ? Number(prismaProposal.generationPerDay) : undefined,
@@ -46,22 +48,33 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
         return null;
     }
     const { id, createdAt, updatedAt, createdBy, email, phone, ...proposalData } = data as any;
+    const allowedFields = new Set([
+      'proposalNumber', 'name', 'clientType', 'contactPerson', 'location', 'cityArea',
+      'capacity', 'moduleType', 'moduleWattage', 'dcrStatus', 'inverterRating', 'inverterQty',
+      'ratePerWatt', 'proposalDate', 'baseAmount', 'cgstAmount', 'sgstAmount', 'subtotalAmount',
+      'finalAmount', 'subsidyAmount', 'pdfUrl', 'docxUrl', 'requiredSpace',
+      'generationPerDay', 'generationPerYear', 'unitRate', 'savingsPerYear',
+      'laKitQty', 'acdbDcdbQty', 'earthingKitQty'
+    ]);
 
-    const dataToSave = {
-      ...proposalData,
-      proposalDate: proposalData.proposalDate ? parseISO(proposalData.proposalDate) : new Date(),
-    };
-    
-    // Remove calculatedValues as it is not a Prisma schema field
-    if ('calculatedValues' in dataToSave) {
-        delete dataToSave.calculatedValues;
+    const cleanData: any = {};
+    for (const key of Object.keys(proposalData)) {
+      if (allowedFields.has(key) && proposalData[key] !== undefined) {
+        cleanData[key] = proposalData[key];
+      }
     }
-
-    // Remove undefined fields so Prisma doesn't try to update them
-    Object.keys(dataToSave).forEach(key => dataToSave[key as keyof typeof dataToSave] === undefined && delete dataToSave[key as keyof typeof dataToSave]);
+    cleanData.proposalDate = proposalData.proposalDate ? parseISO(proposalData.proposalDate) : new Date();
 
     try {
         let savedProposal;
+        const { leadId, clientId, templateId, droppedLeadId } = data as any;
+
+        const relationConnects: any = {};
+        if (leadId) relationConnects.lead = { connect: { id: leadId } };
+        if (clientId) relationConnects.client = { connect: { id: clientId } };
+        if (templateId) relationConnects.template = { connect: { id: templateId } };
+        if (droppedLeadId) relationConnects.droppedLead = { connect: { id: droppedLeadId } };
+
         if (id) {
             // Fetch the old proposal to get the old file URLs
             const oldProposal = await prisma.proposal.findUnique({
@@ -72,7 +85,10 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
             // Update existing proposal
             savedProposal = await prisma.proposal.update({
                 where: { id },
-                data: dataToSave,
+                data: {
+                    ...cleanData,
+                    ...relationConnects
+                },
                 include: { createdBy: true },
             });
 
@@ -97,9 +113,12 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
             }
         } else {
             // Create new proposal
-            const createData = { ...dataToSave, createdById: session.userId };
             savedProposal = await prisma.proposal.create({
-                data: createData as any, // Cast to any to satisfy Prisma's create type which expects all fields
+                data: {
+                    ...cleanData,
+                    ...relationConnects,
+                    createdBy: { connect: { id: session.userId } }
+                },
                 include: { createdBy: true },
             });
         }
@@ -111,8 +130,9 @@ export async function createOrUpdateProposal(data: Partial<Proposal>): Promise<P
         
         return mapPrismaProposalToProposalType(savedProposal);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to create or update proposal:", error);
+        import('fs').then(fs => fs.appendFileSync('prisma-error.log', new Date().toISOString() + '\\n' + String(error.message || error) + '\\n' + JSON.stringify(error) + '\\n\\n'));
         return null;
     }
 }
@@ -242,9 +262,18 @@ export async function bulkCreateProposals(proposalsData: Partial<Proposal>[]): P
 
 export async function getProposalsForLead(leadId: string): Promise<Proposal[]> {
     if (!leadId) return [];
+    const session = await verifySession();
+    if (!session?.userId) return [];
     try {
+        const whereClause: Prisma.ProposalWhereInput = { leadId };
+        if (session.viewPermission === 'ASSIGNED') {
+            whereClause.OR = [
+                { createdById: session.userId },
+                { lead: { assignedToId: session.userId } }
+            ];
+        }
         const proposals = await prisma.proposal.findMany({
-            where: { leadId },
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
             include: { createdBy: true },
         });
@@ -257,9 +286,18 @@ export async function getProposalsForLead(leadId: string): Promise<Proposal[]> {
 
 export async function getProposalsForClient(clientId: string): Promise<Proposal[]> {
      if (!clientId) return [];
+     const session = await verifySession();
+     if (!session?.userId) return [];
     try {
+        const whereClause: Prisma.ProposalWhereInput = { clientId };
+        if (session.viewPermission === 'ASSIGNED') {
+            whereClause.OR = [
+                { createdById: session.userId },
+                { client: { assignedToId: session.userId } }
+            ];
+        }
         const proposals = await prisma.proposal.findMany({
-            where: { clientId },
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
             include: { createdBy: true },
         });
@@ -270,9 +308,21 @@ export async function getProposalsForClient(clientId: string): Promise<Proposal[
     }
 }
 
-export async function getAllProposals(): Promise<Proposal[]> {
+export async function getAllProposals({ ignorePermissions = false }: { ignorePermissions?: boolean } = {}): Promise<Proposal[]> {
+    const session = await verifySession();
+    if (!session?.userId) return [];
     try {
+        const whereClause: Prisma.ProposalWhereInput = {};
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+            whereClause.OR = [
+                { createdById: session.userId },
+                { client: { assignedToId: session.userId } },
+                { lead: { assignedToId: session.userId } },
+                { droppedLead: { assignedToId: session.userId } }
+            ];
+        }
         const proposals = await prisma.proposal.findMany({
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
             include: { createdBy: true },
         });
