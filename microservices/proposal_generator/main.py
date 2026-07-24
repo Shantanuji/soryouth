@@ -47,6 +47,28 @@ def safe_float(val, default=0.0):
         return float(default)
 
 
+def get_html2image(size=(840, 1188), custom_flags=None):
+    """Helper to instantiate Html2Image with explicitly resolved browser binary path on Linux."""
+    if custom_flags is None:
+        custom_flags = ['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3']
+    
+    browser_executable = None
+    if platform.system() == 'Linux':
+        for path in ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser', '/usr/bin/chromium']:
+            if os.path.exists(path):
+                browser_executable = path
+                break
+    
+    kwargs = {
+        'size': size,
+        'custom_flags': custom_flags
+    }
+    if browser_executable:
+        kwargs['browser_executable'] = browser_executable
+        
+    return Html2Image(**kwargs)
+
+
 def get_printable_width(doc):
     """
     Dynamically calculates 95% of the printable width of the DOCX template.
@@ -257,7 +279,7 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     </html>
     '''
     
-    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     
     if platform.system() == 'Linux':
         out_dir = os.path.expanduser('~/hti_tmp')
@@ -747,7 +769,7 @@ def generate_balance_of_system_png(context):
     </html>
     '''
 
-    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     out_dir = tempfile.gettempdir()
     hti.output_path = out_dir
     hti.temp_path = out_dir
@@ -1106,7 +1128,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     '''
     
     # Native 3x rendering utilizing device scale factor for perfect 300 DPI A4 mapping
-    hti = Html2Image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     
     if platform.system() == 'Linux':
         out_dir = os.path.expanduser('~/hti_tmp')
@@ -1259,13 +1281,18 @@ def generate_proposal():
         
         bos_png_path, bos_png_bytes = generate_balance_of_system_png(raw_context)
 
-        # 1. If template contains explicit BOS placeholders (e.g. {{balance_of_system}}), inject InlineImage
+        # 1. If template contains explicit BOS placeholders (e.g. {{balance_of_system}}), inject InlineImage or Subdoc
         if bos_png_path and os.path.exists(bos_png_path):
             bos_inline = InlineImage(doc, bos_png_path, width=max_printable_width)
             for key in bos_placeholders:
-                if key in undeclared:
-                    context[key] = bos_inline
-                    bos_rendered = True
+                context[key] = bos_inline
+            bos_rendered = True
+        else:
+            bos_subdoc = create_native_balance_of_system_subdoc(doc, raw_context)
+            if bos_subdoc:
+                for key in bos_placeholders:
+                    context[key] = bos_subdoc
+                bos_rendered = True
 
         # 2. Overwrite static template image ONLY IF explicit placeholder was NOT used
         if not bos_rendered and bos_png_bytes:
