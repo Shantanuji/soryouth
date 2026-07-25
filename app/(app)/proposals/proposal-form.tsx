@@ -363,10 +363,10 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     });
   }, [watchedCapacity, watchedRatePerWatt, watchedUnitRate, watchedClientType, watchedDcrStatus, watchedInverterQty]);
 
-  const effectiveSubsidy = parseFloat(String(watchedSubsidyAmount)) || 0;
+  const effectiveSubsidy = calculatedValues.subsidyAmount;
   const effectiveAdditionalSubsidy = parseFloat(String(watchedAdditionalSubsidy)) || 0;
   const effectiveTotalSubsidy = effectiveSubsidy + effectiveAdditionalSubsidy;
-  const netInvestmentValue = Math.max(0, Math.round((calculatedValues.finalAmount - effectiveTotalSubsidy - calculatedValues.totalAdBenefit) * 100) / 100);
+  const netInvestmentValue = calculatedValues.netInvestment;
 
   useEffect(() => {
     // Auto-update generated fields when calculations change
@@ -562,7 +562,7 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                       </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                      Calculation: Total Project Cost ({calculatedValues.finalAmount.toFixed(2)}) - Subsidy ({effectiveSubsidy.toFixed(2)}) - Additional Subsidy ({effectiveAdditionalSubsidy.toFixed(2)}) - AD Benefits ({calculatedValues.totalAdBenefit.toFixed(2)})
+                      Calculation: Total Project Cost ({calculatedValues.finalAmount.toFixed(2)}) - Subsidy ({effectiveSubsidy.toFixed(2)}) - Additional Subsidy ({effectiveAdditionalSubsidy.toFixed(2)})
                   </p>
               </div>
 

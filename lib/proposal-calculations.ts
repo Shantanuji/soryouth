@@ -79,29 +79,7 @@ export function calculateProposalValues(inputs: ProposalInputs): ProposalCalcula
   const sgstAmount = round2(baseAmount * 0.0445);
   const finalAmount = round2(baseAmount + cgstAmount + sgstAmount);
 
-  // 2. Subsidy (Central Govt)
-  let subsidyAmount = 0;
-  if (inputs.manualSubsidy !== undefined) {
-    subsidyAmount = inputs.manualSubsidy;
-  } else if (dcrStatus !== 'Non-DCR') {
-    if (clientType === 'Housing Society') {
-      subsidyAmount = 18000 * cap;
-    } else if (clientType === 'Individual/Bungalow' || clientType === 'AMC' || clientType === 'Other') {
-      if (cap === 1) subsidyAmount = 30000;
-      else if (cap === 2) subsidyAmount = 60000;
-      else if (cap >= 3) subsidyAmount = 78000;
-    }
-  }
-
-  // 2b. Additional Subsidy Benefits
-  let additionalSubsidyAmount = 0;
-  if (inputs.manualAdditionalSubsidy !== undefined) {
-    additionalSubsidyAmount = inputs.manualAdditionalSubsidy;
-  }
-  const totalSubsidyAmount = round2(subsidyAmount + additionalSubsidyAmount);
-
   // 3. AD Benefits (ONLY for Commercial / Industrial clients)
-  let adBenY1 = 0, adBenY2 = 0, adBenY3 = 0, totalAdBenefit = 0;
   const normClientType = (clientType || '').toLowerCase().trim();
   const isBusiness = normClientType.includes('commercial') || 
                      normClientType.includes('industrial') || 
@@ -111,7 +89,31 @@ export function calculateProposalValues(inputs: ProposalInputs): ProposalCalcula
                      normClientType.includes('business') || 
                      normClientType.includes('corporate') ||
                      (uRate <= 12 && uRate > 0 && !normClientType.includes('housing') && !normClientType.includes('bungalow') && !normClientType.includes('individual'));
-  
+
+  // 2. Subsidy (Central Govt) - Commercial and Industrial clients get 0 subsidy.
+  let subsidyAmount = 0;
+  if (isBusiness) {
+    subsidyAmount = 0;
+  } else if (inputs.manualSubsidy !== undefined) {
+    subsidyAmount = inputs.manualSubsidy;
+  } else if (dcrStatus !== 'Non-DCR') {
+    if (normClientType.includes('housing')) {
+      subsidyAmount = 18000 * cap;
+    } else {
+      if (cap === 1) subsidyAmount = 30000;
+      else if (cap === 2) subsidyAmount = 60000;
+      else if (cap >= 3) subsidyAmount = 78000;
+    }
+  }
+
+  // 2b. Additional Subsidy Benefits
+  let additionalSubsidyAmount = 0;
+  if (!isBusiness && inputs.manualAdditionalSubsidy !== undefined) {
+    additionalSubsidyAmount = inputs.manualAdditionalSubsidy;
+  }
+  const totalSubsidyAmount = round2(subsidyAmount + additionalSubsidyAmount);
+
+  let adBenY1 = 0, adBenY2 = 0, adBenY3 = 0, totalAdBenefit = 0;
   if (isBusiness) {
     const AD_DEP_RATE = 0.80;
     const TAX_RATE = 0.25;
@@ -159,10 +161,11 @@ export function calculateProposalValues(inputs: ProposalInputs): ProposalCalcula
   const acdbDcdbQty = invQty * 1;
   const earthingKitQty = invQty * 3;
 
-  // 7. ROI
+  // 7. ROI & Net Investment
   const netAmountAfterSubsidy = Math.max(0, round2(finalAmount - totalSubsidyAmount));
-  const netInvestment = Math.max(0, round2(netAmountAfterSubsidy - totalAdBenefit));
-  const roiInYears = savingsPerYear > 0 ? round2(netInvestment / savingsPerYear) : 0;
+  const netInvestment = netAmountAfterSubsidy;
+  const effectivePaybackInvestment = isBusiness ? Math.max(0, round2(finalAmount - totalAdBenefit)) : netInvestment;
+  const roiInYears = savingsPerYear > 0 ? round2(effectivePaybackInvestment / savingsPerYear) : 0;
 
   // 8. Evaluation Sheet (25 years)
   const evaluationSheet: EvaluationRow[] = [];
