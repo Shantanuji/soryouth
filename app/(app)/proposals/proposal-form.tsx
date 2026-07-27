@@ -132,8 +132,10 @@ const initialFormStateForUseForm: ProposalFormValues = {
 
 export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, clients = [], leads = [] }: ProposalFormProps) {
   const [isGenerating, startGenerationTransition] = useTransition();
-  const { toast } = useToast();
-  
+  const formatINR = (num: number) => {
+    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   const form = useForm<ProposalFormValues>({
     resolver: zodResolver(proposalSchema),
     defaultValues: initialFormStateForUseForm,
@@ -154,18 +156,15 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
 
   useEffect(() => {
     const kw = watchedInverterRating > 0 ? watchedInverterRating : (watchedCapacity > 0 ? watchedCapacity : 8);
-    const curr = form.getValues('inverterSpec');
-    if (!curr || curr === "Growatt/Sungrow 8 kW" || curr.startsWith("Growatt/Sungrow")) {
-      form.setValue('inverterSpec', `Growatt/Sungrow ${kw} kW`);
-    }
-  }, [watchedCapacity, watchedInverterRating]);
+    form.setValue('inverterSpec', `Growatt/Sungrow ${kw} kW`, { shouldDirty: true, shouldValidate: true });
+  }, [watchedCapacity, watchedInverterRating, form]);
 
   useEffect(() => {
-    const curr = form.getValues('moduleSpec');
-    if (!curr || curr === "Rayzon Solar Topcon Bifacial DCR 600 Wp" || curr.startsWith("Rayzon Solar")) {
-      form.setValue('moduleSpec', `Rayzon Solar ${watchedModuleType || 'Topcon Bifacial'} ${watchedDcrStatus || 'DCR'} ${watchedModuleWattage || '600'} Wp`);
-    }
-  }, [watchedModuleType, watchedDcrStatus, watchedModuleWattage]);
+    const type = watchedModuleType || 'Topcon Bifacial';
+    const dcr = watchedDcrStatus || 'DCR';
+    const watt = watchedModuleWattage || '600';
+    form.setValue('moduleSpec', `Rayzon Solar ${type} ${dcr} ${watt} Wp`, { shouldDirty: true, shouldValidate: true });
+  }, [watchedModuleType, watchedDcrStatus, watchedModuleWattage, form]);
 
   useEffect(() => {
     const invCount = parseInt(watchedInverterQty as any) || 1;
@@ -363,14 +362,16 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
     });
   }, [watchedCapacity, watchedRatePerWatt, watchedUnitRate, watchedClientType, watchedDcrStatus, watchedInverterQty]);
 
-  const effectiveSubsidy = calculatedValues.subsidyAmount;
+  const effectiveSubsidy = parseFloat(String(watchedSubsidyAmount)) || 0;
   const effectiveAdditionalSubsidy = parseFloat(String(watchedAdditionalSubsidy)) || 0;
   const effectiveTotalSubsidy = effectiveSubsidy + effectiveAdditionalSubsidy;
-  const netInvestmentValue = calculatedValues.netInvestment;
-
+  const netInvestmentValue = calculatedValues.totalAdBenefit > 0
+    ? Math.max(0, calculatedValues.finalAmount - calculatedValues.totalAdBenefit)
+    : Math.max(0, calculatedValues.finalAmount - effectiveTotalSubsidy);
   useEffect(() => {
     // Auto-update generated fields when calculations change
-    const newSubsidy = calculatedValues.subsidyAmount;
+    const isBiz = watchedClientType === 'Commercial' || watchedClientType === 'Industrial';
+    const newSubsidy = isBiz ? calculatedValues.totalAdBenefit : calculatedValues.subsidyAmount;
     form.setValue('subsidyAmount', newSubsidy, { shouldValidate: true });
 
     const newReqSpace = calculatedValues.requiredSpace;
@@ -543,14 +544,30 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
               <h3 className="text-lg font-medium text-foreground">Financials</h3>
               <FormField name="ratePerWatt" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Rate per Watt (₹)</FormLabel><FormControl><Input type="number" placeholder="e.g., 40" {...field} step="0.01" /></FormControl><FormMessage /></FormItem> )}/>
               <div className="space-y-2 p-3 border rounded-md bg-muted/50">
-                  <div className="flex justify-between items-center"><FormLabel>Base Amount</FormLabel><span className="font-semibold flex items-center"><IndianRupee className="h-4 w-4 mr-0.5"/>{calculatedValues.baseAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-center"><FormLabel>CGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.cgstAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-center"><FormLabel>SGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{calculatedValues.sgstAmount.toFixed(2)}</span></div>
-                  <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{calculatedValues.finalAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>Base Amount</FormLabel><span className="font-semibold flex items-center"><IndianRupee className="h-4 w-4 mr-0.5"/>{formatINR(calculatedValues.baseAmount)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>CGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{formatINR(calculatedValues.cgstAmount)}</span></div>
+                  <div className="flex justify-between items-center"><FormLabel>SGST (4.45%)</FormLabel><span className="text-sm flex items-center"><IndianRupee className="h-3 w-3 mr-0.5"/>{formatINR(calculatedValues.sgstAmount)}</span></div>
+                  <Separator/><div className="flex justify-between items-center text-primary"><FormLabel className="font-medium text-lg">Final Proposal Amount (Pre-Subsidy)</FormLabel><span className="font-bold text-xl flex items-center"><IndianRupee className="h-5 w-5 mr-0.5"/>{formatINR(calculatedValues.finalAmount)}</span></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <FormField name="subsidyAmount" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Subsidy Amount (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter subsidy amount" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">Auto-calculated initially based on system capacity & DCR status, can be manually overridden.</p><FormMessage /></FormItem> )}/>
-                <FormField name="additionalSubsidy" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Additional Subsidy Benefits (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter additional subsidy" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">State/Discom top-up subsidy or extra benefits (can be edited manually).</p><FormMessage /></FormItem> )}/>
+                <FormField name="subsidyAmount" control={form.control} render={({ field }) => {
+                  const isBiz = watchedClientType === 'Commercial' || watchedClientType === 'Industrial';
+                  return (
+                    <FormItem>
+                      <FormLabel>{isBiz ? "AD Benefits (₹)" : "Subsidy Amount (₹)"}</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder={isBiz ? "Enter AD benefits" : "Enter subsidy amount"} {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        {isBiz 
+                          ? "Auto-calculated initially based on WDV Accelerated Depreciation, can be manually overridden."
+                          : "Auto-calculated initially based on system capacity & DCR status, can be manually overridden."}
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}/>
+                <FormField name="additionalSubsidy" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Additional Subsidy/AD Top-up (₹)</FormLabel><FormControl><Input type="number" placeholder="Enter additional subsidy" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><p className="text-xs text-muted-foreground">State/Discom top-up subsidy, extra benefits, or custom AD top-up (can be edited manually).</p><FormMessage /></FormItem> )}/>
               </div>
 
               <div className="mt-4 p-3 border border-emerald-500/30 rounded-md bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2">
@@ -558,11 +575,14 @@ export function ProposalForm({ isOpen, onClose, onSubmit, proposal, templateId, 
                       <FormLabel className="font-semibold text-base">Net Investment (After Subsidy / AD Benefits)</FormLabel>
                       <span className="font-bold text-lg flex items-center">
                           <IndianRupee className="h-4 w-4 mr-0.5"/>
-                          {netInvestmentValue.toFixed(2)}
+                          {formatINR(netInvestmentValue)}
                       </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                      Calculation: Total Project Cost ({calculatedValues.finalAmount.toFixed(2)}) - Subsidy ({effectiveSubsidy.toFixed(2)}) - Additional Subsidy ({effectiveAdditionalSubsidy.toFixed(2)})
+                      {watchedClientType === 'Commercial' || watchedClientType === 'Industrial'
+                        ? `Calculation: Total Project Cost (${formatINR(calculatedValues.finalAmount)}) - AD Benefits (${formatINR(effectiveSubsidy)}) - Additional Subsidy/AD Top-up (${formatINR(effectiveAdditionalSubsidy)})`
+                        : `Calculation: Total Project Cost (${formatINR(calculatedValues.finalAmount)}) - Subsidy (${formatINR(effectiveSubsidy)}) - Additional Subsidy (${formatINR(effectiveAdditionalSubsidy)})`
+                      }
                   </p>
               </div>
 

@@ -90,12 +90,12 @@ export function calculateProposalValues(inputs: ProposalInputs): ProposalCalcula
                      normClientType.includes('corporate') ||
                      (uRate <= 12 && uRate > 0 && !normClientType.includes('housing') && !normClientType.includes('bungalow') && !normClientType.includes('individual'));
 
-  // 2. Subsidy (Central Govt) - Commercial and Industrial clients get 0 subsidy.
+  // 2. Subsidy (Central Govt) - Check manual override first so any client type can have manual subsidy.
   let subsidyAmount = 0;
-  if (isBusiness) {
-    subsidyAmount = 0;
-  } else if (inputs.manualSubsidy !== undefined) {
+  if (inputs.manualSubsidy !== undefined) {
     subsidyAmount = inputs.manualSubsidy;
+  } else if (isBusiness) {
+    subsidyAmount = 0;
   } else if (dcrStatus !== 'Non-DCR') {
     if (normClientType.includes('housing')) {
       subsidyAmount = 18000 * cap;
@@ -106,15 +106,16 @@ export function calculateProposalValues(inputs: ProposalInputs): ProposalCalcula
     }
   }
 
-  // 2b. Additional Subsidy Benefits
+  // 2b. Additional Subsidy Benefits - Check manual override first.
   let additionalSubsidyAmount = 0;
-  if (!isBusiness && inputs.manualAdditionalSubsidy !== undefined) {
+  if (inputs.manualAdditionalSubsidy !== undefined) {
     additionalSubsidyAmount = inputs.manualAdditionalSubsidy;
   }
   const totalSubsidyAmount = round2(subsidyAmount + additionalSubsidyAmount);
 
+  // 3. AD Benefits (ONLY for Commercial / Industrial clients when NO subsidy is deducted)
   let adBenY1 = 0, adBenY2 = 0, adBenY3 = 0, totalAdBenefit = 0;
-  if (isBusiness) {
+  if (isBusiness && totalSubsidyAmount === 0) {
     const AD_DEP_RATE = 0.80;
     const TAX_RATE = 0.25;
     const wdv0 = baseAmount;
@@ -163,7 +164,7 @@ export function calculateProposalValues(inputs: ProposalInputs): ProposalCalcula
 
   // 7. ROI & Net Investment
   const netAmountAfterSubsidy = Math.max(0, round2(finalAmount - totalSubsidyAmount));
-  const netInvestment = netAmountAfterSubsidy;
+  const netInvestment = isBusiness && totalAdBenefit > 0 ? Math.max(0, round2(finalAmount - totalAdBenefit)) : netAmountAfterSubsidy;
   const effectivePaybackInvestment = isBusiness ? Math.max(0, round2(finalAmount - totalAdBenefit)) : netInvestment;
   const roiInYears = savingsPerYear > 0 ? round2(effectivePaybackInvestment / savingsPerYear) : 0;
 

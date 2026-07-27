@@ -303,6 +303,7 @@ export async function createLead(data: CreateLeadData): Promise<Lead | { error: 
           source: data.source || null,
           kilowatt: data.kilowatt === undefined ? null : Number(data.kilowatt),
           address: data.address || null,
+          cityArea: data.cityArea || null,
           notes: data.notes || null,
           priority: data.priority || null,
           dropReason: data.dropReason || "Not Dropped" || null,

@@ -47,6 +47,62 @@ def safe_float(val, default=0.0):
         return float(default)
 
 
+def format_indian_currency(val):
+    """Formats numeric values to Indian style currency formatting (en-IN) with exactly 2 decimal places."""
+    if val is None:
+        return "0.00"
+    val_str = str(val).strip()
+    if not val_str or val_str.lower() == "none" or val_str.lower() == "n/a":
+        return "0.00"
+    
+    # Strip any pre-existing formatting to get a clean raw numeric string
+    cleaned = val_str.replace(',', '').replace('₹', '').replace('%', '').strip()
+    if cleaned.startswith('-'):
+        cleaned = cleaned[1:]
+    if cleaned.startswith('+'):
+        cleaned = cleaned[1:]
+        
+    try:
+        float(cleaned)
+    except ValueError:
+        # Not a purely numeric value (e.g. "Included") - return as-is
+        return val_str
+        
+    try:
+        num = float(cleaned)
+    except (ValueError, TypeError):
+        return val_str
+        
+    neg = False
+    if num < 0:
+        neg = True
+        num = abs(num)
+        
+    s = f"{num:.2f}"
+    parts = s.split('.')
+    int_part = parts[0]
+    dec_part = parts[1]
+    
+    if len(int_part) <= 3:
+        res = int_part
+    else:
+        last3 = int_part[-3:]
+        remaining = int_part[:-3]
+        groups = []
+        while len(remaining) > 2:
+            groups.append(remaining[-2:])
+            remaining = remaining[:-2]
+        if remaining:
+            groups.append(remaining)
+        groups.reverse()
+        res = ",".join(groups) + "," + last3
+        
+    if neg:
+        res = "-" + res
+        
+    return f"{res}.{dec_part}"
+
+
 def get_html2image(size=(840, 1188), custom_flags=None):
     """Helper to instantiate Html2Image with explicitly resolved browser binary path on Linux."""
     if custom_flags is None:
@@ -862,6 +918,24 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     net_inv = final_amt - subsidy - total_ad
     roi_years = safe_float(context.get('roi_in_years'), net_inv / savings_yr if savings_yr > 0 else 0)
 
+    ad_benefits_html = f'''
+                <!-- AD Benefits -->
+                <table>
+                    <tr><td colspan="3" class="table-title">Accelerated Depreciation Benefits</td></tr>
+                    <tr class="blue-row"><td class="label-col">1st year - 25% tax savings on 40% depreciation</td><td class="label-col">₹</td><td class="val-col">{ad1:,.2f}</td></tr>
+                    <tr class="white-row"><td class="label-col">2nd year - 25% tax savings on 40% depreciation</td><td class="label-col">₹</td><td class="val-col">{ad2:,.2f}</td></tr>
+                    <tr class="blue-row"><td class="label-col">3rd year - 25% tax savings on 20% depreciation</td><td class="label-col">₹</td><td class="val-col">{ad3:,.2f}</td></tr>
+                    <tr class="white-row" style="font-weight:bold"><td class="label-col">Total</td><td class="label-col">₹</td><td class="val-col">{total_ad:,.2f}</td></tr>
+                </table>
+    '''
+    ad_roi_row_html = f'''
+                    <tr class="blue-row"><td class="label-col">Accelerated Depreciation Benefits</td><td class="label-col">₹</td><td class="val-col">{total_ad:,.2f}</td></tr>
+    '''
+        
+    subsidy_roi_row_html = f'''
+                    <tr class="white-row" style="font-weight:bold"><td class="label-col">subsidy</td><td class="label-col">₹</td><td class="val-col">{subsidy:,.2f}</td></tr>
+    '''
+
     html = f'''
     <html>
     <head>
@@ -1011,25 +1085,18 @@ def create_capex_evaluation_sheet(doc, context, target_width):
             </div>
             
             <div class="right-col">
-                <!-- AD Benefits -->
-                <table>
-                    <tr><td colspan="3" class="table-title">Accelerated Depreciation Benefits</td></tr>
-                    <tr class="blue-row"><td class="label-col">1st year - 25% tax savings on 40% depreciation</td><td class="label-col">₹</td><td class="val-col">{ad1:,.2f}</td></tr>
-                    <tr class="white-row"><td class="label-col">2nd year - 25% tax savings on 40% depreciation</td><td class="label-col">₹</td><td class="val-col">{ad2:,.2f}</td></tr>
-                    <tr class="blue-row"><td class="label-col">3rd year - 25% tax savings on 20% depreciation</td><td class="label-col">₹</td><td class="val-col">{ad3:,.2f}</td></tr>
-                    <tr class="white-row" style="font-weight:bold"><td class="label-col">Total</td><td class="label-col">₹</td><td class="val-col">{total_ad:,.2f}</td></tr>
-                </table>
+                {ad_benefits_html}
                 
                 <!-- ROI Calculation -->
                 <table>
                     <tr><td colspan="3" class="table-title">Return On Investment (ROI) Calculation</td></tr>
                     <tr class="white-row"><td class="label-col">Project Cost ex GST</td><td class="label-col">₹</td><td class="val-col">{base_amt:,.2f}</td></tr>
-                    <tr class="blue-row"><td class="label-col">Accelerated Depreciation Benefits</td><td class="label-col">₹</td><td class="val-col">{total_ad:,.2f}</td></tr>
+                    {ad_roi_row_html}
                     <tr class="white-row"><td class="label-col">Cost Via Grid</td><td class="label-col">₹</td><td class="val-col">{savings_yr * 25:,.2f}</td></tr>
                     <tr class="blue-row"><td class="label-col">ROI in Years</td><td class="val-col" colspan="2" style="text-align:right;">{roi_years:,.2f}</td></tr>
                     <tr class="white-row"><td class="label-col">Monthly Payments</td><td class="label-col">₹</td><td class="val-col">-</td></tr>
                     <tr class="blue-row"><td class="label-col">Total Plant cost inc Interest</td><td class="label-col">₹</td><td class="val-col">-</td></tr>
-                    <tr class="white-row" style="font-weight:bold"><td class="label-col">subsidy</td><td class="label-col">₹</td><td class="val-col">{subsidy:,.2f}</td></tr>
+                    {subsidy_roi_row_html}
                 </table>
             </div>
         </div>
@@ -1220,6 +1287,15 @@ def generate_proposal():
         doc.init_docx()
 
         raw_context = dict(context) if isinstance(context, dict) else {}
+        sub_amt = safe_float(context.get('subsidy_amount'))
+        add_sub = safe_float(context.get('additional_subsidy'), safe_float(context.get('additional_subsidy_benefits')))
+        total_sub = safe_float(context.get('total_subsidy_amount'), sub_amt + add_sub)
+        if total_sub == 0.0 and (sub_amt > 0.0 or add_sub > 0.0):
+            total_sub = sub_amt + add_sub
+
+        total_ad = safe_float(context.get('total_ad_benefit'), safe_float(context.get('totalAdBenefit')))
+        display_subsidy_or_ad = total_sub if total_sub > 0.0 else total_ad
+
         raw_context.update({
             'name':               str(context.get('name', 'N/A')),
             'location':           str(context.get('location', 'N/A')),
@@ -1229,11 +1305,11 @@ def generate_proposal():
             'final_amount':       safe_float(context.get('final_amount')),
             'cgst_amount':        safe_float(context.get('cgst_amount')),
             'sgst_amount':        safe_float(context.get('sgst_amount')),
-            'subsidy_amount':     safe_float(context.get('subsidy_amount')),
-            'central_subsidy_amount': safe_float(context.get('central_subsidy_amount'), safe_float(context.get('subsidy_amount'))),
-            'additional_subsidy_benefits': safe_float(context.get('additional_subsidy_benefits'), safe_float(context.get('additional_subsidy'))),
-            'additional_subsidy': safe_float(context.get('additional_subsidy'), safe_float(context.get('additional_subsidy_benefits'))),
-            'total_subsidy_amount': safe_float(context.get('total_subsidy_amount')),
+            'subsidy_amount':     display_subsidy_or_ad,
+            'central_subsidy_amount': sub_amt if sub_amt > 0.0 else total_sub,
+            'additional_subsidy_benefits': add_sub,
+            'additional_subsidy': add_sub,
+            'total_subsidy_amount': total_sub,
             'unit_rate':          safe_float(context.get('unit_rate')),
             'grid_tariff_per_unit': safe_float(context.get('unit_rate')),
             'generation_per_year':  safe_float(context.get('generation_per_year')),
@@ -1316,6 +1392,26 @@ def generate_proposal():
                         break
                     except Exception as ex:
                         print(f"Error replacing image blob {rel.target_ref}: {ex}")
+
+        # Consistently format all financial values to en-IN style currency format (exactly 2 decimal places) for template rendering
+        currency_keys = [
+            'base_amount', 'final_amount', 'cgst_amount', 'sgst_amount', 'subsidy_amount',
+            'central_subsidy_amount', 'additional_subsidy_benefits', 'additional_subsidy',
+            'total_subsidy_amount', 'net_amount_after_subsidy', 'net_investment', 'netInvestment',
+            'subtotal', 'project_cost_ex_gst', 'gst_amount', 'total_project_cost_inc_gst',
+            'savings_per_year', 'total_om_cost', 'ad_benefit_year1', 'ad_benefit_year2',
+            'ad_benefit_year3', 'total_ad_benefit', 'project_cost_ex_gst_roi', 'cost_via_grid',
+            'cost_per_kw', 'rate_per_watt'
+        ]
+        for key in currency_keys:
+            if key in context:
+                context[key] = format_indian_currency(context[key])
+
+        # Title case text fields to ensure consistent capitalization (e.g. names and locations)
+        for key in ['name', 'location', 'contact_person', 'city_area', 'cityArea', 'client_type', 'clientType']:
+            val = context.get(key)
+            if val and isinstance(val, str):
+                context[key] = val.title()
 
         doc.render(context)
         temp_docx_path = os.path.join(temp_dir, 'output.docx')

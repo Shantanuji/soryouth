@@ -9,6 +9,7 @@ import { getTemplateById } from '@/app/(app)/manage-templates/actions';
 import { uploadFileToS3, getFileFromS3 } from '@/lib/s3';
 import { verifySession } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { calculateProposalValues } from '@/lib/proposal-calculations';
 
 function fmt(n: number, decimals = 2) {
   return n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -17,7 +18,16 @@ function fmtN(n: number) {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 }
 
-import { calculateProposalValues } from '@/lib/proposal-calculations';
+const formatISTDate = (dateOrStr: Date | string, pattern: string = 'dd MMM, yyyy') => {
+  try {
+    const date = typeof dateOrStr === 'string' ? parseISO(dateOrStr) : dateOrStr;
+    const kolkataStr = date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    return format(new Date(kolkataStr), pattern);
+  } catch {
+    const kolkataStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    return format(new Date(kolkataStr), pattern);
+  }
+};
 
 function getTemplateData(proposal: any) {
   const rawClientType = proposal.clientType || proposal.client_type || proposal.consumerCategory || proposal.clientCategory || (proposal.unitRate <= 12 ? 'Commercial' : 'Other');
@@ -63,10 +73,8 @@ function getTemplateData(proposal: any) {
     client_type: rawClientType,
     clientType: rawClientType,
     proposal_number: proposal.proposalNumber,
-    proposal_date: proposal.proposalDate
-      ? (() => { try { return format(parseISO(proposal.proposalDate), 'dd MMM, yyyy'); } catch { return format(new Date(), 'dd MMM, yyyy'); } })()
-      : format(new Date(), 'dd MMM, yyyy'),
-    date_today: format(new Date(), 'dd MMM, yyyy'),
+    proposal_date: formatISTDate(proposal.proposalDate || new Date()),
+    date_today: formatISTDate(new Date()),
     created_by: proposal.createdBy || '',
 
     // ── System Specs ──────────────────────────────────────────────────
