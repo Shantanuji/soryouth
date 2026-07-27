@@ -893,6 +893,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     is_business = ('commercial' in client_type) or ('industrial' in client_type) or ('industr' in client_type) or ('industry' in client_type) or ('factory' in client_type) or ('business' in client_type) or ('corporate' in client_type) or (unit_rate_val <= 12 and unit_rate_val > 0 and 'housing' not in client_type and 'bungalow' not in client_type and 'individual' not in client_type)
 
     if is_business:
+        subsidy = 0.0
         ad1_val = safe_float(context.get('ad_benefit_year1'), 0.0)
         ad1 = ad1_val if ad1_val > 0 else (base_amt * 0.40 * 0.25)
         
