@@ -1407,19 +1407,19 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     name       = str(context.get('name', 'N/A'))
     location   = str(context.get('location', 'N/A'))
     capacity   = safe_float(context.get('capacity'))
-    rate_pw    = safe_float(context.get('rate_per_watt'))
+    rate_pw    = safe_float(context.get('rate_per_watt'), safe_float(context.get('ratePerWatt')))
     cost_pkw   = rate_pw * 1000
-    base_amt   = safe_float(context.get('base_amount'), cost_pkw * capacity)
-    final_amt  = safe_float(context.get('final_amount'), safe_float(context.get('total_project_cost_inc_gst'), base_amt * 1.09))
+    base_amt   = safe_float(context.get('base_amount'), safe_float(context.get('baseAmount'), cost_pkw * capacity))
+    final_amt  = safe_float(context.get('final_amount'), safe_float(context.get('finalAmount'), safe_float(context.get('total_project_cost_inc_gst'), base_amt * 1.09)))
     gst_amt    = max(0.0, final_amt - base_amt)
     gst_pct    = (gst_amt / base_amt * 100) if base_amt > 0 else 9.0
-    unit_rate  = safe_float(context.get('unit_rate'), safe_float(context.get('grid_tariff_per_unit')))
-    subsidy    = safe_float(context.get('subsidy_amount'))
+    unit_rate  = safe_float(context.get('unit_rate'), safe_float(context.get('unitRate'), safe_float(context.get('grid_tariff_per_unit'))))
+    subsidy    = safe_float(context.get('subsidy_amount'), safe_float(context.get('subsidyAmount')))
     gen_yr     = safe_float(context.get('generation_per_year'), capacity * 4 * 345)
     savings_yr = safe_float(context.get('savings_per_year'), gen_yr * unit_rate)
 
     client_type = str(context.get('client_type', context.get('clientType', 'Other'))).strip().lower()
-    unit_rate_val = safe_float(context.get('unit_rate'), safe_float(context.get('grid_tariff_per_unit')))
+    unit_rate_val = safe_float(context.get('unit_rate'), safe_float(context.get('unitRate'), safe_float(context.get('grid_tariff_per_unit'))))
     is_business = ('commercial' in client_type) or ('industrial' in client_type) or ('industr' in client_type) or ('industry' in client_type) or ('factory' in client_type) or ('business' in client_type) or ('corporate' in client_type) or (unit_rate_val <= 12 and unit_rate_val > 0 and 'housing' not in client_type and 'bungalow' not in client_type and 'individual' not in client_type)
 
     if is_business:
