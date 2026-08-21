@@ -592,14 +592,9 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     
     hti = get_html2image(size=(880, 1140), custom_flags=['--no-sandbox', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2.5'])
     
-    if platform.system() == 'Linux':
-        out_dir = os.path.expanduser('~/hti_tmp')
-        os.makedirs(out_dir, exist_ok=True)
-        hti.output_path = out_dir
-        hti.temp_path = out_dir
-    else:
-        hti.output_path = tempfile.gettempdir()
-        hti.temp_path = tempfile.gettempdir()
+    out_dir = tempfile.gettempdir()
+    hti.output_path = out_dir
+    hti.temp_path = out_dir
 
     filename = f'combined_charts_{uuid.uuid4().hex}.png'
     temp_path = os.path.join(hti.output_path, filename)
