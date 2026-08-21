@@ -144,10 +144,12 @@ def get_html2image(size=(840, 1188), custom_flags=None):
     
     browser_executable = None
     if platform.system() == 'Linux':
-        for path in ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser', '/usr/bin/chromium']:
-            if os.path.exists(path):
+        for path in ['/usr/bin/google-chrome-stable', '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium']:
+            if os.path.exists(path) and 'snap' not in os.path.realpath(path):
                 browser_executable = path
                 break
+        if not browser_executable and os.path.exists('/usr/bin/google-chrome-stable'):
+            browser_executable = '/usr/bin/google-chrome-stable'
     
     kwargs = {
         'size': size,
