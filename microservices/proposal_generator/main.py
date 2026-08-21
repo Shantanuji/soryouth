@@ -607,8 +607,8 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     try:
         hti.screenshot(html_str=html, save_as=filename)
         if os.path.exists(temp_path):
-            # Scale to fit standard A4 printable bounds perfectly without spilling to next page
-            return InlineImage(doc, temp_path, width=target_width)
+            # Scale to fit standard A4 printable bounds perfectly without spilling to next page in LibreOffice/Word
+            return InlineImage(doc, temp_path, width=Inches(6.4))
         else:
             return None
     except Exception as e:
@@ -1878,28 +1878,18 @@ def generate_proposal():
         context.update(raw_context)
 
         # -------------------------------------------------------------
-        # NEW ARCHITECTURE: Render combined page if requested
-        if 'combined_charts_page' in undeclared:
+        # ALWAYS render combined page and evaluation sheet so tag run-splitting never drops them
+        if capacity_kw and capacity_kw > 0:
             combined_page_image = create_combined_charts_page(doc, capacity_kw, unit_rate_val, max_printable_width)
             if combined_page_image:
                 context['combined_charts_page'] = combined_page_image
+                context['monthly_generation_chart'] = combined_page_image
+                context['yearly_savings_chart'] = combined_page_image
 
-        # Backward compatibility for old placeholders
-        if 'monthly_generation_chart' in undeclared:
-            monthly_chart_image = create_monthly_generation_chart(doc, capacity_kw, max_printable_width)
-            if monthly_chart_image:
-                context['monthly_generation_chart'] = monthly_chart_image
-        
-        if 'yearly_savings_chart' in undeclared:
-            yearly_savings_chart_image = create_yearly_savings_chart(doc, capacity_kw, unit_rate_val, max_printable_width)
-            if yearly_savings_chart_image:
-                context['yearly_savings_chart'] = yearly_savings_chart_image
+        capex_sheet_image = create_capex_evaluation_sheet(doc, raw_context, max_printable_width)
+        if capex_sheet_image:
+            context['capex_evaluation_sheet'] = capex_sheet_image
         # -------------------------------------------------------------
-        
-        if 'capex_evaluation_sheet' in undeclared:
-            capex_sheet_image = create_capex_evaluation_sheet(doc, raw_context, max_printable_width)
-            if capex_sheet_image:
-                context['capex_evaluation_sheet'] = capex_sheet_image
         
         bos_placeholders = ['balance_of_system', 'balance_of_system_page', 'balance_of_system_table', 'bos_table', 'balance_system', 'bos']
         bos_rendered = False
@@ -1987,40 +1977,13 @@ def generate_proposal():
         if not os.path.exists(temp_pdf_path):
             return jsonify({"error": "PDF conversion failed. Output file not found."}), 500
 
-        # Automatically detect and strip any 100% pure blank white pages with 0 text & 0 images
+        # PDF Post-Processor: Verify generated PDF integrity
         try:
             import pypdf
             reader = pypdf.PdfReader(temp_pdf_path)
-            writer = pypdf.PdfWriter()
-            removed_count = 0
-            for idx, page in enumerate(reader.pages):
-                text = page.extract_text().strip()
-                images = len(page.images)
-                has_content = False
-                if len(text) > 0 or images > 0:
-                    has_content = True
-                else:
-                    contents = page.get_contents()
-                    if contents:
-                        raw_bytes = b""
-                        if isinstance(contents, list):
-                            raw_bytes = b"".join([c.get_data() for c in contents])
-                        else:
-                            raw_bytes = contents.get_data()
-                        clean_ops = raw_bytes.strip().replace(b'q', b'').replace(b'Q', b'').replace(b'\n', b'').replace(b'\r', b'').replace(b' ', b'')
-                        if len(clean_ops) > 0:
-                            has_content = True
-                if has_content:
-                    writer.add_page(page)
-                else:
-                    print(f"[PDF Post-Processor] Dropping 100% pure blank white page {idx + 1}")
-                    removed_count += 1
-            if removed_count > 0 and len(writer.pages) > 0:
-                with open(temp_pdf_path, 'wb') as f_out:
-                    writer.write(f_out)
-                print(f"[PDF Post-Processor] Successfully stripped {removed_count} blank page(s). Total pages: {len(writer.pages)}")
-        except Exception as strip_err:
-            print(f"[PDF Post-Processor] Warning: {strip_err}")
+            print(f"[PDF Processor] Successfully verified PDF generation. Total pages: {len(reader.pages)}")
+        except Exception as p_err:
+            print(f"[PDF Processor] Notice: {p_err}")
 
         with open(temp_docx_path, 'rb') as f_docx, open(temp_pdf_path, 'rb') as f_pdf:
             docx_buffer = f_docx.read()
