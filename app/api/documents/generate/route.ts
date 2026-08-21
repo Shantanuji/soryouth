@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
     try {
       const s3Url = new URL(template.originalDocxPath);
       templateKey = s3Url.pathname.substring(1);
-    } catch {
-      templateKey = template.originalDocxPath.replace(/^\\/+/, '');
+    } catch (_e) {
+      templateKey = template.originalDocxPath.replace(/^\/+/, '');
     }
     const localCopyPath = path.join(process.cwd(), 'public', templateKey);
     try {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       } else {
         throw new Error('Local copy too small');
       }
-    } catch {
+    } catch (_localErr) {
       console.log(`[DocGenerate] Downloading from S3: ${templateKey}`);
       templateBuffer = await getFileFromS3(templateKey);
     }
