@@ -1990,7 +1990,7 @@ def generate_proposal():
             for i, page in enumerate(raw_pdf):
                 pil_img = page.render(scale=2.0).to_pil().convert('RGB')
                 stat = ImageStat.Stat(pil_img)
-                is_blank = all(m > 254.5 for m in stat.mean) and all(s < 1.0 for s in stat.stddev)
+                is_blank = all(m > 254.95 for m in stat.mean) and all(s < 0.05 for s in stat.stddev)
                 if is_blank:
                     print(f"[Image-PDF] Pruned 100% white blank page {i+1}")
                     continue
