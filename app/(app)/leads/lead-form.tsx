@@ -47,6 +47,7 @@ const getLeadSchema = (statuses: string[], sources: string[]) => z.object({
   nextFollowUpTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), { message: "Invalid time (HH:MM)"}),
   kilowatt: z.coerce.number().min(0).optional(),
   address: z.string().optional(),
+  cityArea: z.string().optional(),
   priority: z.enum(LEAD_PRIORITY_OPTIONS).optional(),
   clientType: z.enum(CLIENT_TYPES).optional(),
 });
@@ -82,6 +83,7 @@ export function LeadForm({ isOpen, onClose, onSubmit, lead, users, statuses, sou
       nextFollowUpTime: '',
       kilowatt: 0,
       address: '',
+      cityArea: '',
       priority: 'Average',
       clientType: undefined,
     },
@@ -105,6 +107,7 @@ export function LeadForm({ isOpen, onClose, onSubmit, lead, users, statuses, sou
           nextFollowUpTime: lead.nextFollowUpTime ?? '',
           kilowatt: lead.kilowatt ?? 0,
           address: lead.address ?? '',
+          cityArea: lead.cityArea ?? '',
           priority: lead.priority ?? 'Average',
           clientType: lead.clientType ?? undefined,
         });
@@ -121,6 +124,7 @@ export function LeadForm({ isOpen, onClose, onSubmit, lead, users, statuses, sou
           nextFollowUpTime: '',
           kilowatt: 0,
           address: '',
+          cityArea: '',
           priority: 'Average',
           clientType: undefined,
         });
@@ -208,6 +212,20 @@ export function LeadForm({ isOpen, onClose, onSubmit, lead, users, statuses, sou
                   <FormLabel>Address</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Enter full address" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="cityArea"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City / Area</FormLabel>
+                  <FormControl>
+                    <Input placeholder="City or Area" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

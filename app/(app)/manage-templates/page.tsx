@@ -140,6 +140,11 @@ export default function ManageTemplatesPage() {
         icon={ClipboardPaste}
         actions={
           <div className="flex gap-2">
+             <Button variant="outline" asChild className="border-primary/20 hover:bg-primary/5 text-primary">
+              <a href="/Placeholder_Blocks.docx" download>
+                <ClipboardPaste className="mr-2 h-4 w-4" /> Download Perfect Placeholders
+              </a>
+            </Button>
              <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
               <Settings className="mr-2 h-4 w-4" /> Manage Document Types
             </Button>

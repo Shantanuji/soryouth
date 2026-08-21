@@ -55,9 +55,28 @@ export async function POST(request: NextRequest) {
     const financialDocTypeNames = financialDocTypes.map(t => t.name);
     const isFinancialDocument = financialDocTypeNames.includes(documentType);
     
-    const s3Url = new URL(template.originalDocxPath);
-    const templateKey = s3Url.pathname.substring(1);
-    const templateBuffer = await getFileFromS3(templateKey);
+    // Try local VPS copy first, then S3 fallback
+    let templateBuffer: Buffer;
+    let templateKey: string = '';
+    try {
+      const s3Url = new URL(template.originalDocxPath);
+      templateKey = s3Url.pathname.substring(1);
+    } catch (_e) {
+      templateKey = template.originalDocxPath.replace(/^\/+/, '');
+    }
+    const localCopyPath = path.join(process.cwd(), 'public', templateKey);
+    try {
+      const localBuf = await fs.readFile(localCopyPath);
+      if (localBuf.length > 50000) {
+        templateBuffer = localBuf;
+        console.log(`[DocGenerate] Using fast local template: ${localCopyPath}`);
+      } else {
+        throw new Error('Local copy too small');
+      }
+    } catch (_localErr) {
+      console.log(`[DocGenerate] Downloading from S3: ${templateKey}`);
+      templateBuffer = await getFileFromS3(templateKey);
+    }
     
     const tempDir = os.tmpdir();
     tempFilePath = path.join(tempDir, `template-${Date.now()}.docx`);
@@ -66,14 +85,20 @@ export async function POST(request: NextRequest) {
     const templateData = getTemplateData(formData, documentType);
     
     const pythonServiceUrl = process.env.PYTHON_MICROSERVICE_URL ? `${process.env.PYTHON_MICROSERVICE_URL}/generate` : 'http://127.0.0.1:5001/generate';
-    const response = await fetch(pythonServiceUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            template_path: tempFilePath,
-            data: templateData
-        })
-    });
+    let response: Response;
+    try {
+        response = await fetch(pythonServiceUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                template_path: tempFilePath,
+                data: templateData
+            })
+        });
+    } catch (fetchErr: any) {
+        console.error('Failed to connect to Python document generator:', fetchErr);
+        throw new Error("Python Document Generator service is not reachable on port 5001. Please run 'start-microservice.bat' or 'start-all.bat'.");
+    }
 
     if (!response.ok) {
         const errorBody = await response.json();

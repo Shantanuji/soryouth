@@ -17,6 +17,7 @@ import { getAllProposals, createOrUpdateProposal } from './actions';
 import { TemplateSelectionDialog } from './template-selection-dialog';
 import { Badge } from '@/components/ui/badge';
 import { ProposalForm } from './proposal-form';
+import { SettingsDialog } from '@/app/(app)/settings/settings-dialog';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
@@ -56,6 +57,7 @@ export default function ProposalsListPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isBatchTemplateDialogOpen, setIsBatchTemplateDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('newest');
@@ -219,6 +221,9 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
                     </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="outline" onClick={() => setIsSettingsDialogOpen(true)}>
+                Customize Options
+            </Button>
              <Button variant="outline" onClick={() => setIsBatchTemplateDialogOpen(true)}>
                 <Rows className="mr-2 h-4 w-4" /> Batch Proposals
             </Button>
@@ -337,6 +342,19 @@ const sortedGroups = Array.from(groups.values()).sort((a,b) => {
           leads={leads}
         />
       )}
+
+      <SettingsDialog
+        isOpen={isSettingsDialogOpen}
+        onClose={() => setIsSettingsDialogOpen(false)}
+        settingTypes={[
+          { title: 'Module Wattages (W)', type: 'MODULE_WATTAGE' },
+          { title: 'Module Types', type: 'MODULE_TYPE' },
+          { title: 'Mounting Structures', type: 'MOUNTING_STRUCTURE' },
+          { title: 'Client Types', type: 'CLIENT_TYPE' },
+          { title: 'DCR Statuses', type: 'DCR_STATUS' },
+          { title: 'Payment Terms', type: 'PAYMENT_TERMS' },
+        ]}
+      />
     </>
   );
 }

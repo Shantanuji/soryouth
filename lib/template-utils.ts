@@ -27,6 +27,8 @@ export async function generateHtmlFromTemplate(
             total_amount: proposalData.finalAmount.toLocaleString('en-IN'),
             number: proposalData.proposalNumber,
             name: proposalData.name,
+            city_area: proposalData.cityArea || "",
+            cityArea: proposalData.cityArea || "",
         },
         client: {
             name: proposalData.name,

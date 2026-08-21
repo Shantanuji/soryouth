@@ -11,6 +11,13 @@ import { getUserRoles } from '@/app/(app)/settings/actions';
 import { NAV_ITEMS, TOOLS_NAV_ITEMS, SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 function mapPrismaUserToUserType(prismaUser: any): User {
+    let dateStr = new Date().toISOString();
+    try {
+        if (prismaUser.createdAt) {
+            dateStr = new Date(prismaUser.createdAt).toISOString();
+        }
+    } catch(e) {}
+
     return {
       id: prismaUser.id,
       name: prismaUser.name,
@@ -22,7 +29,7 @@ function mapPrismaUserToUserType(prismaUser: any): User {
       profileImage: prismaUser.profileImage,
       deviceId: prismaUser.deviceId,
       viewPermission: prismaUser.viewPermission,
-      createdAt: prismaUser.createdAt.toISOString(),
+      createdAt: dateStr,
     };
   }
 
@@ -204,19 +211,26 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; er
 
 
 export async function getUserPermissions(roleName: string): Promise<RolePermission[]> {
-  if (roleName === 'Admin') {
-    // Admins have access to everything
-    return [...NAV_ITEMS, ...TOOLS_NAV_ITEMS].map(item => ({
-      id: item.href,
-      roleName: 'Admin',
-      navPath: item.href,
-    }));
-  }
-  
+  const normalizedRole = (roleName || '').trim();
+  const isAdminRole = normalizedRole === 'Admin' || normalizedRole === 'admin' || normalizedRole === 'SuperAdmin';
+
   try {
     const permissions = await prisma.rolePermission.findMany({
-      where: { roleName: roleName },
+      where: { roleName: normalizedRole },
     });
+
+    if (permissions.length > 0) {
+      return permissions;
+    }
+
+    if (isAdminRole) {
+      return [...NAV_ITEMS, ...TOOLS_NAV_ITEMS].map(item => ({
+        id: item.href,
+        roleName: normalizedRole,
+        navPath: item.href,
+      }));
+    }
+
     return permissions;
   } catch (error) {
     console.error(`Failed to fetch permissions for role ${roleName}:`, error);

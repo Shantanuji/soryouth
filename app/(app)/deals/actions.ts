@@ -248,7 +248,8 @@ export async function getAllDeals({ ignorePermissions = false }: { ignorePermiss
      
      try {
         const whereClause: Prisma.DealWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
           whereClause.assignedToId = session.userId;
         }
 

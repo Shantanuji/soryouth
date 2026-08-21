@@ -37,16 +37,26 @@ export default function ManageUsersPage() {
   const [isHRMSOpen, setIsHRMSOpen] = useState(false);
   const [hrmsUserId, setHrmsUserId] = useState<string | null>(null);
   const [hrmsUserName, setHrmsUserName] = useState<string>('');
+  
+  const [showInactive, setShowInactive] = useState(false);
+  const displayedUsers = users.filter(user => showInactive || user.isActive);
+  const inactiveUsersCount = users.filter(user => !user.isActive).length;
 
   const fetchData = async () => {
-      setIsLoading(true);
-      const [fetchedUsers, fetchedRoles] = await Promise.all([
-        getUsers(),
-        getUserRoles(),
-      ]);
-      setUsers(fetchedUsers);
-      setRoles(fetchedRoles);
-      setIsLoading(false);
+      try {
+          setIsLoading(true);
+          const [fetchedUsers, fetchedRoles] = await Promise.all([
+            getUsers(),
+            getUserRoles(),
+          ]);
+          setUsers(fetchedUsers || []);
+          setRoles(fetchedRoles || []);
+      } catch (error) {
+          console.error("Error fetching users:", error);
+          toast({ title: "Error", description: "Failed to load users data.", variant: "destructive" });
+      } finally {
+          setIsLoading(false);
+      }
   };
   
   useEffect(() => {
@@ -127,7 +137,10 @@ export default function ManageUsersPage() {
         description="Add, view, and manage user accounts and their roles."
         icon={Users}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowInactive(!showInactive)}>
+              {showInactive ? "Hide Inactive Users" : `Show Inactive Users (${inactiveUsersCount})`}
+            </Button>
             <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
               <Settings className="mr-2 h-4 w-4" /> Manage Roles
             </Button>
@@ -164,7 +177,7 @@ export default function ManageUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border/40">
-                {users.map((user) => (
+                {displayedUsers.map((user) => (
                   <TableRow key={user.id} className="hover:bg-muted/10 border-b border-border/40 transition-colors">
                     <TableCell className="font-semibold py-3.5 text-sm">{user.name}</TableCell>
                     <TableCell className="py-3.5 text-xs text-muted-foreground">{user.email}</TableCell>

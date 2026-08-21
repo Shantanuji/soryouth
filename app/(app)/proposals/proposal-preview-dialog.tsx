@@ -157,12 +157,15 @@ export function ProposalPreviewDialog({ isOpen, onClose, pdfUrl, docxUrl, docume
                     <img src={viewableUrl} alt="Document Preview" className="w-full h-full object-contain p-2"/>
                 )}
                 {isPdf && (
-                    <iframe
-                        src={viewableUrl}
-                        title="Document PDF Preview"
-                        className="w-full h-full"
-                        frameBorder="0"
-                    />
+                    <div className="w-full h-full flex flex-col">
+                      <p className="text-xs p-2 break-all bg-gray-100">DEBUG URL: {viewableUrl}</p>
+                      <iframe
+                          src={viewableUrl}
+                          title="Document PDF Preview"
+                          className="w-full h-full flex-grow"
+                          frameBorder="0"
+                      />
+                    </div>
                 )}
             </>
           )}

@@ -1,4 +1,4 @@
-﻿
+
 'use client';
 
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
@@ -28,6 +28,7 @@ import { getActiveClients } from '@/app/(app)/clients-list/actions';
 import { getLeads } from '@/app/(app)/leads-list/actions';
 import { bulkCreateProposals } from '../actions';
 import Link from 'next/link';
+import { calculateProposalValues } from '@/lib/proposal-calculations';
 
 const batchRowSchema = z.object({
   id: z.string().optional(),
@@ -71,40 +72,14 @@ const getDefaultProposalRow = (): Omit<BatchRow, 'customerType' | 'customerId'> 
 });
 
 const calculateDerivedData = (rowData: BatchRow) => {
-    const capacity = parseFloat(String(rowData.capacity)) || 0;
-    const ratePerWatt = parseFloat(String(rowData.ratePerWatt)) || 0;
-    const clientType = rowData.clientType;
-    const unitRate = parseFloat(String(rowData.unitRate)) || 0;
-    const inverterQty = parseInt(String(rowData.inverterQty), 10) || 1;
-    const dcrStatus = rowData.dcrStatus;
-    
-    const baseAmount = ratePerWatt * capacity * 1000;
-    const cgstAmount = baseAmount * 0.069;
-    const sgstAmount = baseAmount * 0.069;
-    const finalAmount = baseAmount + cgstAmount + sgstAmount;
-
-    let subsidyAmount = 0;
-    if (dcrStatus !== 'Non-DCR') {
-        if (clientType === 'Housing Society') subsidyAmount = 18000 * capacity;
-        else if (clientType === 'Individual/Bungalow') {
-            if (capacity === 1) subsidyAmount = 30000;
-            else if (capacity === 2) subsidyAmount = 60000;
-            else if (capacity >= 3) subsidyAmount = 78000;
-        }
-    }
-    
-    const requiredSpace = capacity * 80;
-    const generationPerDay = capacity * 4;
-    const generationPerYear = generationPerDay * 365;
-    const savingsPerYear = generationPerYear * unitRate;
-    const laKitQty = inverterQty * 1;
-    const acdbDcdbQty = inverterQty * 1;
-    const earthingKitQty = inverterQty * 3;
-
-    return {
-        baseAmount, cgstAmount, sgstAmount, subtotalAmount: finalAmount, finalAmount, subsidyAmount,
-        requiredSpace, generationPerDay, generationPerYear, unitRate, savingsPerYear, laKitQty, acdbDcdbQty, earthingKitQty,
-    };
+    return calculateProposalValues({
+        capacity: parseFloat(String(rowData.capacity)) || 0,
+        ratePerWatt: parseFloat(String(rowData.ratePerWatt)) || 0,
+        unitRate: parseFloat(String(rowData.unitRate)) || 0,
+        clientType: rowData.clientType,
+        dcrStatus: rowData.dcrStatus,
+        inverterQty: parseInt(String(rowData.inverterQty), 10) || 1,
+    });
 };
 
 const CustomerCombobox = ({ control, index, customers, onSelect }: { control: any, index: number, customers: (Client | Lead)[], onSelect: (customer: Client | Lead, index: number) => void }) => {
@@ -262,6 +237,8 @@ export default function BatchProposalsPage() {
     
                 const submissionData: Partial<Proposal> = {
                     ...row, ...derivedData,
+                    subtotalAmount: derivedData.baseAmount + derivedData.cgstAmount + derivedData.sgstAmount,
+                    calculatedValues: derivedData,
                     proposalDate: format(new Date(), 'yyyy-MM-dd'),
                     proposalNumber: `P-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000).padStart(5, '0')}`,
                     clientId: row.customerType === 'client' ? row.customerId : undefined,

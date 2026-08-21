@@ -5,3 +5,4 @@ matplotlib==3.8.4
 waitress
 gunicorn
 python-docx
+html2image

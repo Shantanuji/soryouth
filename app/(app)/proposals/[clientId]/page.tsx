@@ -46,15 +46,18 @@ export default function CustomerProposalsPage() {
     let fetchedProposals: Proposal[] = [];
 
     if (cust) {
+      (cust as any).customerType = 'client';
       fetchedProposals = await getProposalsForClient(customerId);
     } else {
       cust = await getLeadById(customerId);
       if (cust) {
+        (cust as any).customerType = 'lead';
         fetchedProposals = await getProposalsForLead(customerId);
       } else {
         cust = await getDroppedLeadById(customerId);
-        // Note: Dropped lead proposals are fetched via droppedLeadId field in proposal
-        // This might require a new action or updating `getProposalsForLead`
+        if (cust) {
+          (cust as any).customerType = 'dropped';
+        }
       }
     }
     setCustomer(cust);
@@ -109,9 +112,9 @@ export default function CustomerProposalsPage() {
   
   const getCustomerDetailLink = () => {
       if (!customer) return '#';
-      if ('dropReason' in customer) return `/dropped-leads/${customer.id}`; // Dropped Lead has dropReason
-      if ('source' in customer) return `/leads/${customer.id}`; // Lead has source
-      return `/clients/${customer.id}`; // Client
+      if ((customer as any).customerType === 'dropped') return `/dropped-leads/${customer.id}`;
+      if ((customer as any).customerType === 'lead') return `/leads/${customer.id}`;
+      return `/clients/${customer.id}`;
   };
 
   if (isLoading) {
@@ -236,11 +239,10 @@ export default function CustomerProposalsPage() {
           onClose={() => setIsFormOpen(false)}
           onSubmit={handleFormSubmit}
           proposal={selectedProposal}
-          clients={'source' in customer ? [] : [customer as Client]}
-          leads={'source' in customer ? [customer as Lead] : []}
+          clients={(customer as any).customerType === 'client' ? [customer as Client] : []}
+          leads={(customer as any).customerType === 'lead' ? [customer as Lead] : []}
         />
       )}
-      {/* Note: 'source' is a Lead property. So 'source' in customer => Lead; otherwise => Client */}
 
       {isPreviewOpen && selectedProposal && (
         <ProposalPreviewDialog

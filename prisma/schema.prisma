@@ -84,6 +84,7 @@ model Lead {
   nextFollowUpTime  String? // Store as String
   kilowatt          Float?
   address           String?
+  cityArea          String?
   priority          String? // Corresponds to LeadPriorityType
   dropReason        String? @default("Not Dropped")// Corresponds to DropReasonType
   clientType        String? // Corresponds to ClientType
@@ -125,6 +126,7 @@ model DroppedLead {
   nextFollowUpTime   String?
   kilowatt           Float?
   address            String?
+  cityArea           String?
   priority           String?
   clientType         String?
   electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
@@ -162,6 +164,7 @@ model Client {
   nextFollowUpTime  String?
   kilowatt          Float?
   address           String?
+  cityArea          String?
   clientType        String?
   notes             String?
   electricityBillUrls Json? // Changed from String[] to Json? for SQLite/PostgreSQL compatibility
@@ -249,6 +252,7 @@ model Proposal {
   clientType         String
   contactPerson      String
   location           String
+  cityArea           String?
   capacity           Decimal
   moduleType         String
   moduleWattage      String
@@ -263,6 +267,7 @@ model Proposal {
   subtotalAmount     Decimal
   finalAmount        Decimal
   subsidyAmount      Decimal
+  additionalSubsidy  Decimal?
   pdfUrl             String?
   docxUrl            String?
   requiredSpace      Decimal?
@@ -273,6 +278,9 @@ model Proposal {
   laKitQty           Int?
   acdbDcdbQty        Int?
   earthingKitQty     Int?
+  validityDays       Int?      @default(15)
+  mountingStructure  String?   @default("RCC Rooftop")
+  paymentTerms       String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   
@@ -305,6 +313,12 @@ model CustomSetting {
   @@index([type])
 }
 
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 enum SettingType {
   LEAD_STATUS
   LEAD_SOURCE
@@ -312,6 +326,12 @@ enum SettingType {
   DOCUMENT_TYPE
   FINANCIAL_DOCUMENT_TYPE
   USER_ROLE
+  MODULE_WATTAGE
+  MODULE_TYPE
+  MOUNTING_STRUCTURE
+  CLIENT_TYPE
+  PAYMENT_TERMS
+  DCR_STATUS
 }
 
 model SiteSurvey {

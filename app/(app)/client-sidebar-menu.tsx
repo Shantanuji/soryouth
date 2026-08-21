@@ -39,7 +39,7 @@ const SIDEBAR_GROUPS = [
   },
   {
     label: 'MANAGEMENT',
-    hrefs: ['/users', '/manage-templates'],
+    hrefs: ['/users', '/manage-templates', '/database-backup', '/mailer-settings'],
   },
 ];
 
@@ -63,10 +63,12 @@ export function ClientSidebarMenu() {
     fetchPermissions();
   }, [session]);
 
+  const isAdminRole = session?.role === 'Admin' || session?.role === 'admin' || session?.role === 'SuperAdmin';
   const allowedNavPaths = permissions.map(p => p.navPath);
 
   const filteredNavItems = NAV_ITEMS.filter(item =>
     item.href === '/dashboard' ||
+    (isAdminRole && permissions.length === 0) ||
     allowedNavPaths.includes(item.href)
   );
 

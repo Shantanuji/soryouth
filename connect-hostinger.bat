@@ -1,0 +1,3 @@
+@echo off
+echo Connecting to Hostinger Server...
+ssh -i "%USERPROFILE%\.ssh\soryouth_server_rsa" root@187.127.188.247

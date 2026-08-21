@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "405be863-25c0-4a03-98cf-73ee0c8761a4"
+      }
+    },
+    "android": {
+      "package": "com.shantanuk_bju.nextn"
+    }
+  }
+}

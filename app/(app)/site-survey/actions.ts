@@ -130,8 +130,20 @@ export async function createSiteSurvey(data: CreateSiteSurveyData): Promise<Site
 }
 
 export async function getSiteSurveys(): Promise<SiteSurvey[]> {
+  const session = await verifySession();
+  if (!session?.userId) return [];
   try {
+    const whereClause: any = {};
+    if (session.viewPermission === 'ASSIGNED') {
+      whereClause.OR = [
+        { surveyorId: session.userId },
+        { lead: { assignedToId: session.userId } },
+        { client: { assignedToId: session.userId } },
+        { droppedLead: { assignedToId: session.userId } },
+      ];
+    }
     const surveys = await prisma.siteSurvey.findMany({
+      where: whereClause,
       orderBy: { date: 'desc' },
       include: { surveyor: true },
     });
@@ -143,9 +155,18 @@ export async function getSiteSurveys(): Promise<SiteSurvey[]> {
 }
 
 export async function getSurveysForLead(leadId: string): Promise<SiteSurvey[]> {
+  const session = await verifySession();
+  if (!session?.userId) return [];
   try {
+    const whereClause: any = { leadId };
+    if (session.viewPermission === 'ASSIGNED') {
+      whereClause.OR = [
+        { surveyorId: session.userId },
+        { lead: { assignedToId: session.userId } }
+      ];
+    }
     const surveys = await prisma.siteSurvey.findMany({
-      where: { leadId },
+      where: whereClause,
       orderBy: { date: 'desc' },
       include: { surveyor: true },
     });
@@ -157,9 +178,18 @@ export async function getSurveysForLead(leadId: string): Promise<SiteSurvey[]> {
 }
 
 export async function getSurveysForClient(clientId: string): Promise<SiteSurvey[]> {
+  const session = await verifySession();
+  if (!session?.userId) return [];
   try {
+    const whereClause: any = { clientId };
+    if (session.viewPermission === 'ASSIGNED') {
+      whereClause.OR = [
+        { surveyorId: session.userId },
+        { client: { assignedToId: session.userId } }
+      ];
+    }
     const surveys = await prisma.siteSurvey.findMany({
-      where: { clientId },
+      where: whereClause,
       orderBy: { date: 'desc' },
       include: { surveyor: true },
     });
@@ -171,9 +201,18 @@ export async function getSurveysForClient(clientId: string): Promise<SiteSurvey[
 }
 
 export async function getSurveysForDroppedLead(droppedLeadId: string): Promise<SiteSurvey[]> {
+  const session = await verifySession();
+  if (!session?.userId) return [];
   try {
+    const whereClause: any = { droppedLeadId };
+    if (session.viewPermission === 'ASSIGNED') {
+      whereClause.OR = [
+        { surveyorId: session.userId },
+        { droppedLead: { assignedToId: session.userId } }
+      ];
+    }
     const surveys = await prisma.siteSurvey.findMany({
-      where: { droppedLeadId },
+      where: whereClause,
       orderBy: { date: 'desc' },
       include: { surveyor: true },
     });

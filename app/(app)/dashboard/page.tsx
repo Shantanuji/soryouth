@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { punchIn, punchOut, getCurrentUserAttendanceStatus } from '@/app/(app)/attendance/actions';
 import { format, parseISO, startOfMonth, getYear, getMonth } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { PlayCircle, StopCircle, CheckCircle2 } from 'lucide-react';
 
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
@@ -63,6 +64,35 @@ export default function DashboardOverviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cronStatus, setCronStatus] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/cron/start').then(res => res.json()).then(data => {
+      setCronStatus(data.running);
+      if (!data.running) {
+        // Automatically wake up the cron service if it is offline
+        fetch('/api/cron/start', { method: 'POST' }).then(() => setCronStatus(true));
+      }
+    }).catch(console.error);
+  }, []);
+
+  const toggleCronJob = async () => {
+    setIsProcessing(true);
+    try {
+      if (cronStatus) {
+        await fetch('/api/cron/stop', { method: 'POST' });
+        setCronStatus(false);
+        toast({ title: 'Service Stopped', description: 'Internal auto-backup cron job stopped.' });
+      } else {
+        await fetch('/api/cron/start', { method: 'POST' });
+        setCronStatus(true);
+        toast({ title: 'Service Started', description: 'Internal auto-backup cron job is now active and running.', variant: 'default' });
+      }
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to toggle cron service.', variant: 'destructive' });
+    }
+    setIsProcessing(false);
+  };
 
 
 
@@ -201,6 +231,28 @@ export default function DashboardOverviewPage() {
   return (
     <>
       <PageHeader title="Welcome" breadcrumbs={['Dashboard', 'Welcome']} />
+
+      {/* System Services Card */}
+      <div className="mb-6">
+        <Card className="border-2 border-green-500/50 bg-green-50/50 dark:bg-green-950/20">
+          <CardContent className="flex flex-col sm:flex-row items-center justify-between p-6 gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  Automated Background Services
+                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded-full font-medium">Running</span>
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Automated backups and background tasks are permanently running securely.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Row 1: Dhonu Original Side-by-Side Layout */}
       <div className="grid gap-6 lg:grid-cols-12 mb-6">

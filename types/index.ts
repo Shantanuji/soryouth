@@ -15,7 +15,7 @@ export type DropReasonType = typeof DROP_REASON_OPTIONS[number];
 export type ClientType = typeof CLIENT_TYPES[number];
 export type ModuleType = typeof MODULE_TYPES[number];
 export type DCRStatus = typeof DCR_STATUSES[number];
-export type ModuleWattage = typeof MODULE_WATTAGE_OPTIONS[number];
+export type ModuleWattage = string;
 export type ClientPriorityType = typeof CLIENT_PRIORITY_OPTIONS[number];
 export type ViewPermission = 'ALL' | 'ASSIGNED';
 
@@ -69,6 +69,7 @@ export interface Lead {
   nextFollowUpTime?: string | null;
   kilowatt?: number | null;
   address?: string | null;
+  cityArea?: string | null;
   notes?: string | null;
   priority?: LeadPriorityType | null;
   dropReason?: DropReasonType | "Not Dropped" | null;
@@ -83,6 +84,7 @@ export type CreateLeadData = Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'foll
 
 export interface DroppedLead extends Omit<Lead, 'status' | 'updatedAt'> {
   status: 'Lost';
+  cityArea?: string | null;
   dropReason: DropReasonType;
   dropComment?: string | null;
   droppedAt: string;
@@ -102,6 +104,7 @@ export interface Client {
   updatedAt: string;
   kilowatt?: number | null;
   address?: string | null;
+  cityArea?: string | null;
   notes?: string | null;
   clientType?: ClientType | null;
   electricityBillUrls: string[];
@@ -115,6 +118,10 @@ export interface Client {
 export type CreateClientData = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'followupCount' | 'lastCommentText' | 'lastCommentDate' | 'nextFollowUpDate' | 'nextFollowUpTime' | 'electricityBillUrls' | 'totalDealValue'> & {
     electricityBillUrls?: string[];
     totalDealValue?: number;
+    lastCommentText?: string;
+    lastCommentDate?: string;
+    nextFollowUpDate?: string;
+    nextFollowUpTime?: string;
 };
 
 
@@ -130,6 +137,7 @@ export interface Proposal {
   createdBy: string;
   contactPerson: string;
   location: string;
+  cityArea?: string | null;
   phone?: string | null;
   email?: string | null;
   capacity: number;
@@ -146,6 +154,7 @@ export interface Proposal {
   subtotalAmount: number;
   finalAmount: number;
   subsidyAmount: number;
+  additionalSubsidy?: number | null;
   createdAt: string;
   updatedAt?: string;
   pdfUrl?: string | null;
@@ -160,6 +169,12 @@ export interface Proposal {
   laKitQty?: number;
   acdbDcdbQty?: number;
   earthingKitQty?: number;
+  validityDays?: number;
+  mountingStructure?: string | null;
+  paymentTerms?: string | null;
+  moduleSpec?: string | null;
+  inverterSpec?: string | null;
+  calculatedValues?: any;
 }
 
 export interface Document {
@@ -397,7 +412,7 @@ export interface Template {
 
 export type CreateTemplateData = Omit<Template, 'id' | 'createdAt' | 'updatedAt'>;
 
-export type SettingType = 'LEAD_STATUS' | 'LEAD_SOURCE' | 'CLIENT_STATUS' | 'DOCUMENT_TYPE' | 'FINANCIAL_DOCUMENT_TYPE' |'USER_ROLE';
+export type SettingType = 'LEAD_STATUS' | 'LEAD_SOURCE' | 'CLIENT_STATUS' | 'DOCUMENT_TYPE' | 'FINANCIAL_DOCUMENT_TYPE' | 'USER_ROLE' | 'MODULE_WATTAGE' | 'MODULE_TYPE' | 'MOUNTING_STRUCTURE' | 'CLIENT_TYPE' | 'PAYMENT_TERMS' | 'DCR_STATUS';
 
 export interface CustomSetting {
     id: string;

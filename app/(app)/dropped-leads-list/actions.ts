@@ -26,6 +26,7 @@ function mapPrismaDroppedLeadToDroppedLeadType(prismaLead: any): DroppedLead {
     nextFollowUpTime: prismaLead.nextFollowUpTime ?? undefined,
     kilowatt: prismaLead.kilowatt === null ? undefined : prismaLead.kilowatt,
     address: prismaLead.address ?? undefined,
+    cityArea: prismaLead.cityArea ?? undefined,
     priority: prismaLead.priority ?? undefined,
     dropReason: prismaLead.dropReason,
     dropComment: prismaLead.dropComment ?? undefined,
@@ -120,7 +121,8 @@ export async function getDroppedLeads({ ignorePermissions = false }: { ignorePer
 
     try {
         const whereClause: Prisma.DroppedLeadWhereInput = {};
-        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions) {
+        const isAdmin = session.role === 'Admin' || session.role === 'admin' || session.role === 'SuperAdmin';
+        if (session.viewPermission === 'ASSIGNED' && !ignorePermissions && !isAdmin) {
           whereClause.assignedToId = session.userId;
         }
 
