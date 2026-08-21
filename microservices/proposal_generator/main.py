@@ -1988,17 +1988,13 @@ def generate_proposal():
             raw_pdf = pdfium.PdfDocument(raw_pdf_path)
             page_images = []
             for i, page in enumerate(raw_pdf):
+                # Render each page to 150 DPI high-resolution PIL Image
                 pil_img = page.render(scale=2.0).to_pil().convert('RGB')
-                stat = ImageStat.Stat(pil_img)
-                is_blank = all(m > 254.95 for m in stat.mean) and all(s < 0.05 for s in stat.stddev)
-                if is_blank:
-                    print(f"[Image-PDF] Pruned 100% white blank page {i+1}")
-                    continue
                 page_images.append(pil_img)
 
             if page_images:
                 page_images[0].save(temp_pdf_path, save_all=True, append_images=page_images[1:], resolution=150.0)
-                print(f"[Image-PDF] Successfully compiled {len(page_images)}-page Image-PDF at {temp_pdf_path}")
+                print(f"[Image-PDF] Successfully compiled 100% 1-to-1 {len(page_images)}-page Image-PDF at {temp_pdf_path}")
             else:
                 os.replace(raw_pdf_path, temp_pdf_path)
 
