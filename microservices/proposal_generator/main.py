@@ -1938,19 +1938,11 @@ def generate_proposal():
         except Exception as e:
             print(f"Warning analyzing undeclared variables: {e}")
 
-        jinja_env = jinja2.Environment(undefined=LenientUndefined, autoescape=False)
         try:
-            doc.render(context, jinja_env=jinja_env)
+            doc.render(context)
         except Exception as render_ex:
-            print(f"Primary render warning: {render_ex}. Retrying with empty fallback context...")
+            print(f"Primary render warning: {render_ex}. Retrying fallback...")
             try:
-                # Fallback: fill all undeclared variables with empty strings and retry
-                try:
-                    for v in doc.get_undeclared_template_variables():
-                        if v not in context:
-                            context[v] = ""
-                except Exception:
-                    pass
                 doc.render(context)
             except Exception as final_ex:
                 print(f"Final render error: {final_ex}")
