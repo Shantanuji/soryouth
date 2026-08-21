@@ -127,15 +127,36 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
     
     try {
         const uploadUrl = `/api/templates/upload?name=${encodeURIComponent(file.name)}&folder=templates`;
-        const uploadResponse = await fetch(uploadUrl, {
+        let uploadResponse = await fetch(uploadUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/octet-stream' },
             body: file,
         });
 
+        // If direct stream fails with 413 or error, try multipart FormData fallback
+        if (!uploadResponse.ok && uploadResponse.status !== 413) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'templates');
+            uploadResponse = await fetch('/api/templates/upload', {
+                method: 'POST',
+                body: formData,
+            });
+        }
+
         if (!uploadResponse.ok) {
-            const errData = await uploadResponse.json().catch(() => null);
-            throw new Error(errData?.error || `Upload failed with status ${uploadResponse.status}`);
+            let errorMsg = `Upload failed with status ${uploadResponse.status}`;
+            if (uploadResponse.status === 413) {
+                errorMsg = 'File size is too large for the server. Nginx client_max_body_size needs to be increased.';
+            } else {
+                try {
+                    const errData = await uploadResponse.json();
+                    if (errData?.error) errorMsg = errData.error;
+                } catch {
+                    // ignore JSON parse error
+                }
+            }
+            throw new Error(errorMsg);
         }
 
         const uploadResult = await uploadResponse.json();
