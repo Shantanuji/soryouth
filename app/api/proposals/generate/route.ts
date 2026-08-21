@@ -436,7 +436,8 @@ export async function POST(request: NextRequest) {
     const pdfBuffer = Buffer.from(result.pdf_b64, 'base64');
     const docxBuffer = Buffer.from(result.docx_b64, 'base64');
 
-    const baseKey = `proposals/${data.proposalNumber}_${Date.now()}`;
+    const safeProposalNumber = (data.proposalNumber || `PROP-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const baseKey = `proposals/${safeProposalNumber}`;
     const pdfKey = `${baseKey}.pdf`;
     const docxKey = `${baseKey}.docx`;
 
