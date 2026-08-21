@@ -1946,26 +1946,68 @@ def generate_proposal():
 
             
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
+        
+        # Clean trailing empty paragraphs at the end of the rendered document so Word file has zero trailing blank pages
+        try:
+            while len(doc.paragraphs) > 0:
+                last_p = doc.paragraphs[-1]
+                drawings = last_p._element.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
+                if (not last_p.text or last_p.text.strip() == '') and len(drawings) == 0:
+                    parent = last_p._element.getparent()
+                    parent.remove(last_p._element)
+                else:
+                    break
+        except Exception:
+            pass
+
         doc.save(temp_docx_path)
 
-        
         temp_pdf_path = os.path.join(temp_dir, 'output.pdf')
         
         try:
+            # Generate Image-PDF: Render DOCX pages -> PIL Images -> Merge into crisp 150 DPI PDF
+            raw_pdf_path = os.path.join(temp_dir, 'raw.pdf')
             if platform.system() == 'Windows':
                 pythoncom.CoInitialize()
-                convert_to_pdf(temp_docx_path, temp_pdf_path)
+                try:
+                    convert_to_pdf(temp_docx_path, raw_pdf_path)
+                finally:
+                    pythoncom.CoUninitialize()
             else:
                 cmd = ['soffice', '--headless', '--convert-to', 'pdf', '--outdir', temp_dir, temp_docx_path]
                 subprocess.run(cmd, check=True)
-        except Exception as e:
-            return jsonify({"error": f"PDF conversion failed. Error: {e}"}), 500
-        finally:
-            if platform.system() == 'Windows' and pythoncom:
-                pythoncom.CoUninitialize()
+                converted_name = os.path.splitext(os.path.basename(temp_docx_path))[0] + '.pdf'
+                generated_pdf = os.path.join(temp_dir, converted_name)
+                if os.path.exists(generated_pdf) and generated_pdf != raw_pdf_path:
+                    os.replace(generated_pdf, raw_pdf_path)
 
-        if not os.path.exists(temp_pdf_path):
-            return jsonify({"error": "PDF conversion failed. Output file not found."}), 500
+            # Convert raw PDF pages to high-res PIL Images and compile into final PDF
+            import pypdfium2 as pdfium
+            from PIL import ImageStat
+            
+            raw_pdf = pdfium.PdfDocument(raw_pdf_path)
+            page_images = []
+            for i, page in enumerate(raw_pdf):
+                pil_img = page.render(scale=2.0).to_pil().convert('RGB')
+                stat = ImageStat.Stat(pil_img)
+                is_blank = all(m > 254.5 for m in stat.mean) and all(s < 1.0 for s in stat.stddev)
+                if is_blank:
+                    print(f"[Image-PDF] Pruned 100% white blank page {i+1}")
+                    continue
+                page_images.append(pil_img)
+
+            if page_images:
+                page_images[0].save(temp_pdf_path, save_all=True, append_images=page_images[1:], resolution=150.0)
+                print(f"[Image-PDF] Successfully compiled {len(page_images)}-page Image-PDF at {temp_pdf_path}")
+            else:
+                os.replace(raw_pdf_path, temp_pdf_path)
+
+        except Exception as e:
+            print(f"[Image-PDF] Image-PDF pipeline fallback error: {e}")
+            if os.path.exists(os.path.join(temp_dir, 'raw.pdf')):
+                os.replace(os.path.join(temp_dir, 'raw.pdf'), temp_pdf_path)
+            elif not os.path.exists(temp_pdf_path):
+                return jsonify({"error": f"PDF conversion failed. Error: {e}"}), 500
 
         # PDF Post-Processor: Verify generated PDF integrity
         try:
