@@ -1724,14 +1724,9 @@ def create_capex_evaluation_sheet(doc, context, target_width):
     # Native 3x rendering utilizing device scale factor for perfect 300 DPI A4 mapping
     hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
     
-    if platform.system() == 'Linux':
-        out_dir = os.path.expanduser('~/hti_tmp')
-        os.makedirs(out_dir, exist_ok=True)
-        hti.output_path = out_dir
-        hti.temp_path = out_dir
-    else:
-        hti.output_path = tempfile.gettempdir()
-        hti.temp_path = tempfile.gettempdir()
+    out_dir = tempfile.gettempdir()
+    hti.output_path = out_dir
+    hti.temp_path = out_dir
 
         
     filename = f'capex_{uuid.uuid4().hex}.png'
