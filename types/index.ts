@@ -15,7 +15,7 @@ export type DropReasonType = typeof DROP_REASON_OPTIONS[number];
 export type ClientType = typeof CLIENT_TYPES[number];
 export type ModuleType = typeof MODULE_TYPES[number];
 export type DCRStatus = typeof DCR_STATUSES[number];
-export type ModuleWattage = typeof MODULE_WATTAGE_OPTIONS[number];
+export type ModuleWattage = string;
 export type ClientPriorityType = typeof CLIENT_PRIORITY_OPTIONS[number];
 export type ViewPermission = 'ALL' | 'ASSIGNED';
 
@@ -169,6 +169,9 @@ export interface Proposal {
   laKitQty?: number;
   acdbDcdbQty?: number;
   earthingKitQty?: number;
+  validityDays?: number;
+  mountingStructure?: string | null;
+  paymentTerms?: string | null;
   moduleSpec?: string | null;
   inverterSpec?: string | null;
   calculatedValues?: any;
@@ -409,7 +412,7 @@ export interface Template {
 
 export type CreateTemplateData = Omit<Template, 'id' | 'createdAt' | 'updatedAt'>;
 
-export type SettingType = 'LEAD_STATUS' | 'LEAD_SOURCE' | 'CLIENT_STATUS' | 'DOCUMENT_TYPE' | 'FINANCIAL_DOCUMENT_TYPE' |'USER_ROLE';
+export type SettingType = 'LEAD_STATUS' | 'LEAD_SOURCE' | 'CLIENT_STATUS' | 'DOCUMENT_TYPE' | 'FINANCIAL_DOCUMENT_TYPE' | 'USER_ROLE' | 'MODULE_WATTAGE' | 'MODULE_TYPE' | 'MOUNTING_STRUCTURE' | 'CLIENT_TYPE' | 'PAYMENT_TERMS' | 'DCR_STATUS';
 
 export interface CustomSetting {
     id: string;

@@ -20,7 +20,7 @@ function mapPrismaCustomSetting(setting: any): CustomSetting {
 export async function getSettingsByType(type: SettingType): Promise<CustomSetting[]> {
     try {
         const settings = await prisma.customSetting.findMany({
-            where: { type },
+            where: { type: type as any },
             orderBy: { createdAt: 'asc' },
         });
         return settings.map(mapPrismaCustomSetting);
@@ -50,6 +50,54 @@ export async function getFinancialDocumentTypes(): Promise<CustomSetting[]> {
     return getSettingsByType('FINANCIAL_DOCUMENT_TYPE');
 }
 
+export async function getModuleWattages(): Promise<CustomSetting[]> {
+    const wattages = await getSettingsByType('MODULE_WATTAGE');
+    if (wattages.length === 0) {
+        const defaults = ["540", "545", "550", "570", "580", "585", "590", "600", "650", "700", "750", "800"];
+        const createdRoles: CustomSetting[] = [];
+        for (const val of defaults) {
+            const result = await addSetting('MODULE_WATTAGE', val);
+            if (!('error' in result)) {
+                createdRoles.push(result);
+            }
+        }
+        return createdRoles;
+    }
+    return wattages;
+}
+
+export async function getModuleTypes(): Promise<CustomSetting[]> {
+    const types = await getSettingsByType('MODULE_TYPE');
+    if (types.length === 0) {
+        const defaults = ['Mono PERC', 'TOPCon', 'Bifacial TOPCon'];
+        const createdRoles: CustomSetting[] = [];
+        for (const val of defaults) {
+            const result = await addSetting('MODULE_TYPE', val);
+            if (!('error' in result)) {
+                createdRoles.push(result);
+            }
+        }
+        return createdRoles;
+    }
+    return types;
+}
+
+export async function getMountingStructures(): Promise<CustomSetting[]> {
+    const items = await getSettingsByType('MOUNTING_STRUCTURE');
+    if (items.length === 0) {
+        const defaults = ['RCC Rooftop', 'Metal Sheet Rooftop', 'Ground Mount', 'Tin Shed', 'Terrace Mount'];
+        const created: CustomSetting[] = [];
+        for (const val of defaults) {
+            const result = await addSetting('MOUNTING_STRUCTURE', val);
+            if (!('error' in result)) {
+                created.push(result);
+            }
+        }
+        return created;
+    }
+    return items;
+}
+
 export async function getUserRoles(): Promise<CustomSetting[]> {
     const roles = await getSettingsByType('USER_ROLE');
     if (roles.length === 0) {
@@ -74,7 +122,7 @@ export async function addSetting(type: SettingType, name: string): Promise<Custo
     try {
         const newSetting = await prisma.customSetting.create({
             data: {
-                type,
+                type: type as any,
                 name: name.trim(),
             },
         });
@@ -83,6 +131,7 @@ export async function addSetting(type: SettingType, name: string): Promise<Custo
         if (type === 'LEAD_STATUS' || type === 'LEAD_SOURCE') revalidatePath('/leads-list');
         if (type === 'CLIENT_STATUS') revalidatePath('/clients-list');
         if (type === 'USER_ROLE') revalidatePath('/users');
+        if (type === 'MODULE_WATTAGE' || type === 'MODULE_TYPE' || type === 'MOUNTING_STRUCTURE') revalidatePath('/proposals');
         if (type === 'DOCUMENT_TYPE' || type === 'FINANCIAL_DOCUMENT_TYPE') {
             revalidatePath('/documents');
             revalidatePath('/manage-templates');
@@ -109,10 +158,12 @@ export async function deleteSetting(id: string): Promise<{ success: boolean; err
             where: { id },
         });
         
-        if (settingToDelete.type === 'LEAD_STATUS' || settingToDelete.type === 'LEAD_SOURCE') revalidatePath('/leads-list');
-        if (settingToDelete.type === 'CLIENT_STATUS') revalidatePath('/clients-list');
-        if (settingToDelete.type === 'USER_ROLE') revalidatePath('/users');
-        if (settingToDelete.type === 'DOCUMENT_TYPE' || settingToDelete.type === 'FINANCIAL_DOCUMENT_TYPE') {
+        const sType = settingToDelete.type as string;
+        if (sType === 'LEAD_STATUS' || sType === 'LEAD_SOURCE') revalidatePath('/leads-list');
+        if (sType === 'CLIENT_STATUS') revalidatePath('/clients-list');
+        if (sType === 'USER_ROLE') revalidatePath('/users');
+        if (sType === 'MODULE_WATTAGE' || sType === 'MODULE_TYPE' || sType === 'MOUNTING_STRUCTURE') revalidatePath('/proposals');
+        if (sType === 'DOCUMENT_TYPE' || sType === 'FINANCIAL_DOCUMENT_TYPE') {
             revalidatePath('/documents');
             revalidatePath('/manage-templates');
         }

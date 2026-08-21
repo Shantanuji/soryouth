@@ -278,6 +278,9 @@ model Proposal {
   laKitQty           Int?
   acdbDcdbQty        Int?
   earthingKitQty     Int?
+  validityDays       Int?      @default(15)
+  mountingStructure  String?   @default("RCC Rooftop")
+  paymentTerms       String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   
@@ -323,6 +326,12 @@ enum SettingType {
   DOCUMENT_TYPE
   FINANCIAL_DOCUMENT_TYPE
   USER_ROLE
+  MODULE_WATTAGE
+  MODULE_TYPE
+  MOUNTING_STRUCTURE
+  CLIENT_TYPE
+  PAYMENT_TERMS
+  DCR_STATUS
 }
 
 model SiteSurvey {

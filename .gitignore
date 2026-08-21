@@ -264,9 +264,13 @@ Desktop.ini
 .idea/
 
 # =====================================================
-# Secrets
+# Secrets & Test Artifacts
 # =====================================================
 *.pem
 *.key
 *.crt
 hostinger_rsa*
+api_test_output.*
+*.capex_backup
+*.backup
+public/uploads/

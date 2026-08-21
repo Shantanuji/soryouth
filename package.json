@@ -6,7 +6,8 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "next dev --turbopack -p 9002",
+    "dev": "next dev -p 9002",
+    "dev:turbo": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch ai/dev.ts",
     "build": "next build",

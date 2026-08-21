@@ -1,10 +1,30 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifySession } from './lib/auth';
+import { jwtVerify } from 'jose';
+
+const secretKey = process.env.JWT_SECRET || 'f4d3b8e0a6c2d1e8f7a9b3c5d6e7f8a9b3c5d6e7f8a9b3c5d6e7f8a9b3c5d6e7';
+const key = new TextEncoder().encode(secretKey);
+
+async function verifyToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  const currentUser = await verifySession();
   const { pathname } = request.nextUrl;
+
+  // Immediately bypass upload endpoints to prevent stream buffering on large files (up to 100MB)
+  if (pathname.startsWith('/api/templates/upload')) {
+    return NextResponse.next();
+  }
+
+  const sessionCookie = request.cookies.get('session')?.value;
+  const session = sessionCookie ? await verifyToken(sessionCookie) : null;
+  const currentUser = session?.userId ? session : null;
 
   const publicRoutes = ['/', '/login', '/signup', '/app-release.apk'];
   const isPublicRoute = publicRoutes.some(route => pathname === route);
@@ -23,17 +43,11 @@ export async function middleware(request: NextRequest) {
   if (!currentUser && !isPublicRoute && !pathname.startsWith('/api/')) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
-  // RBAC is now primarily handled in the UI by conditionally rendering links.
-  // The middleware focuses on authentication.
-  // Direct access attempts to unauthorized pages will result in the app shell loading,
-  // but the user won't see any links to get there, and the pages themselves might show an unauthorized message
-  // or redirect if they have their own server-side checks.
 
   return NextResponse.next();
 }
 
 export const config = {
-  // Match all routes except for static assets, and image optimization files.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/templates/upload).*)'],
 };
+

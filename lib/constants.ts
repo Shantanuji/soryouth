@@ -97,7 +97,7 @@ export const FOLLOW_UP_TYPES = ['Call', 'SMS', 'Email', 'Meeting', 'Visit'] as c
 export const FOLLOW_UP_STATUSES = ['Answered', 'No reply', 'Rejected', 'Not connected'] as const;
 export const MODULE_TYPES = ['Mono PERC', 'TOPCon'] as const;
 export const DCR_STATUSES = ['DCR', 'Non-DCR'] as const;
-export const MODULE_WATTAGE_OPTIONS = ["540", "545", "550", "585", "590"] as const;
+export const MODULE_WATTAGE_OPTIONS = ["540", "545", "550", "570", "580", "585", "590", "600", "650", "700", "750", "800"] as const;
 export const TASK_PRIORITIES = ['High', 'Medium', 'Low'] as const;
 
 export const MOCK_LEADS: Lead[] = [

@@ -2,85 +2,94 @@
 import { NextRequest, NextResponse } from 'next/server';
 import PizZip from 'pizzip';
 
+export const dynamic = 'force-dynamic';
+
+function parseMultipartBody(buffer: Buffer, boundary: string): Buffer | null {
+  const boundaryBuffer = Buffer.from(`--${boundary}`);
+  let start = 0;
+
+  while (start < buffer.length) {
+    const boundaryIdx = buffer.indexOf(boundaryBuffer, start);
+    if (boundaryIdx === -1) break;
+
+    const partStart = boundaryIdx + boundaryBuffer.length;
+    const nextBoundaryIdx = buffer.indexOf(boundaryBuffer, partStart);
+    if (nextBoundaryIdx === -1) break;
+
+    const part = buffer.subarray(partStart, nextBoundaryIdx);
+    start = nextBoundaryIdx;
+
+    const headerSepIdx = part.indexOf(Buffer.from('\r\n\r\n'));
+    if (headerSepIdx === -1) continue;
+
+    const headerText = part.subarray(0, headerSepIdx).toString('utf-8');
+    let body = part.subarray(headerSepIdx + 4);
+    if (body.length >= 2 && body[body.length - 2] === 13 && body[body.length - 1] === 10) {
+      body = body.subarray(0, body.length - 2);
+    }
+
+    if (/filename=/i.test(headerText)) {
+      return body;
+    }
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   let fileBuffer: Buffer | null = null;
-  let file: File | null = null;
   
   try {
-    const formData = await request.formData();
-    file = formData.get('file') as File | null;
+    try {
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+      if (file) {
+        const arrayBuffer = await file.arrayBuffer();
+        fileBuffer = Buffer.from(arrayBuffer);
+      }
+    } catch (formErr) {
+      const ct = request.headers.get('content-type') || '';
+      const boundaryMatch = ct.match(/boundary=(?:["']?)([^"';\s]+)(?:["']?)/i);
+      const rawArrayBuffer = await request.arrayBuffer();
+      const rawBuffer = Buffer.from(rawArrayBuffer);
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    fileBuffer = Buffer.from(arrayBuffer);
-
-    // The Python service expects FormData, so we reconstruct it for forwarding.
-    const pythonServiceFormData = new FormData();
-    pythonServiceFormData.append('file', file);
-
-    const pythonServiceUrl = process.env.PYTHON_MICROSERVICE_URL
-      ? `${process.env.PYTHON_MICROSERVICE_URL.replace('/generate', '')}/extract-placeholders`
-      : 'http://127.0.0.1:5001/extract-placeholders';
-      
-    const response = await fetch(pythonServiceUrl, {
-      method: 'POST',
-      body: pythonServiceFormData,
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(errorBody.error || `Python service failed with status ${response.status}`);
-    }
-
-    const result = await response.json();
-    return NextResponse.json(result);
-
-  } catch (error) {
-    console.error('Error in /api/templates/extract-placeholders, executing JS fallback:', error);
-    
-    // JS Fallback using PizZip to extract placeholders directly from the DOCX file archive
-    if (fileBuffer) {
-      try {
-        const zip = new PizZip(fileBuffer);
-        const placeholders = new Set<string>();
-        const pattern = /\{\{([^}]+)\}\}/g;
-
-        // Read main document text
-        const docXml = zip.file('word/document.xml')?.asText() || '';
-        const plainText = docXml.replace(/<[^>]+>/g, '');
-        let match;
-        while ((match = pattern.exec(plainText)) !== null) {
-          placeholders.add(`{{${match[1].trim()}}}`);
-        }
-
-        // Read headers/footers
-        const files = Object.keys(zip.files);
-        for (const f of files) {
-          if (f.startsWith('word/header') || f.startsWith('word/footer')) {
-            const xml = zip.file(f)?.asText() || '';
-            const text = xml.replace(/<[^>]+>/g, '');
-            let m;
-            while ((m = pattern.exec(text)) !== null) {
-              placeholders.add(`{{${m[1].trim()}}}`);
-            }
-          }
-        }
-
-        return NextResponse.json({
-          success: true,
-          placeholders: Array.from(placeholders).sort(),
-          fallback: true
-        });
-      } catch (fallbackError) {
-        console.error('JS Fallback extraction failed:', fallbackError);
+      if (boundaryMatch) {
+        fileBuffer = parseMultipartBody(rawBuffer, boundaryMatch[1]);
+      } else {
+        fileBuffer = rawBuffer;
       }
     }
 
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    if (!fileBuffer || fileBuffer.length === 0) {
+      return NextResponse.json({ success: true, placeholders: [] });
+    }
+
+    // Direct JS extraction using PizZip
+    const zip = new PizZip(fileBuffer);
+    const placeholders = new Set<string>();
+    const pattern = /\{\{([^}]+)\}\}/g;
+
+    for (const fileName of Object.keys(zip.files)) {
+      if (fileName.startsWith('word/') && fileName.endsWith('.xml')) {
+        const content = zip.file(fileName)?.asText() || '';
+        const plainText = content.replace(/<[^>]+>/g, '');
+        let match;
+        while ((match = pattern.exec(plainText)) !== null) {
+          const ph = match[1].trim();
+          if (ph) {
+            placeholders.add(`{{${ph}}}`);
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      placeholders: Array.from(placeholders),
+    });
+
+  } catch (error: any) {
+    console.error('Placeholder extraction error:', error);
+    // Never fail the user's upload if placeholder extraction has an issue
+    return NextResponse.json({ success: true, placeholders: [] });
   }
 }
-

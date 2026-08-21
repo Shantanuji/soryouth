@@ -4,7 +4,7 @@
 import type { Template, CreateTemplateData } from '@/types';
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
-import { deleteFileFromS3 } from '@/lib/s3';
+import { deleteFileFromS3, uploadFileToS3 } from '@/lib/s3';
 
 // Helper to map Prisma template to frontend Template type
 function mapPrismaTemplateToTemplateType(prismaTemplate: any): Template {
@@ -127,3 +127,53 @@ export async function deleteTemplate(id: string): Promise<{ success: boolean }> 
     return { success: false };
   }
 }
+
+export async function uploadTemplateFileAction(formData: FormData): Promise<{ success: boolean; filePath?: string; placeholders?: string[]; error?: string }> {
+  try {
+    const file = formData.get('file') as File | null;
+    const folder = (formData.get('folder') as string) || 'templates';
+    
+    if (!file) {
+      return { success: false, error: 'No file provided' };
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    const safeFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '') || `template-${Date.now()}.docx`;
+    const uniqueKey = `uploads/${folder}/${Date.now()}-${safeFilename}`;
+
+    const filePath = await uploadFileToS3(buffer, uniqueKey, file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
+    // Safely extract placeholders if possible
+    let placeholders: string[] = [];
+    try {
+      const PizZip = (await import('pizzip')).default;
+      const zip = new PizZip(buffer);
+      const foundSet = new Set<string>();
+      const pattern = /\{\{([^}]+)\}\}/g;
+      for (const fileName of Object.keys(zip.files)) {
+        if (fileName.startsWith('word/') && fileName.endsWith('.xml')) {
+          const content = zip.file(fileName)?.asText() || '';
+          const plainText = content.replace(/<[^>]+>/g, '');
+          let match;
+          while ((match = pattern.exec(plainText)) !== null) {
+            const ph = match[1].trim();
+            if (ph) {
+              foundSet.add(`{{${ph}}}`);
+            }
+          }
+        }
+      }
+      placeholders = Array.from(foundSet);
+    } catch (e) {
+      console.warn('Non-fatal placeholder extraction notice in action:', e);
+    }
+
+    return { success: true, filePath, placeholders };
+  } catch (error: any) {
+    console.error('Error in uploadTemplateFileAction:', error);
+    return { success: false, error: error?.message || 'Failed to upload file.' };
+  }
+}
+

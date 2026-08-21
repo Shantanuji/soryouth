@@ -66,14 +66,20 @@ export async function POST(request: NextRequest) {
     const templateData = getTemplateData(formData, documentType);
     
     const pythonServiceUrl = process.env.PYTHON_MICROSERVICE_URL ? `${process.env.PYTHON_MICROSERVICE_URL}/generate` : 'http://127.0.0.1:5001/generate';
-    const response = await fetch(pythonServiceUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            template_path: tempFilePath,
-            data: templateData
-        })
-    });
+    let response: Response;
+    try {
+        response = await fetch(pythonServiceUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                template_path: tempFilePath,
+                data: templateData
+            })
+        });
+    } catch (fetchErr: any) {
+        console.error('Failed to connect to Python document generator:', fetchErr);
+        throw new Error("Python Document Generator service is not reachable on port 5001. Please run 'start-microservice.bat' or 'start-all.bat'.");
+    }
 
     if (!response.ok) {
         const errorBody = await response.json();

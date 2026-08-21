@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { saveTemplate } from './actions';
+import { saveTemplate, uploadTemplateFileAction } from './actions';
 import type { Template, DocumentType, CustomSetting } from '@/types';
 import { PLACEHOLDER_DEFINITIONS_PROPOSAL } from '@/lib/constants';
 import { Copy, Loader2, UploadCloud, File, Download } from 'lucide-react';
@@ -125,54 +125,55 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
     setIsUploading(true);
     setExtractedPlaceholders([]);
     
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', file);
-    uploadFormData.append('folder', 'templates');
-
     try {
-        const uploadResponse = await fetch('/api/templates/upload', {
+        const uploadUrl = `/api/templates/upload?name=${encodeURIComponent(file.name)}&folder=templates`;
+        const uploadResponse = await fetch(uploadUrl, {
             method: 'POST',
-            body: uploadFormData,
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: file,
         });
 
-        if (!uploadResponse.ok) throw new Error('Failed to upload file.');
+        if (!uploadResponse.ok) {
+            const errData = await uploadResponse.json().catch(() => null);
+            throw new Error(errData?.error || `Upload failed with status ${uploadResponse.status}`);
+        }
+
         const uploadResult = await uploadResponse.json();
+        const finalPath = uploadResult.filePath;
+
+        if (!finalPath) {
+            throw new Error('Failed to determine uploaded file path.');
+        }
         
-        form.setValue('originalDocxPath', uploadResult.filePath, { shouldValidate: true, shouldDirty: true });
+        form.setValue('originalDocxPath', finalPath, { shouldValidate: true, shouldDirty: true });
         setUploadedFileName(file.name);
         
+        if (uploadResult.placeholders && Array.isArray(uploadResult.placeholders)) {
+            setExtractedPlaceholders(uploadResult.placeholders);
+            form.setValue('placeholdersJson', JSON.stringify(uploadResult.placeholders));
+        }
+
         if (!form.getValues('name')) {
             form.setValue('name', file.name.replace(/\.(docx|dotx)$/i, ''));
         }
         toast({ title: "Upload Successful", description: `File '${file.name}' has been uploaded.` });
-        
-        const currentType = form.getValues('type');
-        const isFinancial = financialDocumentTypes.some(f => f.name === currentType);
-
-        if (currentType && currentType !== 'Proposal') {
-            const extractFormData = new FormData();
-            extractFormData.append('file', file);
-            const extractResponse = await fetch('/api/templates/extract-placeholders', {
-                method: 'POST',
-                body: extractFormData,
-            });
-            if (!extractResponse.ok) throw new Error('Failed to extract placeholders.');
-            const extractResult = await extractResponse.json();
-            setExtractedPlaceholders(extractResult.placeholders || []);
-            form.setValue('placeholdersJson', JSON.stringify(extractResult.placeholders || []));
-            toast({ title: "Placeholders Extracted", description: `${extractResult.placeholders?.length || 0} placeholders found.`});
-        }
 
     } catch (error) {
         toast({
-            title: "Processing Failed",
+            title: "Upload Failed",
             description: (error as Error).message,
             variant: "destructive",
         });
     } finally {
         setIsUploading(false);
+        if (event.target) {
+            event.target.value = '';
+        }
     }
   };
+
+
+
 
   const onSubmit = (values: TemplateFormValues) => {
     startTransition(async () => {

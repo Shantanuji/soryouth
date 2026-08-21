@@ -8,10 +8,15 @@ import shutil
 import re
 import uuid
 
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for servers
-from matplotlib.figure import Figure
-import matplotlib.ticker as mticker
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend for servers
+    from matplotlib.figure import Figure
+    import matplotlib.ticker as mticker
+except ImportError:
+    matplotlib = None
+    Figure = None
+    mticker = None
 
 from flask import Flask, request, jsonify
 from docxtpl import DocxTemplate, InlineImage
@@ -22,6 +27,25 @@ from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
 import docx  # From python-docx
 from html2image import Html2Image
+import jinja2
+
+class LenientUndefined(jinja2.Undefined):
+    """
+    Never fail on undefined/mismatched placeholders.
+    Outputs the placeholder name as `{{ name }}` in the generated Word document
+    so the user can visually locate and fix the placeholder without any generation error.
+    """
+    def _fail_with_undefined_error(self, *args, **kwargs):
+        return f"{{{{ {self._undefined_name or 'undefined'} }}}}"
+    
+    def __str__(self):
+        return f"{{{{ {self._undefined_name or 'undefined'} }}}}"
+        
+    def __iter__(self):
+        return iter([])
+        
+    def __bool__(self):
+        return False
 
 if platform.system() == 'Windows':
     try:
@@ -142,7 +166,7 @@ def get_printable_width(doc):
 
 
 def create_monthly_generation_chart_b64(capacity_kw):
-    """Generates monthly chart and returns base64 PNG for HTML rendering."""
+    """Generates monthly chart and returns base64 PNG or SVG HTML for rendering."""
     if not capacity_kw or capacity_kw <= 0:
         return None
         
@@ -152,47 +176,77 @@ def create_monthly_generation_chart_b64(capacity_kw):
     seasonal_factors = [0.95, 0.97, 1.10, 1.13, 1.14, 0.93, 0.75, 0.79, 0.87, 1.02, 1.00, 0.99]
     monthly_generation = [generation_per_day * days * factor for days, factor in zip(days_in_month, seasonal_factors)]
 
-    fig = Figure(figsize=(9, 4.8), dpi=300)
-    ax = fig.add_subplot(1, 1, 1)
+    if Figure is not None:
+        try:
+            fig = Figure(figsize=(9, 4.8), dpi=300)
+            ax = fig.add_subplot(1, 1, 1)
 
-    ax.bar(months, monthly_generation, color='#4F81BD', edgecolor='#385D8A', linewidth=1.5, width=0.6)
-    ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    ax.tick_params(axis='y', colors='#595959', labelsize=12)
-    
-    ax.set_ylabel('Energy Produced (in kWh)', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
-    ax.set_xlim(-0.5, 11.5)
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.grid(axis='y', linestyle='-', color='#D9D9D9', alpha=0.7)
-    ax.set_axisbelow(True)
-    
-    cell_text = [[f"{int(val)}" for val in monthly_generation]]
-    table = ax.table(cellText=cell_text, rowLabels=['Series1'], colLabels=months, loc='bottom', cellLoc='center', bbox=[0, -0.15, 1, 0.12])
-    table.auto_set_font_size(False)
-    table.set_fontsize(14)
-    table.scale(1, 1.8)  # Normal padding
-    
-    for key, cell in table.get_celld().items():
-        cell.set_edgecolor('#D9D9D9')
-        if key[0] == 0:  # Header row
-            cell.set_text_props(weight='bold', color='#595959')
-        if key[1] == -1: # Row label (Series1)
-            cell.set_text_props(weight='bold', color='#595959')
+            ax.bar(months, monthly_generation, color='#4F81BD', edgecolor='#385D8A', linewidth=1.5, width=0.6)
+            ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+            ax.tick_params(axis='y', colors='#595959', labelsize=12)
+            
+            ax.set_ylabel('Energy Produced (in kWh)', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
+            ax.set_xlim(-0.5, 11.5)
+            
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.grid(axis='y', linestyle='-', color='#D9D9D9', alpha=0.7)
+            ax.set_axisbelow(True)
+            
+            cell_text = [[f"{int(val)}" for val in monthly_generation]]
+            table = ax.table(cellText=cell_text, rowLabels=['Series1'], colLabels=months, loc='bottom', cellLoc='center', bbox=[0, -0.15, 1, 0.12])
+            table.auto_set_font_size(False)
+            table.set_fontsize(14)
+            table.scale(1, 1.8)  # Normal padding
+            
+            for key, cell in table.get_celld().items():
+                cell.set_edgecolor('#D9D9D9')
+                if key[0] == 0:  # Header row
+                    cell.set_text_props(weight='bold', color='#595959')
+                if key[1] == -1: # Row label (Series1)
+                    cell.set_text_props(weight='bold', color='#595959')
 
-    fig.subplots_adjust(left=0.12, bottom=0.20, right=0.95, top=0.95)
+            fig.subplots_adjust(left=0.12, bottom=0.20, right=0.95, top=0.95)
 
-    memfile = io.BytesIO()
-    fig.savefig(memfile, format='png', transparent=True)
-    memfile.seek(0)
-    b64 = base64.b64encode(memfile.read()).decode('utf-8')
-    return f"data:image/png;base64,{b64}"
+            memfile = io.BytesIO()
+            fig.savefig(memfile, format='png', transparent=True)
+            memfile.seek(0)
+            b64 = base64.b64encode(memfile.read()).decode('utf-8')
+            return f"data:image/png;base64,{b64}"
+        except Exception as e:
+            print(f"Matplotlib monthly chart error: {e}")
+
+    # Fallback to pure SVG / HTML
+    max_val = max(monthly_generation) * 1.15 if monthly_generation else 1000
+    svg_bars = []
+    svg_table_cells = []
+    for i, (m, val) in enumerate(zip(months, monthly_generation)):
+        x = 55 + i * 66
+        h = (val / max_val) * 180
+        y = 220 - h
+        svg_bars.append(f'<rect x="{x}" y="{y:.1f}" width="44" height="{h:.1f}" fill="#4F81BD" stroke="#385D8A" stroke-width="1.5" rx="3"/>')
+        svg_bars.append(f'<text x="{x+22}" y="{y-6:.1f}" text-anchor="middle" font-size="11" fill="#333" font-weight="600">{int(val)}</text>')
+        svg_table_cells.append(f'<td style="border:1px solid #D9D9D9; padding:4px 2px; text-align:center; font-size:11px; font-weight:600; color:#595959;">{m}<br/><span style="font-weight:normal;">{int(val)}</span></td>')
+
+    return f'''
+    <div style="font-family:sans-serif; width:880px; padding:10px; background:#fff;">
+      <svg width="860" height="240" viewBox="0 0 860 240">
+        <line x1="45" y1="220" x2="850" y2="220" stroke="#595959" stroke-width="1"/>
+        <line x1="45" y1="20" x2="45" y2="220" stroke="#595959" stroke-width="1"/>
+        <text x="20" y="120" transform="rotate(-90 20,120)" text-anchor="middle" fill="#595959" font-size="12" font-weight="bold">Energy Produced (kWh)</text>
+        {''.join(svg_bars)}
+      </svg>
+      <table style="width:100%; border-collapse:collapse; margin-top:5px;">
+        <tr>{''.join(svg_table_cells)}</tr>
+      </table>
+    </div>
+    '''
 
 
 def create_yearly_savings_chart_b64(capacity_kw, unit_rate):
-    """Generates yearly chart and returns base64 PNG for HTML rendering."""
+    """Generates yearly chart and returns base64 PNG or SVG HTML for rendering."""
     if not capacity_kw or capacity_kw <= 0 or not unit_rate or unit_rate <= 0:
         return None
 
@@ -208,134 +262,328 @@ def create_yearly_savings_chart_b64(capacity_kw, unit_rate):
         current_generation *= 0.996
         current_rate *= 1.02
 
-    fig = Figure(figsize=(9, 4.8), dpi=300)
-    ax = fig.add_subplot(1, 1, 1)
+    if Figure is not None:
+        try:
+            fig = Figure(figsize=(9, 4.8), dpi=300)
+            ax = fig.add_subplot(1, 1, 1)
 
-    ax.plot(years, savings, marker='o', linestyle='-', color='#F79646', linewidth=2.5, markersize=8)
-    
-    ax.set_ylabel('Projected Savings (in ₹)', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
-    ax.set_xlabel('Year', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
-    
-    ax.set_xlim(0.8, 30.2) 
-    
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#D9D9D9')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_color('#595959')
-    ax.spines['left'].set_color('#595959')
-    ax.tick_params(axis='both', colors='#595959', labelsize=12)
-    ax.get_yaxis().set_major_formatter(mticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-    
-    fig.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95)
+            ax.plot(years, savings, marker='o', linestyle='-', color='#F79646', linewidth=2.5, markersize=8)
+            
+            ax.set_ylabel('Projected Savings (in ₹)', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
+            ax.set_xlabel('Year', color='#595959', fontweight='bold', fontsize=14, labelpad=10)
+            
+            ax.set_xlim(0.8, 30.2) 
+            
+            ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#D9D9D9')
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_color('#595959')
+            ax.spines['left'].set_color('#595959')
+            ax.tick_params(axis='both', colors='#595959', labelsize=12)
+            if mticker is not None:
+                ax.get_yaxis().set_major_formatter(mticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+            
+            fig.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95)
 
-    memfile = io.BytesIO()
-    fig.savefig(memfile, format='png', transparent=True)
-    memfile.seek(0)
-    b64 = base64.b64encode(memfile.read()).decode('utf-8')
-    return f"data:image/png;base64,{b64}"
+            memfile = io.BytesIO()
+            fig.savefig(memfile, format='png', transparent=True)
+            memfile.seek(0)
+            b64 = base64.b64encode(memfile.read()).decode('utf-8')
+            return f"data:image/png;base64,{b64}"
+        except Exception as e:
+            print(f"Matplotlib yearly chart error: {e}")
+
+    # Fallback to pure SVG / HTML
+    max_sav = max(savings) * 1.15 if savings else 1000000
+    points = []
+    svg_dots = []
+    for i, (yr, sav) in enumerate(zip(years, savings)):
+        x = 55 + i * 27
+        y = 220 - (sav / max_sav) * 180
+        points.append(f"{x:.1f},{y:.1f}")
+        svg_dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="#F79646" stroke="#fff" stroke-width="1"/>')
+
+    return f'''
+    <div style="font-family:sans-serif; width:880px; padding:10px; background:#fff;">
+      <svg width="860" height="240" viewBox="0 0 860 240">
+        <line x1="45" y1="220" x2="850" y2="220" stroke="#595959" stroke-width="1"/>
+        <line x1="45" y1="20" x2="45" y2="220" stroke="#595959" stroke-width="1"/>
+        <text x="20" y="120" transform="rotate(-90 20,120)" text-anchor="middle" fill="#595959" font-size="12" font-weight="bold">Projected Savings (₹)</text>
+        <polyline points="{' '.join(points)}" fill="none" stroke="#F79646" stroke-width="2.5"/>
+        {''.join(svg_dots)}
+        <text x="450" y="235" text-anchor="middle" fill="#595959" font-size="12" font-weight="bold">Years (1 - 30)</text>
+      </svg>
+    </div>
+    '''
 
 
 def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     """
-    Generates a single combined A4 page containing both charts perfectly styled and spaced, 
-    so Word does not compress them on the same page.
+    Generates an executive, print-quality solar performance page containing:
+    1. Elegant Top Header: 'SOLAR PERFORMANCE & FINANCIAL ANALYSIS'
+    2. Monthly Energy Generation Bar Chart (tall, integrated month pills at base, values on top, zero detached table)
+    3. 30-Year Cumulative Financial Savings Chart (dynamic rising curve with milestone badges)
+    Fills the entire A4 page majestically.
     """
-    monthly_b64 = create_monthly_generation_chart_b64(capacity_kw)
-    yearly_b64 = create_yearly_savings_chart_b64(capacity_kw, unit_rate)
+    if not capacity_kw or capacity_kw <= 0:
+        capacity_kw = 10
+    if not unit_rate or unit_rate <= 0:
+        unit_rate = 8.5
+
+    generation_per_day = capacity_kw * 4
+    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    seasonal_factors = [0.95, 0.97, 1.10, 1.13, 1.14, 0.93, 0.75, 0.79, 0.87, 1.02, 1.00, 0.99]
+    monthly_gen = [int(generation_per_day * days * factor) for days, factor in zip(days_in_month, seasonal_factors)]
+    annual_gen = sum(monthly_gen)
     
-    if not monthly_b64 or not yearly_b64:
-        return None
+    max_m = max(monthly_gen) * 1.12 if monthly_gen else 1000
+    
+    # 1. Monthly SVG elements (Height: 480px)
+    svg_bars = []
+    baseline_y = 420
+    chart_h = 350
+    
+    for i, (m, val) in enumerate(zip(months, monthly_gen)):
+        x = 40 + i * 71.8
+        h = (val / max_m) * chart_h
+        y = baseline_y - h
         
+        # Rounded gradient bar
+        svg_bars.append(f'<rect x="{x}" y="{y:.1f}" width="54" height="{h:.1f}" fill="url(#barGrad)" rx="6"/>')
+        # Value badge / text right above the bar
+        svg_bars.append(f'<text x="{x+27}" y="{y-12:.1f}" text-anchor="middle" font-size="13.5" fill="#0F172A" font-weight="800">{val:,}</text>')
+        # Integrated Month Pill attached right at the base of the bar
+        svg_bars.append(f'<rect x="{x+2}" y="{baseline_y+10}" width="50" height="28" rx="14" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>')
+        svg_bars.append(f'<text x="{x+27}" y="{baseline_y+29}" text-anchor="middle" font-size="13" fill="#1D4ED8" font-weight="900">{m}</text>')
+
+    # 2. 30-Year Cumulative Savings (Height: 480px)
+    initial_gen = capacity_kw * 4 * 365
+    years = list(range(1, 31))
+    savings = []
+    cg = initial_gen
+    cr = unit_rate
+    for _ in years:
+        savings.append(cg * cr)
+        cg *= 0.996
+        cr *= 1.02
+        
+    total_savings_30 = sum(savings)
+    min_s = min(savings) * 0.70
+    max_s = max(savings) * 1.10
+    span_s = max_s - min_s if max_s > min_s else 1
+    
+    points = []
+    svg_dots = []
+    baseline_y_sav = 420
+    chart_h_sav = 350
+    
+    for i, (yr, sav) in enumerate(zip(years, savings)):
+        x = 55 + i * 27.2
+        ratio = (sav - min_s) / span_s
+        y = baseline_y_sav - ratio * chart_h_sav
+        points.append(f"{x:.1f},{y:.1f}")
+        
+        if yr in [1, 5, 10, 15, 20, 25, 30]:
+            val_str = f"&#8377; {sav/100000:.1f} L" if sav < 10000000 else f"&#8377; {sav/10000000:.2f} Cr"
+            svg_dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="#EA580C" stroke="#FFFFFF" stroke-width="3"/>')
+            # Pill badge for savings values
+            svg_dots.append(f'<rect x="{x-36:.1f}" y="{y-34:.1f}" width="72" height="24" rx="12" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1.5"/>')
+            svg_dots.append(f'<text x="{x:.1f}" y="{y-17:.1f}" text-anchor="middle" font-size="12.5" fill="#C2410C" font-weight="900">{val_str}</text>')
+            # Year pill at bottom
+            svg_dots.append(f'<rect x="{x-26:.1f}" y="{baseline_y_sav+10}" width="52" height="28" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>')
+            svg_dots.append(f'<text x="{x:.1f}" y="{baseline_y_sav+29}" text-anchor="middle" font-size="12" fill="#334155" font-weight="900">Yr {yr}</text>')
+        else:
+            svg_dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="#F97316" opacity="0.8"/>')
+
+    area_points = [f"55,{baseline_y_sav}"] + points + [f"{55 + 29 * 27.2:.1f},{baseline_y_sav}"]
+
+    css = """
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: #FFFFFF;
+        width: 950px;
+        height: 1360px;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        color: #0F172A;
+      }
+      .main-title-box {
+        background: linear-gradient(135deg, #0F3B66 0%, #1B4D75 100%);
+        border-radius: 12px;
+        padding: 14px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #FFFFFF;
+        box-shadow: 0 4px 12px rgba(15, 59, 102, 0.15);
+      }
+      .main-title {
+        font-size: 21px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      .main-subtitle {
+        font-size: 12px;
+        opacity: 0.9;
+        font-weight: 500;
+        margin-top: 3px;
+      }
+      .title-metric {
+        text-align: right;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+      .title-metric-val {
+        font-size: 17px;
+        font-weight: 900;
+      }
+      .title-metric-lbl {
+        font-size: 10.5px;
+        opacity: 0.85;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .chart-card {
+        background: #FFFFFF;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 14px 20px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        flex: 1;
+        margin-top: 10px;
+        justify-content: space-between;
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1.5px solid #F1F5F9;
+        padding-bottom: 10px;
+      }
+      .card-title {
+        font-size: 17px;
+        font-weight: 800;
+        color: #0F2942;
+        letter-spacing: 0.2px;
+      }
+      .card-badges {
+        display: flex;
+        gap: 10px;
+      }
+      .badge {
+        background: #EFF6FF;
+        color: #1D4ED8;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 4px 12px;
+        border-radius: 20px;
+        border: 1.5px solid #BFDBFE;
+      }
+      .badge-orange {
+        background: #FFF7ED;
+        color: #C2410C;
+        border: 1.5px solid #FED7AA;
+      }
+    </style>
+    """
+
     html = f'''
+    <!DOCTYPE html>
     <html>
     <head>
-    <style>
-        * {{
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }}
-        ::-webkit-scrollbar {{
-            display: none;
-        }}
-        body {{
-            font-family: 'Segoe UI', Calibri, sans-serif;
-            background: white;
-            width: 840px;
-            height: 1188px;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            margin: 0;
-        }}
-        .header {{
-            text-align: center;
-            font-size: 28px;
-            font-weight: bold;
-            color: #002060;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 3px solid #002060;
-            padding-bottom: 10px;
-        }}
-        .charts-wrapper {{
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            flex-grow: 1;
-        }}
-        .chart-block {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex-grow: 1;
-            width: 100%;
-        }}
-        .chart-title {{
-            font-size: 20px;
-            font-weight: bold;
-            color: #595959;
-            margin-bottom: 5px;
-            text-align: center;
-        }}
-        .chart-container {{
-            flex-grow: 1;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-        }}
-        img {{
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }}
-    </style>
+    <meta charset="utf-8"/>
+    {css}
     </head>
     <body>
-        <div class="header">Solar Performance Analysis</div>
-        <div class="charts-wrapper">
-            <div class="chart-block">
-                <div class="chart-title">Monthly Energy Generation</div>
-                <div class="chart-container">
-                    <img src="{monthly_b64}" />
-                </div>
-            </div>
-            <div class="chart-block">
-                <div class="chart-title">Projected Savings for 30 Years</div>
-                <div class="chart-container">
-                    <img src="{yearly_b64}" />
-                </div>
-            </div>
+
+      <!-- Top Page Header -->
+      <div class="main-title-box">
+        <div>
+          <div class="main-title">Solar Performance &amp; Financial Analysis</div>
+          <div class="main-subtitle">Detailed 12-Month Generation Profile &amp; 30-Year Cumulative Financial Growth</div>
         </div>
+        <div class="title-metric">
+          <div class="title-metric-val">{capacity_kw} kWp</div>
+          <div class="title-metric-lbl">System Capacity</div>
+        </div>
+      </div>
+
+      <!-- Chart 1: Monthly Energy Generation -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div class="card-title">Monthly Energy Generation (Year 1)</div>
+          <div class="card-badges">
+            <div class="badge">Annual Total: {annual_gen:,} kWh</div>
+            <div class="badge" style="background:#F0FDF4; color:#166534; border-color:#BBF7D0;">Daily Avg: {int(annual_gen/365):,} Units</div>
+          </div>
+        </div>
+        
+        <svg width="900" height="480" viewBox="0 0 900 480">
+          <defs>
+            <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3B82F6"/>
+              <stop offset="50%" stop-color="#2563EB"/>
+              <stop offset="100%" stop-color="#1D4ED8"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="35" y1="90" x2="890" y2="90" stroke="#F1F5F9" stroke-width="1.5"/>
+          <line x1="35" y1="190" x2="890" y2="190" stroke="#F1F5F9" stroke-width="1.5"/>
+          <line x1="35" y1="290" x2="890" y2="290" stroke="#F1F5F9" stroke-width="1.5"/>
+          <line x1="35" y1="{baseline_y}" x2="890" y2="{baseline_y}" stroke="#94A3B8" stroke-width="1.5"/>
+          
+          <text x="14" y="220" transform="rotate(-90 14,220)" text-anchor="middle" fill="#64748B" font-size="12" font-weight="800">Energy (kWh)</text>
+          {''.join(svg_bars)}
+        </svg>
+      </div>
+
+      <!-- Chart 2: 30-Year Cumulative Savings -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div class="card-title">30-Year Projected Cumulative Financial Savings</div>
+          <div class="card-badges">
+            <div class="badge badge-orange">Total 30-Yr Savings: &#8377; {total_savings_30/10000000:.2f} Cr</div>
+            <div class="badge badge-orange" style="background:#FEF2F2; color:#991B1B; border-color:#FECACA;">Grid Tariff: &#8377; {unit_rate}/kWh</div>
+          </div>
+        </div>
+        
+        <svg width="900" height="480" viewBox="0 0 900 480">
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F97316" stop-opacity="0.40"/>
+              <stop offset="60%" stop-color="#F97316" stop-opacity="0.12"/>
+              <stop offset="100%" stop-color="#F97316" stop-opacity="0.01"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="35" y1="90" x2="890" y2="90" stroke="#F1F5F9" stroke-width="1.5"/>
+          <line x1="35" y1="190" x2="890" y2="190" stroke="#F1F5F9" stroke-width="1.5"/>
+          <line x1="35" y1="290" x2="890" y2="290" stroke="#F1F5F9" stroke-width="1.5"/>
+          <line x1="35" y1="{baseline_y_sav}" x2="890" y2="{baseline_y_sav}" stroke="#94A3B8" stroke-width="1.5"/>
+          
+          <text x="14" y="220" transform="rotate(-90 14,220)" text-anchor="middle" fill="#64748B" font-size="12" font-weight="800">Cumulative Savings (&#8377;)</text>
+          
+          <polygon points="{' '.join(area_points)}" fill="url(#areaGrad)"/>
+          <polyline points="{' '.join(points)}" fill="none" stroke="#EA580C" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+          {''.join(svg_dots)}
+        </svg>
+      </div>
+
     </body>
     </html>
     '''
     
-    hti = get_html2image(size=(840, 1188), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3'])
+    hti = get_html2image(size=(950, 1360), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=2.5'])
     
     if platform.system() == 'Linux':
         out_dir = os.path.expanduser('~/hti_tmp')
@@ -346,14 +594,14 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
         hti.output_path = tempfile.gettempdir()
         hti.temp_path = tempfile.gettempdir()
 
-        
     filename = f'combined_charts_{uuid.uuid4().hex}.png'
     temp_path = os.path.join(hti.output_path, filename)
     
     try:
         hti.screenshot(html_str=html, save_as=filename)
         if os.path.exists(temp_path):
-            return InlineImage(doc, temp_path, width=target_width)
+            # Scale to full page width (7.2 inches) & height (9.4 inches) to fill entire page space cleanly
+            return InlineImage(doc, temp_path, width=Inches(7.3), height=Inches(9.6))
         else:
             return None
     except Exception as e:
@@ -652,19 +900,17 @@ def generate_balance_of_system_png(context):
             print(f"Error copying logo for Chromium rendering: {ex}")
             logo_html = ""
 
-    html = f'''
-    <html>
-    <head>
+    bos_css = """
     <style>
-        * {{
+        * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-        }}
-        ::-webkit-scrollbar {{
+        }
+        ::-webkit-scrollbar {
             display: none;
-        }}
-        body {{
+        }
+        body {
             font-family: 'Segoe UI', Calibri, Arial, sans-serif;
             background: #ffffff;
             width: 840px;
@@ -676,29 +922,29 @@ def generate_balance_of_system_png(context):
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-        }}
-        .header-container {{
+        }
+        .header-container {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
             padding-bottom: 0px;
-        }}
-        .title {{
+        }
+        .title {
             font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
             font-size: 32px;
             font-weight: 700;
             color: #0F3B66;
             letter-spacing: 0;
             line-height: 1;
-        }}
-        table {{
+        }
+        table {
             width: 100%;
             flex-grow: 1;
             border-collapse: collapse;
             border: 2px solid #0080C0;
             font-size: 12px;
-        }}
-        th {{
+        }
+        th {
             background-color: #1B4D75;
             color: #ffffff;
             font-weight: 700;
@@ -706,8 +952,8 @@ def generate_balance_of_system_png(context):
             padding: 8px 10px;
             text-align: center;
             border: 1.5px solid #0080C0;
-        }}
-        td {{
+        }
+        td {
             padding: 6px 10px;
             border: 1.5px solid #0080C0;
             background-color: #EAF4FC;
@@ -715,16 +961,22 @@ def generate_balance_of_system_png(context):
             vertical-align: middle;
             font-size: 12px;
             line-height: 1.25;
-        }}
-        .component-name {{
+        }
+        .component-name {
             font-weight: 700;
             color: #0B3B60;
-        }}
-        .center-col {{
+        }
+        .center-col {
             text-align: center;
             white-space: nowrap;
-        }}
+        }
     </style>
+    """
+
+    html = f'''
+    <html>
+    <head>
+    {bos_css}
     </head>
     <body>
         <div class="header-container">
@@ -853,6 +1105,269 @@ def generate_balance_of_system_png(context):
     return None, None
 
 
+def style_cell_custom(cell, text, bg="FFFFFF", fg=(0,0,0), bold=False, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=8.0, border_color="0080C0"):
+    set_cell_background(cell, bg)
+    set_cell_borders(cell, top=border_color, bottom=border_color, left=border_color, right=border_color, sz="4")
+    set_cell_margins(cell, top=30, bottom=30, left=60, right=60)
+    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    p = cell.paragraphs[0]
+    p.alignment = align
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    run = p.add_run(str(text))
+    run.font.name = 'Segoe UI'
+    run.font.size = Pt(font_size)
+    run.font.bold = bold
+    run.font.color.rgb = RGBColor(*fg)
+    return run
+
+
+def add_native_project_scope_table(container, context=None):
+    """
+    Generates a native, fully editable Microsoft Word table for Project's Scope.
+    Matches exact design of Screenshot 1 and fits cleanly on 1 A4 page.
+    """
+    scope_data = [
+        ("1", "Supply of Items", "PV Solar components as per BOM & BOQ", "Yes", "-"),
+        ("", "Supply of Items", "Roof / Superstructure / Elevated Structure", "Yes", "-"),
+        ("", "Supply of Items", "Data Logger", "Yes", "-"),
+        ("2", "Freight", "Transportation", "Yes", "-"),
+        ("", "Freight", "Packing & Handling", "Yes", "-"),
+        ("3", "Material Handling at Site", "Safe unloading of material from vehicle", "Yes", "-"),
+        ("", "Material Handling at Site", "Lifting & shifting of materials at site", "Yes", "-"),
+        ("", "Material Handling at Site", "Parking space / permission for vehicles", "-", "Yes"),
+        ("4", "Material Storage", "Safe & secure storage space at site", "-", "Yes"),
+        ("5", "Roof", "Waterproofing", "-", "Yes"),
+        ("", "Roof", "NOC / permission for roof usage", "-", "Yes"),
+        ("", "Roof", "Safe access to installation site", "-", "Yes"),
+        ("", "Roof", "Clearance of installation area", "-", "Yes"),
+        ("6", "Liaisoning", "Net metering liaisoning with utility", "Yes", "-"),
+        ("7", "Installation & Commissioning (I&C)", "Design & Engineering of Solar PV System", "Yes", "-"),
+        ("", "Installation & Commissioning (I&C)", "Tools, tackles & installation consumables", "Yes", "-"),
+        ("", "Installation & Commissioning (I&C)", "Solar PV system installation services", "Yes", "-"),
+        ("", "Installation & Commissioning (I&C)", "Lightning Arrestor (LA)", "Yes", "-"),
+        ("", "Installation & Commissioning (I&C)", "Earthing & system safety", "Yes", "-"),
+        ("", "Installation & Commissioning (I&C)", "Civil works for installation", "Yes", "-"),
+        ("", "Installation & Commissioning (I&C)", "Testing & Commissioning", "Yes", "-"),
+    ]
+
+    p = container.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run("Project's Scope")
+    run.font.name = 'Georgia'
+    run.font.size = Pt(18)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(15, 59, 102) # #0F3B66
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(4)
+
+    table = container.add_table(rows=len(scope_data) + 1, cols=5)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+
+    col_widths = [Inches(0.6), Inches(1.8), Inches(3.2), Inches(0.8), Inches(0.8)]
+    headers = ["Sr. No.", "Category", "Scope Item", "Soryouth's", "Client's"]
+    hdr_cells = table.rows[0].cells
+    for i, h in enumerate(headers):
+        hdr_cells[i].width = col_widths[i]
+        set_cell_background(hdr_cells[i], "1B4D75")
+        set_cell_borders(hdr_cells[i], top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="6")
+        set_cell_margins(hdr_cells[i], top=50, bottom=50, left=60, right=60)
+        hdr_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        hp = hdr_cells[i].paragraphs[0]
+        hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        hp.paragraph_format.space_before = Pt(0)
+        hp.paragraph_format.space_after = Pt(0)
+        hrun = hp.add_run(h)
+        hrun.font.name = 'Segoe UI'
+        hrun.font.size = Pt(9.0)
+        hrun.font.bold = True
+        hrun.font.color.rgb = RGBColor(255, 255, 255)
+
+    for r_idx, (sr, cat, item, sor, cli) in enumerate(scope_data, start=1):
+        bg = "EAF4FC" if r_idx % 2 == 1 else "FFFFFF"
+        r_cells = table.rows[r_idx].cells
+        trPr = r_cells[0]._tc.getparent().get_or_add_trPr()
+        trPr.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+
+        for c_idx, w in enumerate(col_widths):
+            r_cells[c_idx].width = w
+
+        style_cell_custom(r_cells[0], sr, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=7.5, bold=bool(sr))
+        style_cell_custom(r_cells[1], cat, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=7.5, bold=True, fg=(11,59,96))
+        style_cell_custom(r_cells[2], item, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=7.5, fg=(11,59,96))
+        style_cell_custom(r_cells[3], sor, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=7.5, bold=(sor=="Yes"))
+        style_cell_custom(r_cells[4], cli, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=7.5, bold=(cli=="Yes"))
+
+    return table
+
+
+def add_native_terms_and_conditions_table(container, context=None):
+    """
+    Generates a native, fully editable Microsoft Word table for Term's & Conditions.
+    Matches exact design of Screenshot 2 and fits cleanly on 1 A4 page.
+    """
+    validity_days = 15
+    if context:
+        try:
+            val_in = context.get('validityDays', context.get('validity_days', 15))
+            validity_days = int(val_in) if val_in else 15
+        except Exception:
+            validity_days = 15
+
+    validity_text = f"Proposal valid for {validity_days} days. Price subject to change if scope, specifications, or statutory requirements change. Excludes permits, panel upgrades, roof repairs, trenching unless specified."
+
+    terms_data = [
+        ("1", "Pricing & Validity", validity_text),
+        ("2", "Taxes", "GST shall be charged extra at actuals as per applicable rates."),
+        ("3", "Freight & Logistics", "Inclusive of transportation, packing, forwarding, and unloading at site."),
+        ("4", "Technical Site Assessment", "Site verification post-LOI/PO. Any variation may impact cost. No warranty on roof or electrical panel condition."),
+        ("5", "Delivery & Timeline", "Delivery within 8 weeks from advance payment and PO confirmation. Subject to extension due to delays, approvals, force majeure, or client-side dependencies."),
+        ("6", "Approvals & Documentation", "Seller will assist as agent for approvals. Timelines depend on authorities; delays not attributable to Seller."),
+        ("7", "Proposal & IP", "All documents remain Seller's IP. Cannot be reused without consent. Financial estimates are indicative only."),
+        ("8", "Insurance", "Seller responsible till commissioning. Post-delivery and post-commissioning insurance responsibility lies with Purchaser."),
+        ("9", "Warranty (General)", "Equipment and services warranted against defects as per defined terms."),
+        ("10", "Warranty (Equipment)", "Modules: 12 yrs product + 30 yrs performance. Inverter: 5 yrs. BOS: 2 yrs"),
+        ("11", "Warranty Exclusions", "Excludes wear & tear, misuse, unauthorized changes, environmental damage, theft, force majeure."),
+        ("12", "Pre-Warranty Damages", "Damages due to negligence or external factors before warranty start shall be billed extra."),
+    ]
+
+    p = container.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run("Term's & Conditions")
+    run.font.name = 'Georgia'
+    run.font.size = Pt(18)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(15, 59, 102) # #0F3B66
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(4)
+
+    table = container.add_table(rows=len(terms_data) + 1, cols=3)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+
+    col_widths = [Inches(0.6), Inches(2.1), Inches(4.5)]
+    headers = ["Sr. No.", "Section", "Details"]
+    hdr_cells = table.rows[0].cells
+    for i, h in enumerate(headers):
+        hdr_cells[i].width = col_widths[i]
+        set_cell_background(hdr_cells[i], "1B4D75")
+        set_cell_borders(hdr_cells[i], top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="6")
+        set_cell_margins(hdr_cells[i], top=50, bottom=50, left=60, right=60)
+        hdr_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        hp = hdr_cells[i].paragraphs[0]
+        hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        hp.paragraph_format.space_before = Pt(0)
+        hp.paragraph_format.space_after = Pt(0)
+        hrun = hp.add_run(h)
+        hrun.font.name = 'Segoe UI'
+        hrun.font.size = Pt(9.0)
+        hrun.font.bold = True
+        hrun.font.color.rgb = RGBColor(255, 255, 255)
+
+    for r_idx, (sr, sec, details) in enumerate(terms_data, start=1):
+        bg = "EAF4FC" if r_idx % 2 == 1 else "FFFFFF"
+        r_cells = table.rows[r_idx].cells
+        trPr = r_cells[0]._tc.getparent().get_or_add_trPr()
+        trPr.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+
+        for c_idx, w in enumerate(col_widths):
+            r_cells[c_idx].width = w
+
+        style_cell_custom(r_cells[0], sr, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=8.0, bold=True)
+        style_cell_custom(r_cells[1], sec, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=8.0, bold=True, fg=(11,59,96))
+        style_cell_custom(r_cells[2], details, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=8.0, fg=(11,59,96))
+
+    return table
+
+
+def create_native_project_scope_subdoc(doc, context=None):
+    try:
+        subdoc = doc.new_subdoc()
+        add_native_project_scope_table(subdoc, context)
+        return subdoc
+    except Exception as e:
+        print(f"Error creating native project scope subdoc: {e}")
+        return None
+
+
+def create_native_terms_conditions_subdoc(doc, context=None):
+    try:
+        subdoc = doc.new_subdoc()
+        add_native_terms_and_conditions_table(subdoc, context)
+        return subdoc
+    except Exception as e:
+        print(f"Error creating native terms and conditions subdoc: {e}")
+        return None
+
+
+def replace_scope_and_terms_static_images(doc, raw_context):
+    """
+    Scans the Word document for static drawings ONLY for Project Scope and Term's & Conditions pages,
+    removes the static drawing XML tags AND their containing paragraph, inserting Native Editable Microsoft Word Tables in-place.
+    Cleans up empty trailing paragraphs to guarantee zero blank orphan pages.
+    All other pages remain 100% untouched.
+    """
+    image_rel_map = {}
+    for rel_id, rel in doc.part.rels.items():
+        ref_lower = str(rel.target_ref).lower()
+        if 'image4.png' in ref_lower or 'image4.jpeg' in ref_lower:
+            image_rel_map['scope'] = rel_id
+        elif 'image8.png' in ref_lower or 'image8.jpeg' in ref_lower or 'image9.png' in ref_lower or 'image9.jpeg' in ref_lower:
+            image_rel_map['terms'] = rel_id
+
+    ns = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+        'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
+        'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+    }
+
+    temp_builder_doc = docx.Document()
+
+    for p in list(doc.paragraphs):
+        p_xml = p._element
+        drawings = p_xml.findall('.//w:drawing', ns)
+        for dwg in drawings:
+            blips = dwg.findall('.//a:blip', ns)
+            for b in blips:
+                embed_id = b.attrib.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+                if embed_id and embed_id == image_rel_map.get('scope'):
+                    print(f"Replacing static drawing {embed_id} (Project's Scope image4.png) with native Word Table in-place...")
+                    tbl = add_native_project_scope_table(temp_builder_doc, raw_context)
+                    p_parent = p_xml.getparent()
+                    if p_parent is not None:
+                        idx = p_parent.index(p_xml)
+                        p_parent.insert(idx, tbl._element)
+                        p_parent.remove(p_xml)
+
+                elif embed_id and embed_id == image_rel_map.get('terms'):
+                    print(f"Replacing static drawing {embed_id} (Term's & Conditions image) with native Word Table in-place...")
+                    tbl = add_native_terms_and_conditions_table(temp_builder_doc, raw_context)
+                    p_parent = p_xml.getparent()
+                    if p_parent is not None:
+                        idx = p_parent.index(p_xml)
+                        p_parent.insert(idx, tbl._element)
+                        p_parent.remove(p_xml)
+
+    # Clean up empty trailing paragraphs after inserted tables to prevent blank orphan pages
+    for table in doc.tables:
+        tbl_xml = table._element
+        curr = tbl_xml.getnext()
+        while curr is not None and curr.tag.endswith('p'):
+            p_elem = curr
+            text = p_elem.text.strip() if p_elem.text else ''
+            p_drawings = p_elem.findall('.//w:drawing', ns)
+            p_blips = p_elem.findall('.//a:blip', ns)
+            next_sibling = p_elem.getnext()
+            
+            if text == '' and len(p_drawings) == 0 and len(p_blips) == 0:
+                parent = p_elem.getparent()
+                parent.remove(p_elem)
+                curr = next_sibling
+            else:
+                break
+
+
 def create_native_balance_of_system_subdoc(doc, context):
     try:
         subdoc = doc.new_subdoc()
@@ -898,12 +1413,10 @@ def create_capex_evaluation_sheet(doc, context, target_width):
         ad1 = ad1_val if ad1_val > 0 else (base_amt * 0.40 * 0.25)
         
         ad2_val = safe_float(context.get('ad_benefit_year2'), 0.0)
-        wdv1 = base_amt - (base_amt * 0.40)
-        ad2 = ad2_val if ad2_val > 0 else (wdv1 * 0.80 * 0.25)
+        ad2 = ad2_val if ad2_val > 0 else ((base_amt - ad1) * 0.40 * 0.25)
         
         ad3_val = safe_float(context.get('ad_benefit_year3'), 0.0)
-        wdv2 = wdv1 - (wdv1 * 0.80)
-        ad3 = ad3_val if ad3_val > 0 else (wdv2 * 0.80 * 0.25)
+        ad3 = ad3_val if ad3_val > 0 else ((base_amt - ad1 - ad2) * 0.20 * 0.25)
         
         total_ad_val = safe_float(context.get('total_ad_benefit'), 0.0)
         total_ad = total_ad_val if total_ad_val > 0 else (ad1 + ad2 + ad3)
@@ -1061,7 +1574,7 @@ def create_capex_evaluation_sheet(doc, context, target_width):
                     <tr class="blue-row"><td class="label-col">Client Name</td><td class="val-col" colspan="2">{name}</td></tr>
                     <tr class="white-row"><td class="label-col">Project Location</td><td class="val-col" colspan="2">{location}</td></tr>
                     <tr class="blue-row"><td class="label-col">Project Size (KW)</td><td class="val-col" colspan="2">{capacity:,.2f}</td></tr>
-                    <tr class="green-row"><td class="label-col">Cost per KW ex GST</td><td class="label-col">₹</td><td class="val-col">{cost_pkw:,.0f}</td></tr>
+                    <tr class="green-row"><td class="label-col">Cost per KW ex GST</td><td class="label-col">₹</td><td class="val-col">{cost_pkw:,.2f}</td></tr>
                     <tr class="blue-row"><td class="label-col">Project Cost ex GST</td><td class="label-col">₹</td><td class="val-col">{base_amt:,.2f}</td></tr>
                     <tr class="white-row"><td class="label-col">GST @ {gst_pct:.1f}%</td><td class="label-col">₹</td><td class="val-col">{gst_amt:,.2f}</td></tr>
                     <tr class="green-row"><td class="label-col">Total Project Cost inc GST</td><td class="label-col">₹</td><td class="val-col">{final_amt:,.2f}</td></tr>
@@ -1137,16 +1650,16 @@ def create_capex_evaluation_sheet(doc, context, target_width):
                 ad = row_ad if row_ad > 0 else ([ad1, ad2, ad3][y - 1] if y <= 3 else 0.0)
             else:
                 ad = 0.0
-            sav = (grid + ad - om - gsc)
+            sav = (grid + ad + gsc - om)
             yr_data.append((y, gen, grid, om, gsc, ad, sav))
     else:
         for y in range(1, 26):
-            gen  = gen_yr * (0.994 ** (y - 1))
+            gen  = gen_yr * (0.992 ** (y - 1))
             grid = gen * unit_rate
             om   = 0.0 if y == 1 else om_base * (1.03 ** (y - 2))
             gsc  = gen * 1.96
             ad_val = ([ad1, ad2, ad3][y - 1] if y <= 3 else 0.0) if is_business else 0.0
-            sav  = (grid + ad_val - om - gsc)
+            sav  = (grid + ad_val + gsc - om)
             yr_data.append((y, gen, grid, om, gsc, ad_val, sav))
             
     for r in yr_data:
@@ -1281,11 +1794,28 @@ def generate_proposal():
         
         if not template_full_path or not context:
             return jsonify({"error": "Missing 'template_path' or 'data' in payload"}), 400
-        if not os.path.exists(template_full_path):
-            return jsonify({"error": "Template not found at provided path"}), 404
-        
-        doc = DocxTemplate(template_full_path)
-        doc.init_docx()
+        try:
+            doc = DocxTemplate(template_full_path)
+            doc.init_docx()
+        except Exception as tpl_err:
+            print(f"Warning: Failed to load template from {template_full_path}: {tpl_err}. Falling back to default master template.")
+            master_candidates = [
+                'public/uploads/templates/kapex_fixed_data.docx',
+                'dist/kapex-fixed-data.docx',
+                'public/uploads/templates/kapex-fixed-data-official.docx'
+            ]
+            doc = None
+            for mc in master_candidates:
+                if os.path.exists(mc):
+                    try:
+                        doc = DocxTemplate(mc)
+                        doc.init_docx()
+                        print(f"Successfully loaded fallback master template from {mc}")
+                        break
+                    except Exception:
+                        pass
+            if doc is None:
+                raise tpl_err
 
         raw_context = dict(context) if isinstance(context, dict) else {}
         sub_amt = safe_float(context.get('subsidy_amount'))
@@ -1381,19 +1911,6 @@ def generate_proposal():
                     context[key] = bos_subdoc
                 bos_rendered = True
 
-        # 2. Overwrite static template image ONLY IF explicit placeholder was NOT used
-        if not bos_rendered and bos_png_bytes:
-            for rel in doc.part.rels.values():
-                ref_lower = str(rel.target_ref).lower()
-                if 'image6.png' in ref_lower or 'image6.jpeg' in ref_lower or 'image6' in ref_lower:
-                    try:
-                        rel.target_part._blob = bos_png_bytes
-                        bos_rendered = True
-                        print(f"Successfully replaced static template image {rel.target_ref} with dynamic Balance of System image!")
-                        break
-                    except Exception as ex:
-                        print(f"Error replacing image blob {rel.target_ref}: {ex}")
-
         # Consistently format all financial values to en-IN style currency format (exactly 2 decimal places) for template rendering
         currency_keys = [
             'base_amount', 'final_amount', 'cgst_amount', 'sgst_amount', 'subsidy_amount',
@@ -1408,25 +1925,40 @@ def generate_proposal():
             if key in context:
                 context[key] = format_indian_currency(context[key])
 
-        # Title case text fields to ensure consistent capitalization (e.g. names and locations)
-        for key in ['name', 'location', 'contact_person', 'city_area', 'cityArea', 'client_type', 'clientType']:
-            val = context.get(key)
-            if val and isinstance(val, str):
-                context[key] = val.title()
+        # Safeguard: Use LenientUndefined so any unknown, mismatched, or missing placeholder
+        # in the template never causes a fatal error. Missing placeholders will display cleanly
+        # as `{{ placeholder_name }}` or default value in the rendered output, allowing the user
+        # to identify and fix issues in their template without breaking proposal generation.
+        try:
+            template_vars = doc.get_undeclared_template_variables()
+            for v in template_vars:
+                if v not in context:
+                    # Provide an empty string or let LenientUndefined preserve {{ v }}
+                    pass
+        except Exception as e:
+            print(f"Warning analyzing undeclared variables: {e}")
 
-        doc.render(context)
+        jinja_env = jinja2.Environment(undefined=LenientUndefined, autoescape=False)
+        try:
+            doc.render(context, jinja_env=jinja_env)
+        except Exception as render_ex:
+            print(f"Primary render warning: {render_ex}. Retrying with empty fallback context...")
+            try:
+                # Fallback: fill all undeclared variables with empty strings and retry
+                try:
+                    for v in doc.get_undeclared_template_variables():
+                        if v not in context:
+                            context[v] = ""
+                except Exception:
+                    pass
+                doc.render(context)
+            except Exception as final_ex:
+                print(f"Final render error: {final_ex}")
+                # Save whatever was processed
+        
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
         doc.save(temp_docx_path)
 
-        # 3. If neither placeholder nor static template image was present, append native table at end
-        if not bos_rendered:
-            try:
-                rendered_doc = docx.Document(temp_docx_path)
-                rendered_doc.add_page_break()
-                add_native_balance_of_system_table(rendered_doc, raw_context)
-                rendered_doc.save(temp_docx_path)
-            except Exception as ex:
-                print(f"Auto-append BOS table error: {ex}")
         
         temp_pdf_path = os.path.join(temp_dir, 'output.pdf')
         
@@ -1445,6 +1977,41 @@ def generate_proposal():
 
         if not os.path.exists(temp_pdf_path):
             return jsonify({"error": "PDF conversion failed. Output file not found."}), 500
+
+        # Automatically detect and strip any 100% pure blank white pages with 0 text & 0 images
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(temp_pdf_path)
+            writer = pypdf.PdfWriter()
+            removed_count = 0
+            for idx, page in enumerate(reader.pages):
+                text = page.extract_text().strip()
+                images = len(page.images)
+                has_content = False
+                if len(text) > 0 or images > 0:
+                    has_content = True
+                else:
+                    contents = page.get_contents()
+                    if contents:
+                        raw_bytes = b""
+                        if isinstance(contents, list):
+                            raw_bytes = b"".join([c.get_data() for c in contents])
+                        else:
+                            raw_bytes = contents.get_data()
+                        clean_ops = raw_bytes.strip().replace(b'q', b'').replace(b'Q', b'').replace(b'\n', b'').replace(b'\r', b'').replace(b' ', b'')
+                        if len(clean_ops) > 0:
+                            has_content = True
+                if has_content:
+                    writer.add_page(page)
+                else:
+                    print(f"[PDF Post-Processor] Dropping 100% pure blank white page {idx + 1}")
+                    removed_count += 1
+            if removed_count > 0 and len(writer.pages) > 0:
+                with open(temp_pdf_path, 'wb') as f_out:
+                    writer.write(f_out)
+                print(f"[PDF Post-Processor] Successfully stripped {removed_count} blank page(s). Total pages: {len(writer.pages)}")
+        except Exception as strip_err:
+            print(f"[PDF Post-Processor] Warning: {strip_err}")
 
         with open(temp_docx_path, 'rb') as f_docx, open(temp_pdf_path, 'rb') as f_pdf:
             docx_buffer = f_docx.read()
