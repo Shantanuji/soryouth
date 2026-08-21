@@ -608,7 +608,7 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
         hti.screenshot(html_str=html, save_as=filename)
         if os.path.exists(temp_path):
             # Scale to fit standard A4 printable bounds perfectly without spilling to next page
-            return InlineImage(doc, temp_path, width=Inches(6.8), height=Inches(8.7))
+            return InlineImage(doc, temp_path, width=target_width)
         else:
             return None
     except Exception as e:
@@ -1963,18 +1963,7 @@ def generate_proposal():
             except Exception as final_ex:
                 print(f"Final render error: {final_ex}")
                 # Save whatever was processed
-        # Ensure that Balance Of System, Capex Evaluation Sheet, Project Scope, and Terms & Conditions
-        # each start cleanly on their own dedicated page with page break before
-        try:
-            for t in doc.tables:
-                first_cell_text = t.rows[0].cells[0].text.lower() if t.rows and t.rows[0].cells else ''
-                if any(k in first_cell_text for k in ['evaluation', 'capex', 'project', 'scope', "term's", 'terms']):
-                    for r in t.rows[:1]:
-                        for c in r.cells:
-                            for cp in c.paragraphs:
-                                cp.paragraph_format.page_break_before = True
-        except Exception as pbe:
-            print(f"Warning setting table page breaks: {pbe}")
+
             
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
         doc.save(temp_docx_path)
