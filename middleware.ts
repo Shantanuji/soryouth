@@ -17,8 +17,23 @@ async function verifyToken(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Immediately bypass upload endpoints to prevent stream buffering on large files (up to 100MB)
-  if (pathname.startsWith('/api/templates/upload')) {
+  // 1. Immediately bypass Next.js internal assets, CSS, JS chunks, images, and fonts
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.startsWith('/assets') ||
+    pathname.startsWith('/uploads') ||
+    pathname.startsWith('/api/templates/upload') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.jpeg') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.woff') ||
+    pathname.endsWith('.woff2')
+  ) {
     return NextResponse.next();
   }
 
@@ -48,6 +63,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/templates/upload).*)'],
+  matcher: ['/((?!_next/static|_next/image|_next/data|favicon.ico|assets|static|uploads|.*\\..*).*)'],
 };
 
