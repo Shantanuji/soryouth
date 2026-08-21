@@ -330,7 +330,21 @@ export async function POST(request: NextRequest) {
         if (template.originalDocxPath.startsWith('http')) {
           const s3Url = new URL(template.originalDocxPath);
           const templateKey = s3Url.pathname.substring(1); // Remove leading '/'
-          templateBuffer = await getFileFromS3(templateKey);
+          // ALWAYS check local VPS copy first (fast, no S3 network cost)
+          const localCopyPath = path.join(process.cwd(), 'public', templateKey);
+          try {
+            const localBuffer = await fs.readFile(localCopyPath);
+            if (localBuffer.length > 50000) {
+              templateBuffer = localBuffer;
+              console.log(`[Generate] Using fast local template copy: ${localCopyPath}`);
+            }
+          } catch {
+            // Local copy missing, fall back to S3 download
+          }
+          if (!templateBuffer) {
+            console.log(`[Generate] Local copy not found, downloading from S3: ${templateKey}`);
+            templateBuffer = await getFileFromS3(templateKey);
+          }
         } else {
           // Local path stored in DB
           const localPath = path.isAbsolute(template.originalDocxPath)

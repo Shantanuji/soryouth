@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { uploadFileToS3 } from '@/lib/s3';
+import path from 'path';
+import fs from 'fs/promises';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // Allow ample time for 50MB+ uploads
@@ -68,12 +70,28 @@ export async function POST(request: NextRequest) {
     const safeFilename = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '') || `template-${Date.now()}.docx`;
     const uniqueKey = `uploads/${folderParam}/${Date.now()}-${safeFilename}`;
 
-    // Upload to S3 or local storage
-    const fileUrl = await uploadFileToS3(
-      fileBuffer,
-      uniqueKey,
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    );
+    // 1. ALWAYS save template locally on VPS for fast generation (no S3 round-trip)
+    const localSavePath = path.join(process.cwd(), 'public', uniqueKey);
+    await fs.mkdir(path.dirname(localSavePath), { recursive: true });
+    await fs.writeFile(localSavePath, fileBuffer);
+    console.log(`[Template Upload] Saved locally: ${localSavePath}`);
+
+    // 2. Also upload to S3 in background (non-blocking, for backup only)
+    let fileUrl = `/${uniqueKey}`; // Default to local relative path
+    try {
+      const s3Url = await uploadFileToS3(
+        fileBuffer,
+        uniqueKey,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      );
+      // Keep S3 URL only if it is a real http URL (not local fallback)
+      if (s3Url.startsWith('http')) {
+        fileUrl = s3Url;
+        console.log(`[Template Upload] Also uploaded to S3: ${s3Url}`);
+      }
+    } catch (s3Err: any) {
+      console.warn(`[Template Upload] S3 upload failed (local copy still available): ${s3Err?.message}`);
+    }
 
     // Safely extract placeholders if possible
     let placeholders: string[] = [];

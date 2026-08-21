@@ -401,98 +401,105 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     css = """
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
+      html, body {
+        overflow: hidden !important;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background: #FFFFFF;
-        width: 950px;
-        height: 1360px;
-        padding: 12px 16px;
+        width: 880px !important;
+        height: 1140px !important;
+        padding: 8px 12px !important;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         color: #0F172A;
       }
+      ::-webkit-scrollbar {
+        display: none !important;
+        width: 0px !important;
+        height: 0px !important;
+      }
       .main-title-box {
         background: linear-gradient(135deg, #0F3B66 0%, #1B4D75 100%);
-        border-radius: 12px;
-        padding: 14px 22px;
+        border-radius: 10px;
+        padding: 10px 18px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         color: #FFFFFF;
-        box-shadow: 0 4px 12px rgba(15, 59, 102, 0.15);
+        box-shadow: 0 3px 8px rgba(15, 59, 102, 0.12);
       }
       .main-title {
-        font-size: 21px;
+        font-size: 18px;
         font-weight: 900;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
       }
       .main-subtitle {
-        font-size: 12px;
+        font-size: 11px;
         opacity: 0.9;
         font-weight: 500;
-        margin-top: 3px;
+        margin-top: 2px;
       }
       .title-metric {
         text-align: right;
         background: rgba(255, 255, 255, 0.15);
-        padding: 6px 14px;
-        border-radius: 8px;
+        padding: 4px 12px;
+        border-radius: 6px;
         border: 1px solid rgba(255, 255, 255, 0.25);
       }
       .title-metric-val {
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 900;
       }
       .title-metric-lbl {
-        font-size: 10.5px;
+        font-size: 9.5px;
         opacity: 0.85;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
       }
       .chart-card {
         background: #FFFFFF;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 14px 20px;
+        border: 1.2px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 10px 16px;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.03);
         flex: 1;
-        margin-top: 10px;
+        margin-top: 8px;
         justify-content: space-between;
+        overflow: hidden;
       }
       .card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1.5px solid #F1F5F9;
-        padding-bottom: 10px;
+        border-bottom: 1.2px solid #F1F5F9;
+        padding-bottom: 6px;
       }
       .card-title {
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 800;
         color: #0F2942;
         letter-spacing: 0.2px;
       }
       .card-badges {
         display: flex;
-        gap: 10px;
+        gap: 8px;
       }
       .badge {
         background: #EFF6FF;
         color: #1D4ED8;
-        font-size: 13px;
+        font-size: 11.5px;
         font-weight: 800;
-        padding: 4px 12px;
-        border-radius: 20px;
-        border: 1.5px solid #BFDBFE;
+        padding: 3px 10px;
+        border-radius: 16px;
+        border: 1.2px solid #BFDBFE;
       }
       .badge-orange {
         background: #FFF7ED;
         color: #C2410C;
-        border: 1.5px solid #FED7AA;
+        border: 1.2px solid #FED7AA;
       }
     </style>
     """
@@ -528,7 +535,7 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
           </div>
         </div>
         
-        <svg width="900" height="480" viewBox="0 0 900 480">
+        <svg width="850" height="420" viewBox="0 0 900 480">
           <defs>
             <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#3B82F6"/>
@@ -557,7 +564,7 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
           </div>
         </div>
         
-        <svg width="900" height="480" viewBox="0 0 900 480">
+        <svg width="850" height="420" viewBox="0 0 900 480">
           <defs>
             <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#F97316" stop-opacity="0.40"/>
@@ -583,7 +590,7 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     </html>
     '''
     
-    hti = get_html2image(size=(950, 1360), custom_flags=['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=2.5'])
+    hti = get_html2image(size=(880, 1140), custom_flags=['--no-sandbox', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2.5'])
     
     if platform.system() == 'Linux':
         out_dir = os.path.expanduser('~/hti_tmp')
@@ -600,8 +607,8 @@ def create_combined_charts_page(doc, capacity_kw, unit_rate, target_width):
     try:
         hti.screenshot(html_str=html, save_as=filename)
         if os.path.exists(temp_path):
-            # Scale to full page width (7.2 inches) & height (9.4 inches) to fill entire page space cleanly
-            return InlineImage(doc, temp_path, width=Inches(7.3), height=Inches(9.6))
+            # Scale to fit standard A4 printable bounds perfectly without spilling to next page
+            return InlineImage(doc, temp_path, width=Inches(6.8), height=Inches(8.7))
         else:
             return None
     except Exception as e:
@@ -1105,15 +1112,16 @@ def generate_balance_of_system_png(context):
     return None, None
 
 
-def style_cell_custom(cell, text, bg="FFFFFF", fg=(0,0,0), bold=False, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=8.0, border_color="0080C0"):
+def style_cell_custom(cell, text, bg="FFFFFF", fg=(0,0,0), bold=False, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=6.8, border_color="0080C0"):
     set_cell_background(cell, bg)
     set_cell_borders(cell, top=border_color, bottom=border_color, left=border_color, right=border_color, sz="4")
-    set_cell_margins(cell, top=30, bottom=30, left=60, right=60)
+    set_cell_margins(cell, top=10, bottom=10, left=30, right=30)
     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
     p = cell.paragraphs[0]
     p.alignment = align
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.0
     run = p.add_run(str(text))
     run.font.name = 'Segoe UI'
     run.font.size = Pt(font_size)
@@ -1155,11 +1163,11 @@ def add_native_project_scope_table(container, context=None):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run("Project's Scope")
     run.font.name = 'Georgia'
-    run.font.size = Pt(18)
+    run.font.size = Pt(14)
     run.font.bold = True
     run.font.color.rgb = RGBColor(15, 59, 102) # #0F3B66
     p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(4)
+    p.paragraph_format.space_after = Pt(2)
 
     table = container.add_table(rows=len(scope_data) + 1, cols=5)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -1171,8 +1179,8 @@ def add_native_project_scope_table(container, context=None):
     for i, h in enumerate(headers):
         hdr_cells[i].width = col_widths[i]
         set_cell_background(hdr_cells[i], "1B4D75")
-        set_cell_borders(hdr_cells[i], top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="6")
-        set_cell_margins(hdr_cells[i], top=50, bottom=50, left=60, right=60)
+        set_cell_borders(hdr_cells[i], top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="4")
+        set_cell_margins(hdr_cells[i], top=15, bottom=15, left=30, right=30)
         hdr_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
         hp = hdr_cells[i].paragraphs[0]
         hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1180,7 +1188,7 @@ def add_native_project_scope_table(container, context=None):
         hp.paragraph_format.space_after = Pt(0)
         hrun = hp.add_run(h)
         hrun.font.name = 'Segoe UI'
-        hrun.font.size = Pt(9.0)
+        hrun.font.size = Pt(7.5)
         hrun.font.bold = True
         hrun.font.color.rgb = RGBColor(255, 255, 255)
 
@@ -1193,11 +1201,11 @@ def add_native_project_scope_table(container, context=None):
         for c_idx, w in enumerate(col_widths):
             r_cells[c_idx].width = w
 
-        style_cell_custom(r_cells[0], sr, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=7.5, bold=bool(sr))
-        style_cell_custom(r_cells[1], cat, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=7.5, bold=True, fg=(11,59,96))
-        style_cell_custom(r_cells[2], item, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=7.5, fg=(11,59,96))
-        style_cell_custom(r_cells[3], sor, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=7.5, bold=(sor=="Yes"))
-        style_cell_custom(r_cells[4], cli, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=7.5, bold=(cli=="Yes"))
+        style_cell_custom(r_cells[0], sr, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=6.8, bold=bool(sr))
+        style_cell_custom(r_cells[1], cat, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=6.8, bold=True, fg=(11,59,96))
+        style_cell_custom(r_cells[2], item, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=6.8, fg=(11,59,96))
+        style_cell_custom(r_cells[3], sor, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=6.8, bold=(sor=="Yes"))
+        style_cell_custom(r_cells[4], cli, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=6.8, bold=(cli=="Yes"))
 
     return table
 
@@ -1236,11 +1244,11 @@ def add_native_terms_and_conditions_table(container, context=None):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run("Term's & Conditions")
     run.font.name = 'Georgia'
-    run.font.size = Pt(18)
+    run.font.size = Pt(14)
     run.font.bold = True
     run.font.color.rgb = RGBColor(15, 59, 102) # #0F3B66
     p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(4)
+    p.paragraph_format.space_after = Pt(2)
 
     table = container.add_table(rows=len(terms_data) + 1, cols=3)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -1252,8 +1260,8 @@ def add_native_terms_and_conditions_table(container, context=None):
     for i, h in enumerate(headers):
         hdr_cells[i].width = col_widths[i]
         set_cell_background(hdr_cells[i], "1B4D75")
-        set_cell_borders(hdr_cells[i], top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="6")
-        set_cell_margins(hdr_cells[i], top=50, bottom=50, left=60, right=60)
+        set_cell_borders(hdr_cells[i], top="0080C0", bottom="0080C0", left="0080C0", right="0080C0", sz="4")
+        set_cell_margins(hdr_cells[i], top=15, bottom=15, left=30, right=30)
         hdr_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
         hp = hdr_cells[i].paragraphs[0]
         hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1261,7 +1269,7 @@ def add_native_terms_and_conditions_table(container, context=None):
         hp.paragraph_format.space_after = Pt(0)
         hrun = hp.add_run(h)
         hrun.font.name = 'Segoe UI'
-        hrun.font.size = Pt(9.0)
+        hrun.font.size = Pt(7.5)
         hrun.font.bold = True
         hrun.font.color.rgb = RGBColor(255, 255, 255)
 
@@ -1274,9 +1282,9 @@ def add_native_terms_and_conditions_table(container, context=None):
         for c_idx, w in enumerate(col_widths):
             r_cells[c_idx].width = w
 
-        style_cell_custom(r_cells[0], sr, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=8.0, bold=True)
-        style_cell_custom(r_cells[1], sec, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=8.0, bold=True, fg=(11,59,96))
-        style_cell_custom(r_cells[2], details, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=8.0, fg=(11,59,96))
+        style_cell_custom(r_cells[0], sr, bg=bg, align=WD_ALIGN_PARAGRAPH.CENTER, font_size=6.5, bold=True)
+        style_cell_custom(r_cells[1], sec, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=6.5, bold=True, fg=(11,59,96))
+        style_cell_custom(r_cells[2], details, bg=bg, align=WD_ALIGN_PARAGRAPH.LEFT, font_size=6.5, fg=(11,59,96))
 
     return table
 
@@ -1955,7 +1963,19 @@ def generate_proposal():
             except Exception as final_ex:
                 print(f"Final render error: {final_ex}")
                 # Save whatever was processed
-        
+        # Ensure that Balance Of System, Capex Evaluation Sheet, Project Scope, and Terms & Conditions
+        # each start cleanly on their own dedicated page with page break before
+        try:
+            for t in doc.tables:
+                first_cell_text = t.rows[0].cells[0].text.lower() if t.rows and t.rows[0].cells else ''
+                if any(k in first_cell_text for k in ['evaluation', 'capex', 'project', 'scope', "term's", 'terms']):
+                    for r in t.rows[:1]:
+                        for c in r.cells:
+                            for cp in c.paragraphs:
+                                cp.paragraph_format.page_break_before = True
+        except Exception as pbe:
+            print(f"Warning setting table page breaks: {pbe}")
+            
         temp_docx_path = os.path.join(temp_dir, 'output.docx')
         doc.save(temp_docx_path)
 

@@ -55,9 +55,28 @@ export async function POST(request: NextRequest) {
     const financialDocTypeNames = financialDocTypes.map(t => t.name);
     const isFinancialDocument = financialDocTypeNames.includes(documentType);
     
-    const s3Url = new URL(template.originalDocxPath);
-    const templateKey = s3Url.pathname.substring(1);
-    const templateBuffer = await getFileFromS3(templateKey);
+    // Try local VPS copy first, then S3 fallback
+    let templateBuffer: Buffer;
+    let templateKey: string = '';
+    try {
+      const s3Url = new URL(template.originalDocxPath);
+      templateKey = s3Url.pathname.substring(1);
+    } catch {
+      templateKey = template.originalDocxPath.replace(/^\\/+/, '');
+    }
+    const localCopyPath = path.join(process.cwd(), 'public', templateKey);
+    try {
+      const localBuf = await fs.readFile(localCopyPath);
+      if (localBuf.length > 50000) {
+        templateBuffer = localBuf;
+        console.log(`[DocGenerate] Using fast local template: ${localCopyPath}`);
+      } else {
+        throw new Error('Local copy too small');
+      }
+    } catch {
+      console.log(`[DocGenerate] Downloading from S3: ${templateKey}`);
+      templateBuffer = await getFileFromS3(templateKey);
+    }
     
     const tempDir = os.tmpdir();
     tempFilePath = path.join(tempDir, `template-${Date.now()}.docx`);
