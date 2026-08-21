@@ -129,8 +129,18 @@ def format_indian_currency(val):
 
 def get_html2image(size=(840, 1188), custom_flags=None):
     """Helper to instantiate Html2Image with explicitly resolved browser binary path on Linux."""
-    if custom_flags is None:
-        custom_flags = ['--no-sandbox', '--disable-gpu', '--force-device-scale-factor=3']
+    default_flags = [
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--no-zygote',
+        '--allow-file-access-from-files'
+    ]
+    if custom_flags:
+        for flag in custom_flags:
+            if flag not in default_flags:
+                default_flags.append(flag)
     
     browser_executable = None
     if platform.system() == 'Linux':
@@ -141,7 +151,7 @@ def get_html2image(size=(840, 1188), custom_flags=None):
     
     kwargs = {
         'size': size,
-        'custom_flags': custom_flags
+        'custom_flags': default_flags
     }
     if browser_executable:
         kwargs['browser_executable'] = browser_executable
